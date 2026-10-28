@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cfloat>
+#include <cmath>
 #include <cstdio>
 #include <string>
 
@@ -276,11 +277,29 @@ namespace Ui
 	GalleryResult DrawGallery(GalleryModel& m)
 	{
 		auto& io = ImGui::GetIO();
-		ImGui::SetNextWindowSize(ImVec2(io.DisplaySize.x * 0.72f, io.DisplaySize.y * 0.78f), ImGuiCond_FirstUseEver);
-		ImGui::SetNextWindowPos(io.DisplaySize * 0.5f, ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
-		ImGui::SetNextWindowSizeConstraints(ImVec2(S(760.0f), S(520.0f)), io.DisplaySize);
+		// The window follows the interface size: first open at a size made from it, and when it changes,
+		// resize by the same factor around the window's centre.
+		static float  lastScale = 0.0f;
+		static ImVec2 lastSize, lastCenter;
+		const float   scale = Theme::Scale();
+		auto          clampToScreen = [&](ImVec2 a_size) {
+            return ImVec2((std::min)(a_size.x, io.DisplaySize.x * 0.98f), (std::min)(a_size.y, io.DisplaySize.y * 0.98f));
+		};
+		if (lastScale <= 0.0f) {
+			ImGui::SetNextWindowSize(clampToScreen(ImVec2(S(1380.0f), S(840.0f))), ImGuiCond_FirstUseEver);
+			ImGui::SetNextWindowPos(io.DisplaySize * 0.5f, ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
+		} else if (std::fabs(scale - lastScale) > 0.001f) {
+			const ImVec2 size = clampToScreen(lastSize * (scale / lastScale));
+			ImGui::SetNextWindowSize(size, ImGuiCond_Always);
+			ImGui::SetNextWindowPos(lastCenter, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+		}
+		ImGui::SetNextWindowSizeConstraints(ImVec2((std::min)(S(760.0f), io.DisplaySize.x), (std::min)(S(520.0f), io.DisplaySize.y)), io.DisplaySize);
 		GalleryResult r;
-		if (Theme::BeginWindow("Folder Gallery", nullptr)) {
+		const bool visible = Theme::BeginWindow("Folder Gallery", nullptr);
+		lastScale = scale;
+		lastSize = ImGui::GetWindowSize();
+		lastCenter = ImGui::GetWindowPos() + lastSize * 0.5f;
+		if (visible) {
 			char pics[16], walls[16];
 			std::snprintf(pics, sizeof pics, "%d", static_cast<int>(m.pictures.size()));
 			std::snprintf(walls, sizeof walls, "%d", m.framesOnWalls);
