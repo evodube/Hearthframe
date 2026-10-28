@@ -648,7 +648,7 @@ namespace Wall
 			RE::NiPoint3 dir{ xf.rotate.entry[0][1], xf.rotate.entry[1][1], xf.rotate.entry[2][1] };
 			const float  len = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
 			if (len < 1e-4f) {
-				return;
+				return false;
 			}
 			dir = { dir.x / len, dir.y / len, dir.z / len };
 
