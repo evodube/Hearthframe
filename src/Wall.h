@@ -25,6 +25,8 @@ namespace Wall
 	// ---- placement mode (aim at a wall, left click to hang)
 	void BeginPlacement(const std::filesystem::path& a_picture, int a_shape, int a_style, RE::ObjectRefHandle a_moving = {});
 	bool IsPlacing();
+	void TickPlacement();          // every frame while placing: moves the preview frame (SKSE task)
+	void CycleStyle(int a_delta);  // mouse wheel while placing
 	void RequestPlace();  // from the input handler; the raycast + placement run as an SKSE task
 	void CancelPlacement(bool a_notify = true);
 

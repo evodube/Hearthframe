@@ -430,7 +430,7 @@ namespace Gallery
 			using UEFlag = RE::ControlMap::UEFlag;
 			constexpr auto blocked = static_cast<UEFlag>(
 				static_cast<std::uint32_t>(UEFlag::kActivate) | static_cast<std::uint32_t>(UEFlag::kMenu) |
-				static_cast<std::uint32_t>(UEFlag::kFighting));
+				static_cast<std::uint32_t>(UEFlag::kFighting) | static_cast<std::uint32_t>(UEFlag::kWheelZoom));
 			if (auto* cm = RE::ControlMap::GetSingleton()) {
 				cm->ToggleControls(blocked, !a_on);
 			}
@@ -474,10 +474,15 @@ namespace Gallery
 							continue;
 						}
 						if (e->GetDevice() == RE::INPUT_DEVICE::kMouse) {
+							using MouseKey = RE::BSWin32MouseDevice::Key;
 							if (code == 0) {
 								Wall::RequestPlace();  // left click
 							} else if (code == 1) {
 								Wall::CancelPlacement();  // right click
+							} else if (code == MouseKey::kWheelUp) {
+								Wall::CycleStyle(+1);
+							} else if (code == MouseKey::kWheelDown) {
+								Wall::CycleStyle(-1);
 							}
 						} else if (e->GetDevice() == RE::INPUT_DEVICE::kKeyboard && (code == kDIK_Escape || code == cfg.toggleScan)) {
 							Wall::CancelPlacement();
@@ -952,6 +957,7 @@ namespace Gallery
 		}
 
 		ApplyPlacementControls(Wall::IsPlacing());
+		Wall::TickPlacement();
 		if (auto activated = Wall::TakeActivatedFrame(); activated && !g_open && !g_wantOpen && !Wall::IsPlacing()) {
 			g_frameMenu = *activated;
 			g_uiMode = UiMode::FrameMenu;

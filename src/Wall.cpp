@@ -13,6 +13,7 @@ namespace Wall
 		constexpr std::uint32_t    kSerializationID = 'FGAL';
 		constexpr std::uint32_t    kRecordFrames = 'FRMS';
 		constexpr std::uint32_t    kRecordVersion = 1;
+		constexpr std::uint32_t    kRecordPreview = 'PREV';
 		constexpr const char*      kPlacedDir = "textures\\FolderGallery\\Placed\\";
 		constexpr const char*      kFlatNormal = "textures\\FolderGallery\\canvas_flat_n.dds";
 
@@ -308,6 +309,166 @@ namespace Wall
 			return out;
 		}
 
+		// Activator form for a frame index, from the IDs resolved in Init().
+		RE::TESObjectACTI* FrameForm(int a_shape, int a_style)
+		{
+			const int idx = std::clamp(a_shape, 0, Frames::kShapeCount - 1) * Frames::kStyleCount + std::clamp(a_style, 0, Frames::kStyleCount - 1);
+			const auto id = g_frameForms[idx];
+			return id ? RE::TESForm::LookupByID<RE::TESObjectACTI>(id) : nullptr;
+		}
+
+		struct Pose
+		{
+			RE::NiPoint3 pos;
+			float        nx = 0.0f, ny = 1.0f;  // horizontal wall normal (unit)
+		};
+
+		// Where a frame would hang right now, or why it can't.
+		std::optional<Pose> ComputePose(const char*& a_whyNot, RE::TESObjectREFR* a_ignore = nullptr)
+		{
+			const auto hit = RaycastFromCamera(g_settings.maxDistance);
+			if (!hit) {
+				a_whyNot = "Nothing in reach - aim at a wall closer to you";
+				return std::nullopt;
+			}
+			if (hit->ref && hit->ref != a_ignore && hit->ref->Is(RE::FormType::ActorCharacter)) {
+				a_whyNot = "You can't hang a picture on someone";
+				return std::nullopt;
+			}
+			const auto& nrm = hit->normal;
+			const float nlen = std::sqrt(nrm.x * nrm.x + nrm.y * nrm.y);
+			if (std::fabs(nrm.z) > 0.6f || nlen < 0.3f) {
+				a_whyNot = "That's not a wall - aim at a vertical surface";
+				return std::nullopt;
+			}
+			Pose pose;
+			pose.nx = nrm.x / nlen;
+			pose.ny = nrm.y / nlen;
+			// Frame origin is the centre of its back; nudge it off the wall to avoid flicker.
+			pose.pos = { hit->pos.x + pose.nx * 0.3f, hit->pos.y + pose.ny * 0.3f, hit->pos.z };
+			return pose;
+		}
+
+		// Skyrim's Z angle turns local +Y (the frame's front) towards (sin z, cos z).
+		float AngleZ(const Pose& a_pose) { return std::atan2(a_pose.nx, a_pose.ny); }
+
+		// Rotation whose local +Y is the wall normal and local +Z is up (exact, no Euler conventions).
+		RE::NiMatrix3 RotationFor(const Pose& a_pose)
+		{
+			RE::NiMatrix3 m;
+			m.entry[0][0] = a_pose.ny;  m.entry[0][1] = a_pose.nx; m.entry[0][2] = 0.0f;
+			m.entry[1][0] = -a_pose.nx; m.entry[1][1] = a_pose.ny; m.entry[1][2] = 0.0f;
+			m.entry[2][0] = 0.0f;       m.entry[2][1] = 0.0f;      m.entry[2][2] = 1.0f;
+			return m;
+		}
+
+		// ------------------------------------------------------------------ preview frame (main thread)
+		RE::ObjectRefHandle g_preview;
+		bool                g_previewReady = false;     // collision switched off
+		std::string         g_previewTexture;          // dds already applied to the preview
+		bool                g_previewVisible = false;
+		std::atomic<bool>   g_previewQueued{ false };
+		RE::FormID          g_stalePreview = 0;         // from a save made while aiming; deleted after load
+
+		void DeletePreview()
+		{
+			if (auto ref = g_preview.get()) {
+				ref->Disable();
+				ref->SetDelete(true);
+			}
+			g_preview = {};
+			g_previewReady = false;
+			g_previewTexture.clear();
+			g_previewVisible = false;
+		}
+
+		void CreatePreview()
+		{
+			DeletePreview();
+			std::optional<Placement> pl;
+			{
+				std::lock_guard lk(g_mtx);
+				pl = g_placement;
+			}
+			auto* player = RE::PlayerCharacter::GetSingleton();
+			auto* base = pl ? FrameForm(pl->shape, pl->style) : nullptr;
+			if (!pl || !player || !base) {
+				return;
+			}
+			// Spawn out of the way (below the player); it is moved onto the wall every frame.
+			auto at = player->GetPosition();
+			at.z -= 2000.0f;
+			auto handle = RE::TESDataHandler::GetSingleton()->CreateReferenceAtLocation(
+				base, at, RE::NiPoint3{}, player->GetParentCell(), player->GetWorldspace(), nullptr, nullptr, RE::ObjectRefHandle(), false, true);
+			if (auto old = pl->moving.get(); old && old->Get3D()) {
+				old->Get3D()->SetAppCulled(true);  // the original disappears while it is being moved
+			}
+			if (auto ref = handle.get()) {
+				ref->SetCollision(false);
+				g_preview = handle;
+				spdlog::info("Preview frame {:08X} ({} {})", ref->GetFormID(), Frames::kShapes[pl->shape].name, Frames::kStyles[pl->style]);
+			}
+		}
+
+		void UpdatePreview()
+		{
+			g_previewQueued = false;
+			std::optional<Placement> pl;
+			{
+				std::lock_guard lk(g_mtx);
+				pl = g_placement;
+			}
+			if (!pl) {
+				DeletePreview();
+				return;
+			}
+			auto ref = g_preview.get();
+			if (!ref || ref->GetBaseObject() != FrameForm(pl->shape, pl->style)) {
+				CreatePreview();
+				return;
+			}
+			auto* root = ref->Get3D();
+			if (!root) {
+				return;  // still loading
+			}
+			if (!g_previewReady) {
+				root->SetCollisionLayer(RE::COL_LAYER::kNonCollidable);  // the aiming ray must not hit the preview
+				g_previewReady = true;
+			}
+			const auto dds = DdsGamePath(pl->picture, pl->shape);
+			if (g_previewTexture != dds) {
+				bool ready = false;
+				{
+					std::lock_guard lk(g_mtx);
+					const auto      it = g_conversions.find(dds);
+					ready = it != g_conversions.end() && it->second == Conv::Ready;
+				}
+				if (ready && ApplyTexture(ref.get(), dds)) {
+					g_previewTexture = dds;
+				}
+			}
+
+			const char* why = nullptr;
+			const auto  pose = ComputePose(why, pl->moving.get().get());
+			if (!pose) {
+				if (g_previewVisible) {
+					root->SetAppCulled(true);
+					g_previewVisible = false;
+				}
+				return;
+			}
+			ref->data.location = pose->pos;
+			ref->data.angle = { 0.0f, 0.0f, AngleZ(*pose) };
+			root->local.translate = pose->pos;
+			root->local.rotate = RotationFor(*pose);
+			RE::NiUpdateData ud{};
+			root->Update(ud);
+			if (!g_previewVisible) {
+				root->SetAppCulled(false);
+				g_previewVisible = true;
+			}
+		}
+
 		void DoPlace()
 		{
 			g_placeQueued = false;
@@ -319,38 +480,23 @@ namespace Wall
 			if (!pl) {
 				return;
 			}
-			const auto hit = RaycastFromCamera(g_settings.maxDistance);
-			if (!hit) {
-				RE::DebugNotification("Nothing in reach - aim at a wall closer to you");
+			const char* why = nullptr;
+			const auto  pose = ComputePose(why, pl->moving.get().get());
+			if (!pose) {
+				RE::DebugNotification(why);
 				return;
 			}
-			if (hit->ref && hit->ref->Is(RE::FormType::ActorCharacter)) {
-				RE::DebugNotification("You can't hang a picture on someone");
-				return;
-			}
-			const auto& nrm = hit->normal;
-			const float nlen = std::sqrt(nrm.x * nrm.x + nrm.y * nrm.y);
-			if (std::fabs(nrm.z) > 0.6f || nlen < 0.3f) {
-				RE::DebugNotification("That's not a wall - aim at a vertical surface");
-				return;
-			}
-			const float nx = nrm.x / nlen, ny = nrm.y / nlen;
-
-			const auto local = Frames::LocalFormID(pl->shape, pl->style);
-			auto*      base = RE::TESDataHandler::GetSingleton()->LookupForm<RE::TESBoundObject>(local, kPluginFile);
-			auto*      player = RE::PlayerCharacter::GetSingleton();
+			auto* base = FrameForm(pl->shape, pl->style);
+			auto* player = RE::PlayerCharacter::GetSingleton();
 			if (!base || !player) {
-				spdlog::error("Frame form {:03X} not found in {}", local, kPluginFile);
+				spdlog::error("Frame form for {} {} not available (form id {:08X})", Frames::kShapes[pl->shape].name,
+					Frames::kStyles[pl->style], g_frameForms[pl->shape * Frames::kStyleCount + pl->style]);
 				RE::DebugNotification("Folder Gallery: frame record missing - is FolderGallery.esp enabled?");
 				return;
 			}
-			// Frame origin is the centre of its back; its front faces local +Y.
-			// Skyrim's Z angle turns local +Y towards (sin z, cos z), so z = atan2(nx, ny).
-			const RE::NiPoint3 pos{ hit->pos.x + nx * 0.3f, hit->pos.y + ny * 0.3f, hit->pos.z };
-			const RE::NiPoint3 angle{ 0.0f, 0.0f, std::atan2(nx, ny) };
-
+			const RE::NiPoint3 angle{ 0.0f, 0.0f, AngleZ(*pose) };
 			auto handle = RE::TESDataHandler::GetSingleton()->CreateReferenceAtLocation(
-				base, pos, angle, player->GetParentCell(), player->GetWorldspace(), nullptr, nullptr, RE::ObjectRefHandle(), true, true);
+				base, pose->pos, angle, player->GetParentCell(), player->GetWorldspace(), nullptr, nullptr, RE::ObjectRefHandle(), true, true);
 			auto ref = handle.get();
 			if (!ref) {
 				RE::DebugNotification("Folder Gallery: could not place the frame here");
@@ -364,17 +510,20 @@ namespace Wall
 				g_frames[ref->GetFormID()] = Entry{ dds, ToUtf8(pl->picture), static_cast<std::uint8_t>(pl->shape), static_cast<std::uint8_t>(pl->style) };
 			}
 			spdlog::info("Placed frame {:08X} ({} {}) at ({:.0f}, {:.0f}, {:.0f}) facing {:.0f} deg, picture {}",
-				ref->GetFormID(), Frames::kShapes[pl->shape].name, Frames::kStyles[pl->style], pos.x, pos.y, pos.z,
+				ref->GetFormID(), Frames::kShapes[pl->shape].name, Frames::kStyles[pl->style], pose->pos.x, pose->pos.y, pose->pos.z,
 				angle.z * 57.2958f, ToUtf8(pl->picture));
 			EnsureTexture(dds, pl->picture, pl->shape);
 			ApplyToRef(ref->GetFormID());  // works right away if the texture already exists and the 3D is loaded
 
 			if (auto old = pl->moving.get()) {
-				std::lock_guard lk(g_mtx);
-				g_frames.erase(old->GetFormID());
+				{
+					std::lock_guard lk(g_mtx);
+					g_frames.erase(old->GetFormID());
+				}
 				old->Disable();
 				old->SetDelete(true);
 			}
+			DeletePreview();
 			CancelPlacement(false);
 			RE::DebugNotification("Picture hung");
 		}
@@ -462,6 +611,9 @@ namespace Wall
 				WriteString(a_intfc, e.picture);
 			}
 			spdlog::info("Co-save: saved {} frame(s)", g_frames.size());
+			if (auto preview = g_preview.get(); preview && a_intfc->OpenRecord(kRecordPreview, 1)) {
+				a_intfc->WriteRecordData(preview->GetFormID());
+			}
 		}
 
 		void OnRevert(SKSE::SerializationInterface*)
@@ -476,6 +628,13 @@ namespace Wall
 			std::uint32_t type = 0, version = 0, length = 0;
 			std::vector<std::pair<RE::FormID, Entry>> loaded;
 			while (a_intfc->GetNextRecordInfo(type, version, length)) {
+				if (type == kRecordPreview) {
+					RE::FormID oldID = 0, newID = 0;
+					if (a_intfc->ReadRecordData(oldID) == sizeof(oldID) && a_intfc->ResolveFormID(oldID, newID)) {
+						g_stalePreview = newID;
+					}
+					continue;
+				}
 				if (type != kRecordFrames || version != kRecordVersion) {
 					continue;
 				}
@@ -580,6 +739,15 @@ namespace Wall
 
 	void OnGameLoaded()
 	{
+		g_preview = {};
+		if (g_stalePreview) {
+			if (auto* stale = RE::TESForm::LookupByID<RE::TESObjectREFR>(g_stalePreview)) {
+				spdlog::info("Removing preview frame {:08X} left in the save", g_stalePreview);
+				stale->Disable();
+				stale->SetDelete(true);
+			}
+			g_stalePreview = 0;
+		}
 		std::vector<RE::FormID> ids;
 		{
 			std::lock_guard lk(g_mtx);
@@ -603,12 +771,34 @@ namespace Wall
 		// Start converting right away so the texture is usually ready by the time the frame is hung.
 		EnsureTexture(DdsGamePath(a_picture, shape), a_picture, shape);
 		g_placing = true;
-		Notify("Aim at a wall and left-click to hang the picture. Right-click or Esc to cancel.");
+		Notify("Aim at a wall and left-click to hang. Mouse wheel changes the frame, right-click or Esc cancels.");
 	}
 
 	bool IsPlacing()
 	{
 		return g_placing;
+	}
+
+	void TickPlacement()
+	{
+		if (g_placing && !g_previewQueued.exchange(true)) {
+			SKSE::GetTaskInterface()->AddTask([] { UpdatePreview(); });
+		}
+	}
+
+	void CycleStyle(int a_delta)
+	{
+		std::string name;
+		{
+			std::lock_guard lk(g_mtx);
+			if (!g_placement) {
+				return;
+			}
+			auto& st = g_placement->style;
+			st = ((st + a_delta) % Frames::kStyleCount + Frames::kStyleCount) % Frames::kStyleCount;
+			name = Frames::kStyles[st];
+		}
+		Notify(fmt::format("Frame: {}", name));
 	}
 
 	void RequestPlace()
@@ -620,11 +810,23 @@ namespace Wall
 
 	void CancelPlacement(bool a_notify)
 	{
+		RE::ObjectRefHandle moving;
 		{
 			std::lock_guard lk(g_mtx);
+			if (g_placement) {
+				moving = g_placement->moving;
+			}
 			g_placement.reset();
 		}
 		const bool was = g_placing.exchange(false);
+		if (was) {
+			SKSE::GetTaskInterface()->AddTask([moving] {
+				DeletePreview();
+				if (auto old = moving.get(); old && !old->IsDisabled() && old->Get3D()) {
+					old->Get3D()->SetAppCulled(false);  // move cancelled (or the old frame is gone anyway)
+				}
+			});
+		}
 		if (was && a_notify) {
 			Notify("Hanging cancelled");
 		}
