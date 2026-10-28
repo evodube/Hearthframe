@@ -18,6 +18,7 @@ namespace Ui
 		int         thumbW = 0, thumbH = 0;
 		int         origW = 0, origH = 0;
 		bool        failed = false;
+		const char* error = "";  // reason, shown in the tooltip when failed
 	};
 
 	struct GalleryModel
@@ -26,6 +27,7 @@ namespace Ui
 		std::vector<Picture>        pictures;
 		int                         framesOnWalls = 0;
 		bool                        replaceMode = false;  // choosing a new picture for an existing frame
+		const char*                 notice = nullptr;     // shown above the grid when set
 		int*                        thumbSize = nullptr;  // in/out, 100..320
 		std::function<void(int)>    requestThumb;          // called for visible pictures without a thumbnail
 

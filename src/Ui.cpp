@@ -65,6 +65,10 @@ namespace Ui
 			ImGui::Spacing();
 
 			if (Theme::BeginParchment("##grid", ImVec2(0, 0), true)) {
+				if (m.notice) {
+					Theme::TextColoredWrapped(IM_COL32(140, 40, 30, 255), m.notice);
+					ImGui::Dummy(ImVec2(0, S(8.0f)));
+				}
 				if (m.pictures.empty()) {
 					Theme::SectionLabel("No pictures yet");
 					std::string msg = "Put .png, .jpg, .bmp or .tga files in this folder, then press Refresh:\n";
@@ -117,7 +121,11 @@ namespace Ui
 					}
 					dl->PopClipRect();
 					if (hovered) {
-						ImGui::SetTooltip("%s\n%d %s %d", pic.name, pic.origW, kTimes, pic.origH);
+						if (pic.failed && pic.error && *pic.error) {
+							ImGui::SetTooltip("%s\nCan't read: %s\nPress Refresh to try again.", pic.name, pic.error);
+						} else {
+							ImGui::SetTooltip("%s\n%d %s %d", pic.name, pic.origW, kTimes, pic.origH);
+						}
 					}
 					if (clicked) {
 						r = { GalleryAction::Open, i };

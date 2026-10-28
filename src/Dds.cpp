@@ -189,19 +189,81 @@ namespace Dds
 		}
 	}
 
+	ReadResult ReadPictureFile(const fs::path& a_path)
+	{
+		ReadResult r;
+		for (int attempt = 0; attempt < 5; ++attempt) {
+			if (attempt > 0) {
+				std::this_thread::sleep_for(std::chrono::milliseconds(250));
+			}
+			HANDLE h = ::CreateFileW(a_path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+				nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
+			if (h == INVALID_HANDLE_VALUE) {
+				const DWORD e = ::GetLastError();
+				r.notFound = e == ERROR_FILE_NOT_FOUND || e == ERROR_PATH_NOT_FOUND;
+				r.error = fmt::format("can't open the file (Windows error {}{})", e,
+					r.notFound ? ", not found" : (e == ERROR_SHARING_VIOLATION ? ", in use by another program" : (e == ERROR_ACCESS_DENIED ? ", access denied" : "")));
+				if (r.notFound) {
+					return r;  // retrying won't help
+				}
+				continue;
+			}
+			LARGE_INTEGER size{};
+			::GetFileSizeEx(h, &size);
+			if (size.QuadPart <= 0 || size.QuadPart > (1ll << 30)) {
+				::CloseHandle(h);
+				r.error = size.QuadPart <= 0 ? "the file is empty (still being copied?)" : "the file is too big";
+				continue;
+			}
+			r.bytes.resize(static_cast<std::size_t>(size.QuadPart));
+			DWORD got = 0;
+			const BOOL ok = ::ReadFile(h, r.bytes.data(), static_cast<DWORD>(r.bytes.size()), &got, nullptr);
+			::CloseHandle(h);
+			if (!ok || got != r.bytes.size()) {
+				r.error = fmt::format("read failed (Windows error {})", ::GetLastError());
+				continue;
+			}
+			r.error.clear();
+			r.notFound = false;
+			return r;
+		}
+		r.bytes.clear();
+		return r;
+	}
+
+	unsigned char* DecodePicture(const fs::path& a_path, int& a_w, int& a_h, std::string& a_error, bool& a_notFound)
+	{
+		a_notFound = false;
+		for (int attempt = 0; attempt < 3; ++attempt) {
+			auto file = ReadPictureFile(a_path);
+			if (!file.error.empty()) {
+				a_error = file.error;
+				a_notFound = file.notFound;
+				return nullptr;
+			}
+			int  channels = 0;
+			auto px = stbi_load_from_memory(file.bytes.data(), static_cast<int>(file.bytes.size()), &a_w, &a_h, &channels, 4);
+			if (px) {
+				a_error.clear();
+				return px;
+			}
+			a_error = std::string("can't decode the picture: ") + (stbi_failure_reason() ? stbi_failure_reason() : "unknown format");
+			std::this_thread::sleep_for(std::chrono::milliseconds(300));  // maybe it was still being written
+		}
+		return nullptr;
+	}
+
+	void FreePixels(unsigned char* a_px)
+	{
+		stbi_image_free(a_px);
+	}
+
 	bool ConvertPicture(const fs::path& a_source, int a_width, int a_height, const fs::path& a_out, std::string& a_error)
 	{
-		FILE* f = nullptr;
-		if (_wfopen_s(&f, a_source.c_str(), L"rb") != 0 || !f) {
-			a_error = "cannot open the picture";
-			return false;
-		}
 		Image src;
-		int   channels = 0;
-		auto* px = stbi_load_from_file(f, &src.w, &src.h, &channels, 4);
-		fclose(f);
+		bool  notFound = false;
+		auto* px = DecodePicture(a_source, src.w, src.h, a_error, notFound);
 		if (!px) {
-			a_error = std::string("cannot decode the picture: ") + (stbi_failure_reason() ? stbi_failure_reason() : "?");
 			return false;
 		}
 		src.px.assign(px, px + static_cast<std::size_t>(src.w) * src.h * 4);

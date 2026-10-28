@@ -10,6 +10,7 @@
 #include <Windows.h>
 #include <d3d11.h>
 #include <dxgi.h>
+#include <ShlObj.h>
 
 #include <algorithm>
 #include <array>

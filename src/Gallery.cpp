@@ -1,5 +1,6 @@
 #include "Gallery.h"
 
+#include "Dds.h"
 #include "Frames.h"
 #include "Ui.h"
 #include "Wall.h"
@@ -75,7 +76,9 @@ namespace Gallery
 			ID3D11ShaderResourceView* srv = nullptr;
 			int                       w = 0, h = 0;          // thumbnail texture size
 			int                       origW = 0, origH = 0;  // size of the file on disk
+			std::string               error;                 // why it couldn't be read
 		};
+		bool g_virtualFileHint = false;  // a listed picture couldn't be opened by name (MO2 virtual Data folder)
 
 		struct Job
 		{
@@ -92,8 +95,10 @@ namespace Gallery
 			int                       index = 0;
 			bool                      full = false;
 			bool                      ok = false;
+			bool                      notFound = false;
 			int                       w = 0, h = 0, origW = 0, origH = 0;
 			std::vector<std::uint8_t> px;
+			std::string               error;
 		};
 
 		// Heap-allocated and never freed so the detached worker can't touch destroyed objects at exit.
@@ -197,13 +202,7 @@ namespace Gallery
 
 		bool LoadPixels(const fs::path& path, int maxDim, Result& r)
 		{
-			FILE* f = nullptr;
-			if (_wfopen_s(&f, path.c_str(), L"rb") != 0 || !f) {
-				return false;
-			}
-			int      channels = 0;
-			stbi_uc* px = stbi_load_from_file(f, &r.origW, &r.origH, &channels, 4);
-			fclose(f);
+			stbi_uc* px = Dds::DecodePicture(path, r.origW, r.origH, r.error, r.notFound);
 			if (!px) {
 				return false;
 			}
@@ -241,8 +240,12 @@ namespace Gallery
 				r.full = job.full;
 				try {
 					r.ok = LoadPixels(job.path, job.maxDim, r);
-				} catch (...) {
+				} catch (const std::exception& e) {
 					r.ok = false;
+					r.error = e.what();
+				}
+				if (!r.ok) {
+					spdlog::warn("Can't read {}: {}", ToUtf8(job.path), r.error);
 				}
 				std::lock_guard lk(S.mtx);
 				S.results.push_back(std::move(r));
@@ -326,6 +329,10 @@ namespace Gallery
 					Item& it = items[r.index];
 					it.origW = r.origW;
 					it.origH = r.origH;
+					it.error = r.error;
+					if (r.notFound) {
+						g_virtualFileHint = true;
+					}
 					if (r.ok) {
 						it.srv = MakeSRV(r.px.data(), r.w, r.h);
 						it.w = r.w;
@@ -358,6 +365,7 @@ namespace Gallery
 				}
 			}
 			items.clear();
+			g_virtualFileHint = false;
 			viewing = -1;
 			ReleaseFull();
 
@@ -718,6 +726,10 @@ namespace Gallery
 			gm.folder = folder.c_str();
 			gm.framesOnWalls = Wall::FrameCount();
 			gm.replaceMode = g_replaceTarget.has_value();
+			gm.notice = g_virtualFileHint ?
+			                "Some pictures can't be opened until the game restarts - this folder is inside Mod Organizer's virtual Data folder. "
+			                "Leave sFolder empty in FolderGallery.ini to use Documents\\My Games\\Skyrim Special Edition\\FolderGallery\\Pictures, where new pictures work right away." :
+			                nullptr;
 			gm.thumbSize = &cfg.thumbSize;
 			gm.pictures.reserve(items.size());
 			for (const auto& it : items) {
@@ -729,6 +741,7 @@ namespace Gallery
 				p.origW = it.origW;
 				p.origH = it.origH;
 				p.failed = it.state == State::Failed;
+				p.error = it.error.c_str();
 				gm.pictures.push_back(p);
 			}
 			gm.requestThumb = [](int i) {
@@ -800,8 +813,19 @@ namespace Gallery
 		const auto      ini = fs::absolute(fs::path(L"Data\\SKSE\\Plugins\\FolderGallery.ini"), ec).string();
 
 		char buf[MAX_PATH]{};
-		::GetPrivateProfileStringA("General", "sFolder", "Data\\SKSE\\Plugins\\FolderGallery\\Pictures", buf, MAX_PATH, ini.c_str());
-		cfg.folder = fs::absolute(fs::path(buf), ec);
+		::GetPrivateProfileStringA("General", "sFolder", "", buf, MAX_PATH, ini.c_str());
+		if (buf[0]) {
+			cfg.folder = fs::absolute(fs::path(buf), ec);
+		} else {
+			// Outside Data on purpose: Mod Organizer's virtual Data folder can't open files added while the game runs.
+			PWSTR docs = nullptr;
+			if (SUCCEEDED(::SHGetKnownFolderPath(FOLDERID_Documents, 0, nullptr, &docs)) && docs) {
+				cfg.folder = fs::path(docs) / L"My Games" / L"Skyrim Special Edition" / L"FolderGallery" / L"Pictures";
+				::CoTaskMemFree(docs);
+			} else {
+				cfg.folder = fs::absolute(fs::path(L"Data\\SKSE\\Plugins\\FolderGallery\\Pictures"), ec);
+			}
+		}
 		cfg.toggleKey = static_cast<int>(::GetPrivateProfileIntA("General", "iToggleKey", VK_F8, ini.c_str()));
 		cfg.toggleScan = VirtualKeyToDIK(cfg.toggleKey);
 		if (cfg.toggleScan == 0) {
