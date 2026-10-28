@@ -6,7 +6,8 @@ namespace Wall
 	{
 		int   resolution = 1024;   // long side of the generated DDS
 		int   defaultStyle = 2;    // index into Frames::kStyles (Dark Oak)
-		float maxDistance = 2000.0f;
+		float maxDistance = 2000.0f;   // how far you can hang a picture
+		float examineReach = 600.0f;   // how far a hung picture can be examined with Activate
 	};
 	Settings& GetSettings();
 
@@ -44,6 +45,7 @@ namespace Wall
 	};
 	// Set by the activation sink when the player activates one of our frames; taken by the UI.
 	std::optional<FrameInfo> TakeActivatedFrame();
+	void                     RequestExamine();  // Activate pressed: open the menu of the frame being looked at
 	void                     RemoveFrame(RE::ObjectRefHandle a_ref);
 	void                     SetFrameScale(RE::ObjectRefHandle a_ref, float a_scale);
 	void                     NudgeFrame(RE::ObjectRefHandle a_ref, float a_distance);  // + = away from the wall

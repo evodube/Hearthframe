@@ -605,6 +605,130 @@ namespace Wall
 			RE::DebugNotification("Picture hung");
 		}
 
+		// Hands a frame to the UI (frame menu). Any thread.
+		bool OpenFrameMenu(RE::TESObjectREFR* a_ref)
+		{
+			const int idx = a_ref ? FrameIndex(a_ref->GetBaseObject()) : -1;
+			if (idx < 0) {
+				return false;
+			}
+			FrameInfo info;
+			info.ref = a_ref->GetHandle();
+			info.scale = a_ref->GetReferenceRuntimeData().refScale / 100.0f;
+			info.shape = idx / Frames::kStyleCount;
+			info.style = idx % Frames::kStyleCount;
+			std::lock_guard lk(g_mtx);
+			if (const auto it = g_frames.find(a_ref->GetFormID()); it != g_frames.end()) {
+				info.picturePath = FromUtf8(it->second.picture);
+				info.picture = ToUtf8(info.picturePath.filename());
+			}
+			g_activated = info;
+			return true;
+		}
+
+		// The hung frame closest to the line of sight, ignoring collision (so frames sunk into a wall
+		// or beyond the game's short activation range can still be examined). Main thread.
+		void DoExamine()
+		{
+			// If the game's crosshair is on something else (an NPC, a door...), that activation wins.
+			if (auto* pick = RE::CrosshairPickData::GetSingleton()) {
+				if (auto target = pick->target.get(); target && FrameIndex(target->GetBaseObject()) < 0) {
+					return;
+				}
+			}
+			auto* camera = RE::PlayerCamera::GetSingleton();
+			if (!camera || !camera->cameraRoot) {
+				return;
+			}
+			const auto&  xf = camera->cameraRoot->world;
+			const auto   from = xf.translate;
+			RE::NiPoint3 dir{ xf.rotate.entry[0][1], xf.rotate.entry[1][1], xf.rotate.entry[2][1] };
+			const float  len = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
+			if (len < 1e-4f) {
+				return;
+			}
+			dir = { dir.x / len, dir.y / len, dir.z / len };
+
+			std::vector<std::pair<RE::FormID, int>> frames;
+			{
+				std::lock_guard lk(g_mtx);
+				for (const auto& [id, e] : g_frames) {
+					frames.emplace_back(id, e.shape);
+				}
+			}
+			RE::TESObjectREFR* best = nullptr;
+			float              bestT = 1e30f;
+			for (const auto& [id, shape] : frames) {
+				auto* ref = RE::TESForm::LookupByID<RE::TESObjectREFR>(id);
+				if (!ref || ref->IsDisabled() || !ref->Get3D()) {
+					continue;
+				}
+				// Centre of the canvas: a little in front of the frame's back.
+				const float z = ref->GetAngleZ();
+				auto        c = ref->GetPosition();
+				c.x += std::sin(z) * 1.5f;
+				c.y += std::cos(z) * 1.5f;
+				const RE::NiPoint3 v{ c.x - from.x, c.y - from.y, c.z - from.z };
+				const float        t = v.x * dir.x + v.y * dir.y + v.z * dir.z;  // distance along the aim
+				if (t < 0.0f || t > g_settings.examineReach) {
+					continue;
+				}
+				const RE::NiPoint3 off{ v.x - dir.x * t, v.y - dir.y * t, v.z - dir.z * t };
+				const float        miss = std::sqrt(off.x * off.x + off.y * off.y + off.z * off.z);
+				const auto&        sh = Frames::kShapes[std::clamp(shape, 0, Frames::kShapeCount - 1)];
+				const float        radius = 0.5f * (std::min)(sh.canvasW, sh.canvasH) * (ref->GetReferenceRuntimeData().refScale / 100.0f) + 4.0f;
+				if (miss <= radius && t < bestT) {
+					best = ref;
+					bestT = t;
+				}
+			}
+			if (best) {
+				OpenFrameMenu(best);
+			}
+		}
+
+		// Diffuse texture currently on a frame's canvas ("" if the 3D isn't there).
+		std::string CurrentPicture(RE::TESObjectREFR* a_ref)
+		{
+			auto* root = a_ref ? a_ref->Get3D() : nullptr;
+			auto* obj = root ? root->GetObjectByName(RE::BSFixedString("SGPicture")) : nullptr;
+			auto* geom = obj ? obj->AsGeometry() : nullptr;
+			auto* shader = geom ? netimmerse_cast<RE::BSLightingShaderProperty*>(
+				geom->GetGeometryRuntimeData().properties[RE::BSGeometry::States::kEffect].get()) : nullptr;
+			auto* material = shader ? static_cast<RE::BSLightingShaderMaterialBase*>(shader->material) : nullptr;
+			if (!material || !material->textureSet) {
+				return {};
+			}
+			const char* p = material->textureSet->GetTexturePath(RE::BSTextureSet::Texture::kDiffuse);
+			return p ? p : "";
+		}
+
+		// The game rebuilds a frame's 3D from the mesh when it is moved or reloaded, which drops the
+		// picture without telling anyone. Every so often, put it back where it went missing. Main thread.
+		void Watchdog()
+		{
+			std::vector<std::pair<RE::FormID, std::string>> frames;
+			{
+				std::lock_guard lk(g_mtx);
+				for (const auto& [id, e] : g_frames) {
+					const auto c = g_conversions.find(e.dds);
+					if (c != g_conversions.end() && c->second == Conv::Ready) {
+						frames.emplace_back(id, e.dds);
+					}
+				}
+			}
+			for (const auto& [id, dds] : frames) {
+				auto* ref = RE::TESForm::LookupByID<RE::TESObjectREFR>(id);
+				if (!ref || ref->IsDisabled() || !ref->Get3D()) {
+					continue;
+				}
+				const auto now = CurrentPicture(ref);
+				if (_stricmp(now.c_str(), dds.c_str()) != 0 && ApplyTexture(ref, dds)) {
+					spdlog::info("{:08X}: picture restored after the frame's 3D was rebuilt", id);
+				}
+			}
+		}
+
 		// ------------------------------------------------------------------ events
 		class EventSink final :
 			public RE::BSTEventSink<RE::TESCellAttachDetachEvent>,
@@ -649,24 +773,7 @@ namespace Wall
 				if (!a_event || !a_event->objectActivated || !a_event->actionRef || a_event->actionRef.get() != RE::PlayerCharacter::GetSingleton()) {
 					return RE::BSEventNotifyControl::kContinue;
 				}
-				auto*     ref = a_event->objectActivated.get();
-				const int idx = FrameIndex(ref->GetBaseObject());
-				if (idx < 0) {
-					return RE::BSEventNotifyControl::kContinue;
-				}
-				FrameInfo info;
-				info.ref = ref->GetHandle();
-				info.scale = ref->GetReferenceRuntimeData().refScale / 100.0f;
-				info.shape = idx / Frames::kStyleCount;
-				info.style = idx % Frames::kStyleCount;
-				{
-					std::lock_guard lk(g_mtx);
-					if (const auto it = g_frames.find(ref->GetFormID()); it != g_frames.end()) {
-						info.picturePath = FromUtf8(it->second.picture);
-						info.picture = ToUtf8(info.picturePath.filename());
-					}
-					g_activated = info;
-				}
+				OpenFrameMenu(a_event->objectActivated.get());
 				return RE::BSEventNotifyControl::kContinue;
 			}
 		};
@@ -885,6 +992,10 @@ namespace Wall
 					g_previewQueued = false;
 				}
 				ProcessPending();
+				static int ticks = 0;
+				if (++ticks % 30 == 0) {
+					Watchdog();
+				}
 			});
 		}
 	}
@@ -932,6 +1043,7 @@ namespace Wall
 			pos.x += std::sin(z) * a_distance;
 			pos.y += std::cos(z) * a_distance;
 			ref->SetPosition(pos);
+			QueueApply(ref->GetFormID());  // moving rebuilds the 3D; the watchdog also catches it
 			spdlog::info("Frame {:08X} nudged {:+.2f} from the wall", ref->GetFormID(), a_distance);
 		});
 	}
@@ -959,6 +1071,11 @@ namespace Wall
 			name = Frames::kStyles[st];
 		}
 		Notify(fmt::format("Frame: {}", name));
+	}
+
+	void RequestExamine()
+	{
+		SKSE::GetTaskInterface()->AddTask([] { DoExamine(); });
 	}
 
 	void RequestPlace()

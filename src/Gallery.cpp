@@ -475,6 +475,15 @@ namespace Gallery
 					if (e->GetDevice() == RE::INPUT_DEVICE::kKeyboard && (code == 0x2A || code == 0x36)) {
 						g_shiftDown = down;  // left / right shift
 					}
+					// Activate on a hung picture: find it ourselves, so it works past the game's short
+					// activation range and when the frame sits in the wall (its collision can't be hit).
+					if (down && !g_open && !Wall::IsPlacing()) {
+						auto* ue = RE::UserEvents::GetSingleton();
+						auto* ui = RE::UI::GetSingleton();
+						if (ue && btn->QUserEvent() == ue->activate && ui && !ui->GameIsPaused() && !ui->IsMenuOpen(RE::DialogueMenu::MENU_NAME)) {
+							Wall::RequestExamine();
+						}
+					}
 					if (Wall::IsPlacing()) {
 						if (!down) {
 							continue;
@@ -915,6 +924,8 @@ namespace Gallery
 		// fPlaceReach replaces the old fMaxPlaceDistance (default went from 400 to 2000)
 		::GetPrivateProfileStringA("Frames", "fPlaceReach", "2000", buf, MAX_PATH, ini.c_str());
 		wall.maxDistance = std::clamp(static_cast<float>(std::atof(buf)), 100.0f, 10000.0f);
+		::GetPrivateProfileStringA("Frames", "fExamineReach", "600", buf, MAX_PATH, ini.c_str());
+		wall.examineReach = std::clamp(static_cast<float>(std::atof(buf)), 100.0f, 5000.0f);
 		spdlog::info("Frames: resolution {}  default style {}  reach {}", wall.resolution, Frames::kStyles[wall.defaultStyle], wall.maxDistance);
 		dbg.hookPresent = ::GetPrivateProfileIntA("Debug", "bHookPresent", 1, ini.c_str()) != 0;
 		dbg.inputSink = ::GetPrivateProfileIntA("Debug", "bInputSink", 1, ini.c_str()) != 0;
