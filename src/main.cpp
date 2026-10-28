@@ -1,4 +1,5 @@
 #include "Gallery.h"
+#include "Wall.h"
 
 namespace
 {
@@ -118,6 +119,11 @@ namespace
 	void OnMessage(SKSE::MessagingInterface::Message* a_msg)
 	{
 		spdlog::info("SKSE message {}", a_msg->type);
+		if (a_msg->type == SKSE::MessagingInterface::kPostLoadGame || a_msg->type == SKSE::MessagingInterface::kNewGame) {
+			Wall::CancelPlacement(false);
+			Wall::OnGameLoaded();
+			return;
+		}
 		if (a_msg->type != SKSE::MessagingInterface::kDataLoaded) {
 			return;
 		}
@@ -144,6 +150,11 @@ namespace
 		} else {
 			spdlog::warn("Step 2/2: input sink DISABLED by bInputSink=0");
 		}
+		if (Wall::Init()) {
+			spdlog::info("Wall frames ready");
+		} else {
+			spdlog::error("Some frame records are missing - is the new FolderGallery.esp installed and enabled?");
+		}
 		spdlog::info("Setup finished");
 	}
 
@@ -168,11 +179,12 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse)
 {
 	SKSE::Init(a_skse);
 	SetupLog();
-	spdlog::info("FolderGallery {} (diagnostic build) loaded, SKSE {}",
+	spdlog::info("FolderGallery {} loaded, SKSE {}",
 		SKSE::PluginDeclaration::GetSingleton()->GetVersion().string("."sv),
 		REL::Version::unpack(a_skse->SKSEVersion()).string("."sv));
 	LogEnvironment();
 	Gallery::LoadSettings();
+	Wall::InstallSerialization();
 
 	if (!SKSE::GetMessagingInterface()->RegisterListener(OnMessage)) {
 		spdlog::error("Could not register with the SKSE messaging interface");

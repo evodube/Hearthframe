@@ -12,6 +12,12 @@
 #include <dxgi.h>
 
 #include <algorithm>
+#include <array>
+#include <cctype>
+#include <cmath>
+#include <cstring>
+#include <optional>
+#include <unordered_map>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>

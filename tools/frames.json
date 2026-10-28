@@ -1,0 +1,1702 @@
+{
+ "Frame_Landscape_BlackIron": {
+  "min": [
+   -32.0,
+   0.0,
+   -25.0
+  ],
+  "max": [
+   32.0,
+   2.5999999046325684,
+   25.0
+  ],
+  "picture": [
+   [
+    -28.0,
+    1.0920000076293945,
+    -21.0
+   ],
+   [
+    28.0,
+    1.0920000076293945,
+    21.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\SkyrimGallery\\Frames\\BlackIron.dds",
+   "textures\\SkyrimGallery\\Frames\\BlackIron_n.dds"
+  ]
+ },
+ "Frame_Landscape_Canvas": {
+  "min": [
+   -28.0,
+   0.0,
+   -21.0
+  ],
+  "max": [
+   28.0,
+   2.4000000953674316,
+   21.0
+  ],
+  "picture": [
+   [
+    -28.0,
+    2.4000000953674316,
+    -21.0
+   ],
+   [
+    28.0,
+    2.4000000953674316,
+    21.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\SkyrimGallery\\Frames\\Canvas.dds",
+   "textures\\SkyrimGallery\\Frames\\Canvas_n.dds"
+  ]
+ },
+ "Frame_Landscape_DarkOak": {
+  "min": [
+   -33.5,
+   0.0,
+   -26.5
+  ],
+  "max": [
+   33.5,
+   3.200000047683716,
+   26.5
+  ],
+  "picture": [
+   [
+    -28.0,
+    1.343999981880188,
+    -21.0
+   ],
+   [
+    28.0,
+    1.343999981880188,
+    21.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\SkyrimGallery\\Frames\\DarkOak.dds",
+   "textures\\SkyrimGallery\\Frames\\DarkOak_n.dds"
+  ]
+ },
+ "Frame_Landscape_Dragonsreach": {
+  "min": [
+   -35.0,
+   0.0,
+   -28.0
+  ],
+  "max": [
+   35.0,
+   3.5999999046325684,
+   28.0
+  ],
+  "picture": [
+   [
+    -28.0,
+    1.5119999647140503,
+    -21.0
+   ],
+   [
+    28.0,
+    1.5119999647140503,
+    21.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\architecture\\whiterun\\wrtrims01.dds",
+   "textures\\architecture\\whiterun\\wrtrims01_n.dds"
+  ]
+ },
+ "Frame_Landscape_Dwemer": {
+  "min": [
+   -33.5,
+   0.0,
+   -26.5
+  ],
+  "max": [
+   33.5,
+   3.200000047683716,
+   26.5
+  ],
+  "picture": [
+   [
+    -28.0,
+    1.343999981880188,
+    -21.0
+   ],
+   [
+    28.0,
+    1.343999981880188,
+    21.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\dungeons\\dwemerruins\\dwemetalsheet01.dds",
+   "textures\\dungeons\\dwemerruins\\dwemetalsheet01_n.dds"
+  ]
+ },
+ "Frame_Landscape_Gilded": {
+  "min": [
+   -34.5,
+   0.0,
+   -27.5
+  ],
+  "max": [
+   34.5,
+   3.5999999046325684,
+   27.5
+  ],
+  "picture": [
+   [
+    -28.0,
+    1.5119999647140503,
+    -21.0
+   ],
+   [
+    28.0,
+    1.5119999647140503,
+    21.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\SkyrimGallery\\Frames\\Gilded.dds",
+   "textures\\SkyrimGallery\\Frames\\Gilded_n.dds"
+  ]
+ },
+ "Frame_Landscape_LightPine": {
+  "min": [
+   -33.0,
+   0.0,
+   -26.0
+  ],
+  "max": [
+   33.0,
+   3.0,
+   26.0
+  ],
+  "picture": [
+   [
+    -28.0,
+    1.2599999904632568,
+    -21.0
+   ],
+   [
+    28.0,
+    1.2599999904632568,
+    21.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\SkyrimGallery\\Frames\\LightPine.dds",
+   "textures\\SkyrimGallery\\Frames\\LightPine_n.dds"
+  ]
+ },
+ "Frame_Landscape_Thirsk": {
+  "min": [
+   -35.0,
+   0.0,
+   -28.0
+  ],
+  "max": [
+   35.0,
+   3.5999999046325684,
+   28.0
+  ],
+  "picture": [
+   [
+    -28.0,
+    1.5119999647140503,
+    -21.0
+   ],
+   [
+    28.0,
+    1.5119999647140503,
+    21.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\dlc02\\architecture\\thirsk\\meadhall\\dlc2thirsktrim01.dds",
+   "textures\\dlc02\\architecture\\thirsk\\meadhall\\dlc2thirsktrim01_n.dds"
+  ]
+ },
+ "Frame_Landscape_Whiterun": {
+  "min": [
+   -35.0,
+   0.0,
+   -28.0
+  ],
+  "max": [
+   35.0,
+   3.5999999046325684,
+   28.0
+  ],
+  "picture": [
+   [
+    -28.0,
+    1.5119999647140503,
+    -21.0
+   ],
+   [
+    28.0,
+    1.5119999647140503,
+    21.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\architecture\\whiterun\\wrtrims01.dds",
+   "textures\\architecture\\whiterun\\wrtrims01_n.dds"
+  ]
+ },
+ "Frame_Landscape_Windhelm": {
+  "min": [
+   -34.5,
+   0.0,
+   -27.5
+  ],
+  "max": [
+   34.5,
+   3.4000000953674316,
+   27.5
+  ],
+  "picture": [
+   [
+    -28.0,
+    1.4279999732971191,
+    -21.0
+   ],
+   [
+    28.0,
+    1.4279999732971191,
+    21.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\architecture\\windhelm\\whwoodbasetrim.dds",
+   "textures\\architecture\\windhelm\\whwoodbasetrim_n.dds"
+  ]
+ },
+ "Frame_Portrait_BlackIron": {
+  "min": [
+   -25.0,
+   0.0,
+   -32.0
+  ],
+  "max": [
+   25.0,
+   2.5999999046325684,
+   32.0
+  ],
+  "picture": [
+   [
+    -21.0,
+    1.0920000076293945,
+    -28.0
+   ],
+   [
+    21.0,
+    1.0920000076293945,
+    28.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\SkyrimGallery\\Frames\\BlackIron.dds",
+   "textures\\SkyrimGallery\\Frames\\BlackIron_n.dds"
+  ]
+ },
+ "Frame_Portrait_Canvas": {
+  "min": [
+   -21.0,
+   0.0,
+   -28.0
+  ],
+  "max": [
+   21.0,
+   2.4000000953674316,
+   28.0
+  ],
+  "picture": [
+   [
+    -21.0,
+    2.4000000953674316,
+    -28.0
+   ],
+   [
+    21.0,
+    2.4000000953674316,
+    28.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\SkyrimGallery\\Frames\\Canvas.dds",
+   "textures\\SkyrimGallery\\Frames\\Canvas_n.dds"
+  ]
+ },
+ "Frame_Portrait_DarkOak": {
+  "min": [
+   -26.5,
+   0.0,
+   -33.5
+  ],
+  "max": [
+   26.5,
+   3.200000047683716,
+   33.5
+  ],
+  "picture": [
+   [
+    -21.0,
+    1.343999981880188,
+    -28.0
+   ],
+   [
+    21.0,
+    1.343999981880188,
+    28.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\SkyrimGallery\\Frames\\DarkOak.dds",
+   "textures\\SkyrimGallery\\Frames\\DarkOak_n.dds"
+  ]
+ },
+ "Frame_Portrait_Dragonsreach": {
+  "min": [
+   -28.0,
+   0.0,
+   -35.0
+  ],
+  "max": [
+   28.0,
+   3.5999999046325684,
+   35.0
+  ],
+  "picture": [
+   [
+    -21.0,
+    1.5119999647140503,
+    -28.0
+   ],
+   [
+    21.0,
+    1.5119999647140503,
+    28.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\architecture\\whiterun\\wrtrims01.dds",
+   "textures\\architecture\\whiterun\\wrtrims01_n.dds"
+  ]
+ },
+ "Frame_Portrait_Dwemer": {
+  "min": [
+   -26.5,
+   0.0,
+   -33.5
+  ],
+  "max": [
+   26.5,
+   3.200000047683716,
+   33.5
+  ],
+  "picture": [
+   [
+    -21.0,
+    1.343999981880188,
+    -28.0
+   ],
+   [
+    21.0,
+    1.343999981880188,
+    28.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\dungeons\\dwemerruins\\dwemetalsheet01.dds",
+   "textures\\dungeons\\dwemerruins\\dwemetalsheet01_n.dds"
+  ]
+ },
+ "Frame_Portrait_Gilded": {
+  "min": [
+   -27.5,
+   0.0,
+   -34.5
+  ],
+  "max": [
+   27.5,
+   3.5999999046325684,
+   34.5
+  ],
+  "picture": [
+   [
+    -21.0,
+    1.5119999647140503,
+    -28.0
+   ],
+   [
+    21.0,
+    1.5119999647140503,
+    28.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\SkyrimGallery\\Frames\\Gilded.dds",
+   "textures\\SkyrimGallery\\Frames\\Gilded_n.dds"
+  ]
+ },
+ "Frame_Portrait_LightPine": {
+  "min": [
+   -26.0,
+   0.0,
+   -33.0
+  ],
+  "max": [
+   26.0,
+   3.0,
+   33.0
+  ],
+  "picture": [
+   [
+    -21.0,
+    1.2599999904632568,
+    -28.0
+   ],
+   [
+    21.0,
+    1.2599999904632568,
+    28.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\SkyrimGallery\\Frames\\LightPine.dds",
+   "textures\\SkyrimGallery\\Frames\\LightPine_n.dds"
+  ]
+ },
+ "Frame_Portrait_Thirsk": {
+  "min": [
+   -28.0,
+   0.0,
+   -35.0
+  ],
+  "max": [
+   28.0,
+   3.5999999046325684,
+   35.0
+  ],
+  "picture": [
+   [
+    -21.0,
+    1.5119999647140503,
+    -28.0
+   ],
+   [
+    21.0,
+    1.5119999647140503,
+    28.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\dlc02\\architecture\\thirsk\\meadhall\\dlc2thirsktrim01.dds",
+   "textures\\dlc02\\architecture\\thirsk\\meadhall\\dlc2thirsktrim01_n.dds"
+  ]
+ },
+ "Frame_Portrait_Whiterun": {
+  "min": [
+   -28.0,
+   0.0,
+   -35.0
+  ],
+  "max": [
+   28.0,
+   3.5999999046325684,
+   35.0
+  ],
+  "picture": [
+   [
+    -21.0,
+    1.5119999647140503,
+    -28.0
+   ],
+   [
+    21.0,
+    1.5119999647140503,
+    28.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\architecture\\whiterun\\wrtrims01.dds",
+   "textures\\architecture\\whiterun\\wrtrims01_n.dds"
+  ]
+ },
+ "Frame_Portrait_Windhelm": {
+  "min": [
+   -27.5,
+   0.0,
+   -34.5
+  ],
+  "max": [
+   27.5,
+   3.4000000953674316,
+   34.5
+  ],
+  "picture": [
+   [
+    -21.0,
+    1.4279999732971191,
+    -28.0
+   ],
+   [
+    21.0,
+    1.4279999732971191,
+    28.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\architecture\\windhelm\\whwoodbasetrim.dds",
+   "textures\\architecture\\windhelm\\whwoodbasetrim_n.dds"
+  ]
+ },
+ "Frame_Square_BlackIron": {
+  "min": [
+   -28.0,
+   0.0,
+   -28.0
+  ],
+  "max": [
+   28.0,
+   2.5999999046325684,
+   28.0
+  ],
+  "picture": [
+   [
+    -24.0,
+    1.0920000076293945,
+    -24.0
+   ],
+   [
+    24.0,
+    1.0920000076293945,
+    24.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\SkyrimGallery\\Frames\\BlackIron.dds",
+   "textures\\SkyrimGallery\\Frames\\BlackIron_n.dds"
+  ]
+ },
+ "Frame_Square_Canvas": {
+  "min": [
+   -24.0,
+   0.0,
+   -24.0
+  ],
+  "max": [
+   24.0,
+   2.4000000953674316,
+   24.0
+  ],
+  "picture": [
+   [
+    -24.0,
+    2.4000000953674316,
+    -24.0
+   ],
+   [
+    24.0,
+    2.4000000953674316,
+    24.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\SkyrimGallery\\Frames\\Canvas.dds",
+   "textures\\SkyrimGallery\\Frames\\Canvas_n.dds"
+  ]
+ },
+ "Frame_Square_DarkOak": {
+  "min": [
+   -29.5,
+   0.0,
+   -29.5
+  ],
+  "max": [
+   29.5,
+   3.200000047683716,
+   29.5
+  ],
+  "picture": [
+   [
+    -24.0,
+    1.343999981880188,
+    -24.0
+   ],
+   [
+    24.0,
+    1.343999981880188,
+    24.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\SkyrimGallery\\Frames\\DarkOak.dds",
+   "textures\\SkyrimGallery\\Frames\\DarkOak_n.dds"
+  ]
+ },
+ "Frame_Square_Dragonsreach": {
+  "min": [
+   -31.0,
+   0.0,
+   -31.0
+  ],
+  "max": [
+   31.0,
+   3.5999999046325684,
+   31.0
+  ],
+  "picture": [
+   [
+    -24.0,
+    1.5119999647140503,
+    -24.0
+   ],
+   [
+    24.0,
+    1.5119999647140503,
+    24.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\architecture\\whiterun\\wrtrims01.dds",
+   "textures\\architecture\\whiterun\\wrtrims01_n.dds"
+  ]
+ },
+ "Frame_Square_Dwemer": {
+  "min": [
+   -29.5,
+   0.0,
+   -29.5
+  ],
+  "max": [
+   29.5,
+   3.200000047683716,
+   29.5
+  ],
+  "picture": [
+   [
+    -24.0,
+    1.343999981880188,
+    -24.0
+   ],
+   [
+    24.0,
+    1.343999981880188,
+    24.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\dungeons\\dwemerruins\\dwemetalsheet01.dds",
+   "textures\\dungeons\\dwemerruins\\dwemetalsheet01_n.dds"
+  ]
+ },
+ "Frame_Square_Gilded": {
+  "min": [
+   -30.5,
+   0.0,
+   -30.5
+  ],
+  "max": [
+   30.5,
+   3.5999999046325684,
+   30.5
+  ],
+  "picture": [
+   [
+    -24.0,
+    1.5119999647140503,
+    -24.0
+   ],
+   [
+    24.0,
+    1.5119999647140503,
+    24.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\SkyrimGallery\\Frames\\Gilded.dds",
+   "textures\\SkyrimGallery\\Frames\\Gilded_n.dds"
+  ]
+ },
+ "Frame_Square_LightPine": {
+  "min": [
+   -29.0,
+   0.0,
+   -29.0
+  ],
+  "max": [
+   29.0,
+   3.0,
+   29.0
+  ],
+  "picture": [
+   [
+    -24.0,
+    1.2599999904632568,
+    -24.0
+   ],
+   [
+    24.0,
+    1.2599999904632568,
+    24.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\SkyrimGallery\\Frames\\LightPine.dds",
+   "textures\\SkyrimGallery\\Frames\\LightPine_n.dds"
+  ]
+ },
+ "Frame_Square_Thirsk": {
+  "min": [
+   -31.0,
+   0.0,
+   -31.0
+  ],
+  "max": [
+   31.0,
+   3.5999999046325684,
+   31.0
+  ],
+  "picture": [
+   [
+    -24.0,
+    1.5119999647140503,
+    -24.0
+   ],
+   [
+    24.0,
+    1.5119999647140503,
+    24.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\dlc02\\architecture\\thirsk\\meadhall\\dlc2thirsktrim01.dds",
+   "textures\\dlc02\\architecture\\thirsk\\meadhall\\dlc2thirsktrim01_n.dds"
+  ]
+ },
+ "Frame_Square_Whiterun": {
+  "min": [
+   -31.0,
+   0.0,
+   -31.0
+  ],
+  "max": [
+   31.0,
+   3.5999999046325684,
+   31.0
+  ],
+  "picture": [
+   [
+    -24.0,
+    1.5119999647140503,
+    -24.0
+   ],
+   [
+    24.0,
+    1.5119999647140503,
+    24.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\architecture\\whiterun\\wrtrims01.dds",
+   "textures\\architecture\\whiterun\\wrtrims01_n.dds"
+  ]
+ },
+ "Frame_Square_Windhelm": {
+  "min": [
+   -30.5,
+   0.0,
+   -30.5
+  ],
+  "max": [
+   30.5,
+   3.4000000953674316,
+   30.5
+  ],
+  "picture": [
+   [
+    -24.0,
+    1.4279999732971191,
+    -24.0
+   ],
+   [
+    24.0,
+    1.4279999732971191,
+    24.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\architecture\\windhelm\\whwoodbasetrim.dds",
+   "textures\\architecture\\windhelm\\whwoodbasetrim_n.dds"
+  ]
+ },
+ "Frame_Tall_BlackIron": {
+  "min": [
+   -22.0,
+   0.0,
+   -36.0
+  ],
+  "max": [
+   22.0,
+   2.5999999046325684,
+   36.0
+  ],
+  "picture": [
+   [
+    -18.0,
+    1.0920000076293945,
+    -32.0
+   ],
+   [
+    18.0,
+    1.0920000076293945,
+    32.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\SkyrimGallery\\Frames\\BlackIron.dds",
+   "textures\\SkyrimGallery\\Frames\\BlackIron_n.dds"
+  ]
+ },
+ "Frame_Tall_Canvas": {
+  "min": [
+   -18.0,
+   0.0,
+   -32.0
+  ],
+  "max": [
+   18.0,
+   2.4000000953674316,
+   32.0
+  ],
+  "picture": [
+   [
+    -18.0,
+    2.4000000953674316,
+    -32.0
+   ],
+   [
+    18.0,
+    2.4000000953674316,
+    32.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\SkyrimGallery\\Frames\\Canvas.dds",
+   "textures\\SkyrimGallery\\Frames\\Canvas_n.dds"
+  ]
+ },
+ "Frame_Tall_DarkOak": {
+  "min": [
+   -23.5,
+   0.0,
+   -37.5
+  ],
+  "max": [
+   23.5,
+   3.200000047683716,
+   37.5
+  ],
+  "picture": [
+   [
+    -18.0,
+    1.343999981880188,
+    -32.0
+   ],
+   [
+    18.0,
+    1.343999981880188,
+    32.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\SkyrimGallery\\Frames\\DarkOak.dds",
+   "textures\\SkyrimGallery\\Frames\\DarkOak_n.dds"
+  ]
+ },
+ "Frame_Tall_Dragonsreach": {
+  "min": [
+   -25.0,
+   0.0,
+   -39.0
+  ],
+  "max": [
+   25.0,
+   3.5999999046325684,
+   39.0
+  ],
+  "picture": [
+   [
+    -18.0,
+    1.5119999647140503,
+    -32.0
+   ],
+   [
+    18.0,
+    1.5119999647140503,
+    32.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\architecture\\whiterun\\wrtrims01.dds",
+   "textures\\architecture\\whiterun\\wrtrims01_n.dds"
+  ]
+ },
+ "Frame_Tall_Dwemer": {
+  "min": [
+   -23.5,
+   0.0,
+   -37.5
+  ],
+  "max": [
+   23.5,
+   3.200000047683716,
+   37.5
+  ],
+  "picture": [
+   [
+    -18.0,
+    1.343999981880188,
+    -32.0
+   ],
+   [
+    18.0,
+    1.343999981880188,
+    32.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\dungeons\\dwemerruins\\dwemetalsheet01.dds",
+   "textures\\dungeons\\dwemerruins\\dwemetalsheet01_n.dds"
+  ]
+ },
+ "Frame_Tall_Gilded": {
+  "min": [
+   -24.5,
+   0.0,
+   -38.5
+  ],
+  "max": [
+   24.5,
+   3.5999999046325684,
+   38.5
+  ],
+  "picture": [
+   [
+    -18.0,
+    1.5119999647140503,
+    -32.0
+   ],
+   [
+    18.0,
+    1.5119999647140503,
+    32.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\SkyrimGallery\\Frames\\Gilded.dds",
+   "textures\\SkyrimGallery\\Frames\\Gilded_n.dds"
+  ]
+ },
+ "Frame_Tall_LightPine": {
+  "min": [
+   -23.0,
+   0.0,
+   -37.0
+  ],
+  "max": [
+   23.0,
+   3.0,
+   37.0
+  ],
+  "picture": [
+   [
+    -18.0,
+    1.2599999904632568,
+    -32.0
+   ],
+   [
+    18.0,
+    1.2599999904632568,
+    32.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\SkyrimGallery\\Frames\\LightPine.dds",
+   "textures\\SkyrimGallery\\Frames\\LightPine_n.dds"
+  ]
+ },
+ "Frame_Tall_Thirsk": {
+  "min": [
+   -25.0,
+   0.0,
+   -39.0
+  ],
+  "max": [
+   25.0,
+   3.5999999046325684,
+   39.0
+  ],
+  "picture": [
+   [
+    -18.0,
+    1.5119999647140503,
+    -32.0
+   ],
+   [
+    18.0,
+    1.5119999647140503,
+    32.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\dlc02\\architecture\\thirsk\\meadhall\\dlc2thirsktrim01.dds",
+   "textures\\dlc02\\architecture\\thirsk\\meadhall\\dlc2thirsktrim01_n.dds"
+  ]
+ },
+ "Frame_Tall_Whiterun": {
+  "min": [
+   -25.0,
+   0.0,
+   -39.0
+  ],
+  "max": [
+   25.0,
+   3.5999999046325684,
+   39.0
+  ],
+  "picture": [
+   [
+    -18.0,
+    1.5119999647140503,
+    -32.0
+   ],
+   [
+    18.0,
+    1.5119999647140503,
+    32.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\architecture\\whiterun\\wrtrims01.dds",
+   "textures\\architecture\\whiterun\\wrtrims01_n.dds"
+  ]
+ },
+ "Frame_Tall_Windhelm": {
+  "min": [
+   -24.5,
+   0.0,
+   -38.5
+  ],
+  "max": [
+   24.5,
+   3.4000000953674316,
+   38.5
+  ],
+  "picture": [
+   [
+    -18.0,
+    1.4279999732971191,
+    -32.0
+   ],
+   [
+    18.0,
+    1.4279999732971191,
+    32.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\architecture\\windhelm\\whwoodbasetrim.dds",
+   "textures\\architecture\\windhelm\\whwoodbasetrim_n.dds"
+  ]
+ },
+ "Frame_Wide_BlackIron": {
+  "min": [
+   -36.0,
+   0.0,
+   -22.0
+  ],
+  "max": [
+   36.0,
+   2.5999999046325684,
+   22.0
+  ],
+  "picture": [
+   [
+    -32.0,
+    1.0920000076293945,
+    -18.0
+   ],
+   [
+    32.0,
+    1.0920000076293945,
+    18.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\SkyrimGallery\\Frames\\BlackIron.dds",
+   "textures\\SkyrimGallery\\Frames\\BlackIron_n.dds"
+  ]
+ },
+ "Frame_Wide_Canvas": {
+  "min": [
+   -32.0,
+   0.0,
+   -18.0
+  ],
+  "max": [
+   32.0,
+   2.4000000953674316,
+   18.0
+  ],
+  "picture": [
+   [
+    -32.0,
+    2.4000000953674316,
+    -18.0
+   ],
+   [
+    32.0,
+    2.4000000953674316,
+    18.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\SkyrimGallery\\Frames\\Canvas.dds",
+   "textures\\SkyrimGallery\\Frames\\Canvas_n.dds"
+  ]
+ },
+ "Frame_Wide_DarkOak": {
+  "min": [
+   -37.5,
+   0.0,
+   -23.5
+  ],
+  "max": [
+   37.5,
+   3.200000047683716,
+   23.5
+  ],
+  "picture": [
+   [
+    -32.0,
+    1.343999981880188,
+    -18.0
+   ],
+   [
+    32.0,
+    1.343999981880188,
+    18.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\SkyrimGallery\\Frames\\DarkOak.dds",
+   "textures\\SkyrimGallery\\Frames\\DarkOak_n.dds"
+  ]
+ },
+ "Frame_Wide_Dragonsreach": {
+  "min": [
+   -39.0,
+   0.0,
+   -25.0
+  ],
+  "max": [
+   39.0,
+   3.5999999046325684,
+   25.0
+  ],
+  "picture": [
+   [
+    -32.0,
+    1.5119999647140503,
+    -18.0
+   ],
+   [
+    32.0,
+    1.5119999647140503,
+    18.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\architecture\\whiterun\\wrtrims01.dds",
+   "textures\\architecture\\whiterun\\wrtrims01_n.dds"
+  ]
+ },
+ "Frame_Wide_Dwemer": {
+  "min": [
+   -37.5,
+   0.0,
+   -23.5
+  ],
+  "max": [
+   37.5,
+   3.200000047683716,
+   23.5
+  ],
+  "picture": [
+   [
+    -32.0,
+    1.343999981880188,
+    -18.0
+   ],
+   [
+    32.0,
+    1.343999981880188,
+    18.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\dungeons\\dwemerruins\\dwemetalsheet01.dds",
+   "textures\\dungeons\\dwemerruins\\dwemetalsheet01_n.dds"
+  ]
+ },
+ "Frame_Wide_Gilded": {
+  "min": [
+   -38.5,
+   0.0,
+   -24.5
+  ],
+  "max": [
+   38.5,
+   3.5999999046325684,
+   24.5
+  ],
+  "picture": [
+   [
+    -32.0,
+    1.5119999647140503,
+    -18.0
+   ],
+   [
+    32.0,
+    1.5119999647140503,
+    18.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\SkyrimGallery\\Frames\\Gilded.dds",
+   "textures\\SkyrimGallery\\Frames\\Gilded_n.dds"
+  ]
+ },
+ "Frame_Wide_LightPine": {
+  "min": [
+   -37.0,
+   0.0,
+   -23.0
+  ],
+  "max": [
+   37.0,
+   3.0,
+   23.0
+  ],
+  "picture": [
+   [
+    -32.0,
+    1.2599999904632568,
+    -18.0
+   ],
+   [
+    32.0,
+    1.2599999904632568,
+    18.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\SkyrimGallery\\Frames\\LightPine.dds",
+   "textures\\SkyrimGallery\\Frames\\LightPine_n.dds"
+  ]
+ },
+ "Frame_Wide_Thirsk": {
+  "min": [
+   -39.0,
+   0.0,
+   -25.0
+  ],
+  "max": [
+   39.0,
+   3.5999999046325684,
+   25.0
+  ],
+  "picture": [
+   [
+    -32.0,
+    1.5119999647140503,
+    -18.0
+   ],
+   [
+    32.0,
+    1.5119999647140503,
+    18.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\dlc02\\architecture\\thirsk\\meadhall\\dlc2thirsktrim01.dds",
+   "textures\\dlc02\\architecture\\thirsk\\meadhall\\dlc2thirsktrim01_n.dds"
+  ]
+ },
+ "Frame_Wide_Whiterun": {
+  "min": [
+   -39.0,
+   0.0,
+   -25.0
+  ],
+  "max": [
+   39.0,
+   3.5999999046325684,
+   25.0
+  ],
+  "picture": [
+   [
+    -32.0,
+    1.5119999647140503,
+    -18.0
+   ],
+   [
+    32.0,
+    1.5119999647140503,
+    18.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\architecture\\whiterun\\wrtrims01.dds",
+   "textures\\architecture\\whiterun\\wrtrims01_n.dds"
+  ]
+ },
+ "Frame_Wide_Windhelm": {
+  "min": [
+   -38.5,
+   0.0,
+   -24.5
+  ],
+  "max": [
+   38.5,
+   3.4000000953674316,
+   24.5
+  ],
+  "picture": [
+   [
+    -32.0,
+    1.4279999732971191,
+    -18.0
+   ],
+   [
+    32.0,
+    1.4279999732971191,
+    18.0
+   ]
+  ],
+  "shapes": [
+   "SGPicture",
+   "SGFrame"
+  ],
+  "textures": [
+   "textures\\SkyrimGallery\\Blank.dds",
+   "textures\\SkyrimGallery\\Canvas_n.dds",
+   "textures\\architecture\\windhelm\\whwoodbasetrim.dds",
+   "textures\\architecture\\windhelm\\whwoodbasetrim_n.dds"
+  ]
+ }
+}

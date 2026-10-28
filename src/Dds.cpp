@@ -1,0 +1,243 @@
+#include "Dds.h"
+
+#include <stb_image.h>  // implementation lives in Gallery.cpp
+
+#define STB_DXT_IMPLEMENTATION
+#include <stb_dxt.h>
+
+namespace fs = std::filesystem;
+
+namespace Dds
+{
+	namespace
+	{
+		struct Image
+		{
+			int                       w = 0, h = 0;
+			std::vector<std::uint8_t> px;  // RGBA8
+		};
+
+		// Bilinear sample of a source rectangle into a w x h destination (good for up- and moderate down-scaling;
+		// strong down-scaling is done first with a box filter, see Fit()).
+		Image Resample(const Image& src, float sx0, float sy0, float sw, float sh, int w, int h)
+		{
+			Image out{ w, h, std::vector<std::uint8_t>(static_cast<std::size_t>(w) * h * 4) };
+			for (int y = 0; y < h; ++y) {
+				const float fy = std::clamp(sy0 + (y + 0.5f) * sh / h - 0.5f, 0.0f, static_cast<float>(src.h - 1));
+				const int   y0 = static_cast<int>(fy);
+				const int   y1 = (std::min)(y0 + 1, src.h - 1);
+				const float ty = fy - y0;
+				for (int x = 0; x < w; ++x) {
+					const float fx = std::clamp(sx0 + (x + 0.5f) * sw / w - 0.5f, 0.0f, static_cast<float>(src.w - 1));
+					const int   x0 = static_cast<int>(fx);
+					const int   x1 = (std::min)(x0 + 1, src.w - 1);
+					const float tx = fx - x0;
+					const auto* a = &src.px[(static_cast<std::size_t>(y0) * src.w + x0) * 4];
+					const auto* b = &src.px[(static_cast<std::size_t>(y0) * src.w + x1) * 4];
+					const auto* c = &src.px[(static_cast<std::size_t>(y1) * src.w + x0) * 4];
+					const auto* d = &src.px[(static_cast<std::size_t>(y1) * src.w + x1) * 4];
+					auto*       o = &out.px[(static_cast<std::size_t>(y) * w + x) * 4];
+					for (int k = 0; k < 4; ++k) {
+						const float top = a[k] + (b[k] - a[k]) * tx;
+						const float bot = c[k] + (d[k] - c[k]) * tx;
+						o[k] = static_cast<std::uint8_t>(std::clamp(top + (bot - top) * ty + 0.5f, 0.0f, 255.0f));
+					}
+				}
+			}
+			return out;
+		}
+
+		// 2x2 box filter, used for big reductions and for the mip chain.
+		Image Half(const Image& src)
+		{
+			const int w = (std::max)(1, src.w / 2);
+			const int h = (std::max)(1, src.h / 2);
+			Image     out{ w, h, std::vector<std::uint8_t>(static_cast<std::size_t>(w) * h * 4) };
+			for (int y = 0; y < h; ++y) {
+				const int y0 = (std::min)(y * 2, src.h - 1), y1 = (std::min)(y * 2 + 1, src.h - 1);
+				for (int x = 0; x < w; ++x) {
+					const int x0 = (std::min)(x * 2, src.w - 1), x1 = (std::min)(x * 2 + 1, src.w - 1);
+					auto*     o = &out.px[(static_cast<std::size_t>(y) * w + x) * 4];
+					for (int k = 0; k < 4; ++k) {
+						const int s = src.px[(static_cast<std::size_t>(y0) * src.w + x0) * 4 + k] +
+						              src.px[(static_cast<std::size_t>(y0) * src.w + x1) * 4 + k] +
+						              src.px[(static_cast<std::size_t>(y1) * src.w + x0) * 4 + k] +
+						              src.px[(static_cast<std::size_t>(y1) * src.w + x1) * 4 + k];
+						o[k] = static_cast<std::uint8_t>((s + 2) / 4);
+					}
+				}
+			}
+			return out;
+		}
+
+		// Centre-crop to the target aspect ratio ("cover" fit), then scale to exactly w x h.
+		Image Fit(Image src, int w, int h)
+		{
+			const float targetAspect = static_cast<float>(w) / h;
+			float       cw = static_cast<float>(src.w), ch = static_cast<float>(src.h);
+			if (cw / ch > targetAspect) {
+				cw = ch * targetAspect;
+			} else {
+				ch = cw / targetAspect;
+			}
+			float cx = (src.w - cw) * 0.5f, cy = (src.h - ch) * 0.5f;
+			// Box-halve while the crop is still more than twice the target size (avoids aliasing).
+			while (cw >= 2.0f * w && ch >= 2.0f * h && src.w >= 2 && src.h >= 2) {
+				src = Half(src);
+				cw *= 0.5f;
+				ch *= 0.5f;
+				cx *= 0.5f;
+				cy *= 0.5f;
+			}
+			return Resample(src, cx, cy, cw, ch, w, h);
+		}
+
+		void CompressBC1(const Image& img, std::vector<std::uint8_t>& out)
+		{
+			const int bw = (std::max)(1, (img.w + 3) / 4);
+			const int bh = (std::max)(1, (img.h + 3) / 4);
+			std::uint8_t block[64];
+			std::uint8_t dst[8];
+			for (int by = 0; by < bh; ++by) {
+				for (int bx = 0; bx < bw; ++bx) {
+					for (int py = 0; py < 4; ++py) {
+						const int sy = (std::min)(by * 4 + py, img.h - 1);
+						for (int px = 0; px < 4; ++px) {
+							const int sx = (std::min)(bx * 4 + px, img.w - 1);
+							std::memcpy(&block[(py * 4 + px) * 4], &img.px[(static_cast<std::size_t>(sy) * img.w + sx) * 4], 4);
+						}
+					}
+					stb_compress_dxt_block(dst, block, 0, STB_DXT_HIGHQUAL);
+					out.insert(out.end(), dst, dst + 8);
+				}
+			}
+		}
+
+		void PutU32(std::vector<std::uint8_t>& v, std::uint32_t x)
+		{
+			for (int i = 0; i < 4; ++i) {
+				v.push_back(static_cast<std::uint8_t>(x >> (i * 8)));
+			}
+		}
+
+		// Classic DX9 DDS header (what Skyrim's loader expects for DXT1 / uncompressed BGRA).
+		std::vector<std::uint8_t> Header(int w, int h, int mips, bool dxt1, std::uint32_t linearSize)
+		{
+			std::vector<std::uint8_t> v;
+			v.reserve(128);
+			v.insert(v.end(), { 'D', 'D', 'S', ' ' });
+			PutU32(v, 124);
+			PutU32(v, 0x1 | 0x2 | 0x4 | 0x1000 | (mips > 1 ? 0x20000u : 0u) | (dxt1 ? 0x80000u : 0x8u));
+			PutU32(v, static_cast<std::uint32_t>(h));
+			PutU32(v, static_cast<std::uint32_t>(w));
+			PutU32(v, linearSize);
+			PutU32(v, 0);  // depth
+			PutU32(v, static_cast<std::uint32_t>(mips));
+			for (int i = 0; i < 11; ++i) {
+				PutU32(v, 0);
+			}
+			// pixel format
+			PutU32(v, 32);
+			if (dxt1) {
+				PutU32(v, 0x4);  // DDPF_FOURCC
+				v.insert(v.end(), { 'D', 'X', 'T', '1' });
+				for (int i = 0; i < 5; ++i) {
+					PutU32(v, 0);
+				}
+			} else {
+				PutU32(v, 0x41);  // DDPF_RGB | DDPF_ALPHAPIXELS
+				PutU32(v, 0);
+				PutU32(v, 32);
+				PutU32(v, 0x00FF0000);
+				PutU32(v, 0x0000FF00);
+				PutU32(v, 0x000000FF);
+				PutU32(v, 0xFF000000);
+			}
+			PutU32(v, 0x1000 | (mips > 1 ? (0x8u | 0x400000u) : 0u));  // caps
+			for (int i = 0; i < 4; ++i) {
+				PutU32(v, 0);  // caps2..4, reserved2
+			}
+			return v;
+		}
+
+		bool WriteAtomically(const fs::path& a_out, const std::vector<std::uint8_t>& a_bytes, std::string& a_error)
+		{
+			std::error_code ec;
+			fs::create_directories(a_out.parent_path(), ec);
+			auto tmp = a_out;
+			tmp += L".tmp";
+			{
+				FILE* f = nullptr;
+				if (_wfopen_s(&f, tmp.c_str(), L"wb") != 0 || !f) {
+					a_error = "cannot create " + tmp.string();
+					return false;
+				}
+				const auto written = fwrite(a_bytes.data(), 1, a_bytes.size(), f);
+				fclose(f);
+				if (written != a_bytes.size()) {
+					a_error = "write failed (disk full?)";
+					fs::remove(tmp, ec);
+					return false;
+				}
+			}
+			if (!::MoveFileExW(tmp.c_str(), a_out.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+				a_error = fmt::format("rename failed ({})", ::GetLastError());
+				fs::remove(tmp, ec);
+				return false;
+			}
+			return true;
+		}
+	}
+
+	bool ConvertPicture(const fs::path& a_source, int a_width, int a_height, const fs::path& a_out, std::string& a_error)
+	{
+		FILE* f = nullptr;
+		if (_wfopen_s(&f, a_source.c_str(), L"rb") != 0 || !f) {
+			a_error = "cannot open the picture";
+			return false;
+		}
+		Image src;
+		int   channels = 0;
+		auto* px = stbi_load_from_file(f, &src.w, &src.h, &channels, 4);
+		fclose(f);
+		if (!px) {
+			a_error = std::string("cannot decode the picture: ") + (stbi_failure_reason() ? stbi_failure_reason() : "?");
+			return false;
+		}
+		src.px.assign(px, px + static_cast<std::size_t>(src.w) * src.h * 4);
+		stbi_image_free(px);
+		for (std::size_t i = 3; i < src.px.size(); i += 4) {
+			src.px[i] = 255;  // pictures on a wall are opaque
+		}
+
+		Image level = Fit(std::move(src), a_width, a_height);
+		int   mips = 1;
+		for (int w = a_width, h = a_height; w > 1 || h > 1; w = (std::max)(1, w / 2), h = (std::max)(1, h / 2)) {
+			++mips;
+		}
+
+		std::vector<std::uint8_t> data;
+		data.reserve(static_cast<std::size_t>(a_width) * a_height);
+		for (int m = 0; m < mips; ++m) {
+			CompressBC1(level, data);
+			if (m + 1 < mips) {
+				level = Half(level);
+			}
+		}
+		const auto linear = static_cast<std::uint32_t>((std::max)(1, (a_width + 3) / 4) * (std::max)(1, (a_height + 3) / 4) * 8);
+		auto       bytes = Header(a_width, a_height, mips, true, linear);
+		bytes.insert(bytes.end(), data.begin(), data.end());
+		return WriteAtomically(a_out, bytes, a_error);
+	}
+
+	bool WriteFlatNormal(const fs::path& a_out)
+	{
+		constexpr int             n = 4;
+		std::vector<std::uint8_t> bytes = Header(n, n, 1, false, n * 4);
+		for (int i = 0; i < n * n; ++i) {
+			bytes.insert(bytes.end(), { 255, 128, 128, 0 });  // B G R A -> (128,128,255) flat, alpha 0 = no specular (matte)
+		}
+		std::string err;
+		return WriteAtomically(a_out, bytes, err);
+	}
+}

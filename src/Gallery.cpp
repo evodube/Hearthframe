@@ -1,5 +1,8 @@
 #include "Gallery.h"
 
+#include "Frames.h"
+#include "Wall.h"
+
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>
 #include <imgui_impl_dx11.h>
@@ -123,6 +126,18 @@ namespace Gallery
 		ID3D11ShaderResourceView* fullSrv = nullptr;
 		int                       fullW = 0, fullH = 0;
 		bool                      fullFailed = false;
+
+		enum class UiMode
+		{
+			Gallery,
+			FrameMenu
+		};
+		UiMode                             g_uiMode = UiMode::Gallery;
+		Wall::FrameInfo                    g_frameMenu;           // frame the player activated
+		std::optional<RE::ObjectRefHandle> g_replaceTarget;       // set while choosing a new picture for a frame
+		int                                g_hangShape = 0;
+		int                                g_hangStyle = 2;
+		bool                               g_placementControls = false;
 
 		std::atomic<bool> g_open{ false };
 		std::atomic<bool> g_wantOpen{ false };  // toggled by the input sink, applied in Present
@@ -380,8 +395,12 @@ namespace Gallery
 			}
 			g_open = open;
 			g_wantOpen = open;
-			if (open) {
+			if (open && g_uiMode == UiMode::Gallery) {
 				g_needScan = true;
+			}
+			if (!open) {
+				g_uiMode = UiMode::Gallery;
+				g_replaceTarget.reset();
 			}
 
 			using UEFlag = RE::ControlMap::UEFlag;
@@ -398,6 +417,23 @@ namespace Gallery
 				ImGui::GetIO().MouseDrawCursor = open;
 			}
 			spdlog::info("Gallery {}", open ? "opened" : "closed");
+		}
+
+		// While hanging a picture: the player can still walk and look around, but clicks and
+		// activate/menu keys belong to us.
+		void ApplyPlacementControls(bool a_on)
+		{
+			if (g_placementControls == a_on) {
+				return;
+			}
+			g_placementControls = a_on;
+			using UEFlag = RE::ControlMap::UEFlag;
+			constexpr auto blocked = static_cast<UEFlag>(
+				static_cast<std::uint32_t>(UEFlag::kActivate) | static_cast<std::uint32_t>(UEFlag::kMenu) |
+				static_cast<std::uint32_t>(UEFlag::kFighting));
+			if (auto* cm = RE::ControlMap::GetSingleton()) {
+				cm->ToggleControls(blocked, !a_on);
+			}
 		}
 
 		void PushInput(const InputMsg& m)
@@ -433,6 +469,22 @@ namespace Gallery
 						continue;  // held / repeating
 					}
 
+					if (Wall::IsPlacing()) {
+						if (!down) {
+							continue;
+						}
+						if (e->GetDevice() == RE::INPUT_DEVICE::kMouse) {
+							if (code == 0) {
+								Wall::RequestPlace();  // left click
+							} else if (code == 1) {
+								Wall::CancelPlacement();  // right click
+							}
+						} else if (e->GetDevice() == RE::INPUT_DEVICE::kKeyboard && (code == kDIK_Escape || code == cfg.toggleScan)) {
+							Wall::CancelPlacement();
+						}
+						continue;
+					}
+
 					if (e->GetDevice() == RE::INPUT_DEVICE::kKeyboard) {
 						if (down && code == cfg.toggleScan) {
 							if (g_wantOpen) {
@@ -440,6 +492,7 @@ namespace Gallery
 							} else {
 								auto* ui = RE::UI::GetSingleton();
 								if (!(ui && ui->GameIsPaused())) {
+									g_uiMode = UiMode::Gallery;
 									g_wantOpen = true;
 								}
 							}
@@ -655,7 +708,56 @@ namespace Gallery
 			}
 			const Item& it = items[viewing];
 			ImGui::SameLine();
+			if (g_replaceTarget) {
+				if (ImGui::Button("Use for this frame")) {
+					Wall::ChangePicture(*g_replaceTarget, it.path);
+					ApplyOpen(false);
+					return;
+				}
+			} else if (ImGui::Button("Hang on wall...")) {
+				g_hangShape = Wall::AutoShape(it.origW, it.origH);
+				g_hangStyle = std::clamp(Wall::GetSettings().defaultStyle, 0, Frames::kStyleCount - 1);
+				ImGui::OpenPopup("Hang on wall");
+			}
+			ImGui::SameLine();
 			ImGui::Text("%s   %d x %d   (%d / %d)", it.name.c_str(), it.origW, it.origH, viewing + 1, static_cast<int>(items.size()));
+
+			bool startHanging = false;
+			ImGui::SetNextWindowPos(ImGui::GetIO().DisplaySize * 0.5f, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+			if (ImGui::BeginPopupModal("Hang on wall", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+				ImGui::TextUnformatted("Frame");
+				ImGui::SetNextItemWidth(260.0f);
+				ImGui::Combo("##style", &g_hangStyle, Frames::kStyles, Frames::kStyleCount);
+				ImGui::TextUnformatted("Shape");
+				ImGui::SetNextItemWidth(260.0f);
+				if (ImGui::BeginCombo("##shape", Frames::kShapes[g_hangShape].name)) {
+					for (int i = 0; i < Frames::kShapeCount; ++i) {
+						const auto& sh = Frames::kShapes[i];
+						const auto  label = fmt::format("{}{}", sh.name, i == Wall::AutoShape(it.origW, it.origH) ? "  (best fit)" : "");
+						if (ImGui::Selectable(label.c_str(), i == g_hangShape)) {
+							g_hangShape = i;
+						}
+					}
+					ImGui::EndCombo();
+				}
+				const auto [tw, th] = Wall::TextureSize(g_hangShape);
+				ImGui::TextDisabled("The picture is cropped to fill the frame (%d x %d texture).", tw, th);
+				ImGui::Spacing();
+				if (ImGui::Button("Hang it", ImVec2(120, 0))) {
+					startHanging = true;
+					ImGui::CloseCurrentPopup();
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+					ImGui::CloseCurrentPopup();
+				}
+				ImGui::EndPopup();
+			}
+			if (startHanging) {
+				Wall::BeginPlacement(it.path, g_hangShape, g_hangStyle);
+				ApplyOpen(false);
+				return;
+			}
 
 			const ImVec2              avail = ImGui::GetContentRegionAvail();
 			ID3D11ShaderResourceView* tex = fullSrv ? fullSrv : it.srv;
@@ -672,9 +774,54 @@ namespace Gallery
 			}
 		}
 
+		void DrawFrameMenu()
+		{
+			auto& io = ImGui::GetIO();
+			if (ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
+				ApplyOpen(false);
+				return;
+			}
+			ImGui::SetNextWindowPos(io.DisplaySize * 0.5f, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+			bool open = true;
+			if (ImGui::Begin("Framed picture", &open, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse)) {
+				const auto& f = g_frameMenu;
+				ImGui::Text("%s frame, %s", Frames::kStyles[f.style], Frames::kShapes[f.shape].name);
+				ImGui::Text("Picture: %s", f.picture.empty() ? "(none - placed some other way)" : f.picture.c_str());
+				ImGui::Spacing();
+				const ImVec2 bs(200, 0);
+				if (ImGui::Button("Change picture...", bs)) {
+					g_replaceTarget = f.ref;
+					g_uiMode = UiMode::Gallery;
+					g_needScan = true;
+					viewing = -1;
+				}
+				ImGui::BeginDisabled(f.picture.empty());
+				if (ImGui::Button("Move", bs)) {
+					Wall::BeginPlacement(f.picturePath, f.shape, f.style, f.ref);
+					open = false;
+				}
+				ImGui::EndDisabled();
+				if (ImGui::Button("Take down", bs)) {
+					Wall::RemoveFrame(f.ref);
+					open = false;
+				}
+				if (ImGui::Button("Close", bs)) {
+					open = false;
+				}
+			}
+			ImGui::End();
+			if (!open) {
+				ApplyOpen(false);
+			}
+		}
+
 		void DrawUI()
 		{
 			auto& io = ImGui::GetIO();
+			if (g_uiMode == UiMode::FrameMenu) {
+				DrawFrameMenu();
+				return;
+			}
 			if (viewing < 0 && ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
 				ApplyOpen(false);
 				return;
@@ -683,6 +830,9 @@ namespace Gallery
 			ImGui::SetNextWindowPos(io.DisplaySize * 0.5f, ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
 			bool open = true;
 			if (ImGui::Begin("Folder Gallery", &open)) {
+				if (g_replaceTarget) {
+					ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.3f, 1.0f), "Choosing a new picture for the frame - open a picture and click \"Use for this frame\".");
+				}
 				if (viewing < 0) {
 					if (ImGui::Button("Refresh")) {
 						g_needScan = true;
@@ -725,6 +875,12 @@ namespace Gallery
 		cfg.fontSize = std::clamp(static_cast<float>(std::atof(buf)), 8.0f, 64.0f);
 		::GetPrivateProfileStringA("General", "fMouseSpeed", "1.0", buf, MAX_PATH, ini.c_str());
 		cfg.mouseSpeed = std::clamp(static_cast<float>(std::atof(buf)), 0.1f, 10.0f);
+		auto& wall = Wall::GetSettings();
+		wall.resolution = std::clamp(static_cast<int>(::GetPrivateProfileIntA("Frames", "iPictureResolution", 1024, ini.c_str())), 256, 4096);
+		wall.defaultStyle = std::clamp(static_cast<int>(::GetPrivateProfileIntA("Frames", "iDefaultFrameStyle", 2, ini.c_str())), 0, Frames::kStyleCount - 1);
+		::GetPrivateProfileStringA("Frames", "fMaxPlaceDistance", "400", buf, MAX_PATH, ini.c_str());
+		wall.maxDistance = std::clamp(static_cast<float>(std::atof(buf)), 100.0f, 3000.0f);
+		spdlog::info("Frames: resolution {}  default style {}  reach {}", wall.resolution, Frames::kStyles[wall.defaultStyle], wall.maxDistance);
 		dbg.hookPresent = ::GetPrivateProfileIntA("Debug", "bHookPresent", 1, ini.c_str()) != 0;
 		dbg.inputSink = ::GetPrivateProfileIntA("Debug", "bInputSink", 1, ini.c_str()) != 0;
 		std::error_code ec2;
@@ -795,6 +951,12 @@ namespace Gallery
 			return;
 		}
 
+		ApplyPlacementControls(Wall::IsPlacing());
+		if (auto activated = Wall::TakeActivatedFrame(); activated && !g_open && !g_wantOpen && !Wall::IsPlacing()) {
+			g_frameMenu = *activated;
+			g_uiMode = UiMode::FrameMenu;
+			g_wantOpen = true;
+		}
 		if (g_wantOpen != g_open) {
 			ApplyOpen(g_wantOpen);
 		}
