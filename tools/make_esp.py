@@ -3,7 +3,7 @@
 
 One ACTI (activator) per frame mesh: 5 shapes x 10 styles. Form IDs 0x800 + shape*10 + style,
 so the plugin can find them with TESDataHandler::LookupForm(0x800 + i, "FolderGallery.esp").
-Meshes are the Skyrim Gallery ones (meshes\\SkyrimGallery\\Frame_<Shape>_<Style>.nif).
+Meshes: meshes\\FolderGallery\\Frame_<Shape>_<Style>.nif (made by tools/rebase_meshes.py).
 
 Usage: python3 tools/make_esp.py [frames.json]
 frames.json (optional) holds measured bounds per mesh; without it, bounds come from BOUNDS below.
@@ -70,13 +70,13 @@ def main():
         import math
         obnd = struct.pack("<6h", *[int(math.floor(v)) for v in f["mn"]], *[int(math.ceil(v)) for v in f["mx"]])
         payload = (sub("EDID", zstr(f["edid"])) + sub("OBND", obnd) + sub("FULL", zstr(f["name"])) +
-                   sub("MODL", zstr(f"SkyrimGallery\\{f['mesh']}.nif")) + sub("RNAM", zstr("Examine")))
+                   sub("MODL", zstr(f"FolderGallery\\{f['mesh']}.nif")) + sub("RNAM", zstr("Examine")))
         acti += record("ACTI", MASTER_PREFIX | (FIRST_ID + f["index"]), payload)
 
     n_records = len(frames) + 1  # records + groups (TES4 excluded)
     hedr = struct.pack("<fiI", 1.71, n_records, FIRST_ID + len(frames))
     tes4 = (sub("HEDR", hedr) + sub("CNAM", zstr("FolderGallery")) +
-            sub("SNAM", zstr("Folder Gallery - picture viewer and wall frames (needs FolderGallery.dll and the Skyrim Gallery meshes/textures)")) +
+            sub("SNAM", zstr("Folder Gallery - picture viewer and wall frames (needs FolderGallery.dll and its Meshes/Textures folders)")) +
             sub("MAST", zstr("Skyrim.esm")) + sub("DATA", b"\0" * 8))
     esp = record("TES4", 0, tes4, flags=0x200) + group("ACTI", acti)  # 0x200 = ESL (light plugin)
     open(os.path.join(ROOT, "FolderGallery.esp"), "wb").write(esp)

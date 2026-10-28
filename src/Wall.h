@@ -6,7 +6,7 @@ namespace Wall
 	{
 		int   resolution = 1024;   // long side of the generated DDS
 		int   defaultStyle = 2;    // index into Frames::kStyles (Dark Oak)
-		float maxDistance = 400.0f;
+		float maxDistance = 2000.0f;
 	};
 	Settings& GetSettings();
 
@@ -28,6 +28,7 @@ namespace Wall
 	void Tick();                    // every frame: moves the preview frame, puts pictures on new frames (SKSE task)
 	void CycleStyle(int a_delta);   // Shift + mouse wheel while placing
 	void AdjustScale(int a_steps);  // mouse wheel while placing (10% per step)
+	void AdjustOffset(int a_steps); // arrow up/down while placing (0.25 units per step, + = away from the wall)
 	void RequestPlace();  // from the input handler; the raycast + placement run as an SKSE task
 	void CancelPlacement(bool a_notify = true);
 
@@ -45,5 +46,6 @@ namespace Wall
 	std::optional<FrameInfo> TakeActivatedFrame();
 	void                     RemoveFrame(RE::ObjectRefHandle a_ref);
 	void                     SetFrameScale(RE::ObjectRefHandle a_ref, float a_scale);
+	void                     NudgeFrame(RE::ObjectRefHandle a_ref, float a_distance);  // + = away from the wall
 	void                     ChangePicture(RE::ObjectRefHandle a_ref, const std::filesystem::path& a_picture);
 }

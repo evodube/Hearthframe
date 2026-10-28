@@ -15,6 +15,9 @@ namespace Wall
 		constexpr std::uint32_t    kRecordVersion = 1;
 		constexpr std::uint32_t    kRecordPreview = 'PREV';
 		constexpr const char*      kPlacedDir = "textures\\FolderGallery\\Placed\\";
+		constexpr float            kDefaultOffset = 0.3f;
+		constexpr float            kMinOffset = -4.0f;
+		constexpr float            kMaxOffset = 12.0f;
 		constexpr float            kMinScale = 0.3f;
 		constexpr float            kMaxScale = 3.0f;
 		constexpr const char*      kFlatNormal = "textures\\FolderGallery\\canvas_flat_n.dds";
@@ -48,6 +51,7 @@ namespace Wall
 			int                 style = 0;
 			RE::ObjectRefHandle moving;
 			float               scale = 1.0f;
+			float               offset = kDefaultOffset;  // distance of the frame's back from the wall
 		};
 		std::optional<Placement> g_placement;
 		std::atomic<bool>        g_placing{ false };
@@ -368,7 +372,7 @@ namespace Wall
 		};
 
 		// Where a frame would hang right now, or why it can't.
-		std::optional<Pose> ComputePose(const char*& a_whyNot, RE::TESObjectREFR* a_ignore = nullptr)
+		std::optional<Pose> ComputePose(const char*& a_whyNot, RE::TESObjectREFR* a_ignore = nullptr, float a_offset = kDefaultOffset)
 		{
 			const auto hit = RaycastFromCamera(g_settings.maxDistance);
 			if (!hit) {
@@ -388,8 +392,8 @@ namespace Wall
 			Pose pose;
 			pose.nx = nrm.x / nlen;
 			pose.ny = nrm.y / nlen;
-			// Frame origin is the centre of its back; nudge it off the wall to avoid flicker.
-			pose.pos = { hit->pos.x + pose.nx * 0.3f, hit->pos.y + pose.ny * 0.3f, hit->pos.z };
+			// Frame origin is the centre of its back; a_offset moves it out from (or into) the wall.
+			pose.pos = { hit->pos.x + pose.nx * a_offset, hit->pos.y + pose.ny * a_offset, hit->pos.z };
 			return pose;
 		}
 
@@ -443,7 +447,7 @@ namespace Wall
 			}
 			// Spawn where the player is aiming (or in front of them); it follows the aim every frame.
 			const char* why = nullptr;
-			auto        pose = ComputePose(why, pl->moving.get().get());
+			auto        pose = ComputePose(why, pl->moving.get().get(), pl->offset);
 			RE::NiPoint3 at = player->GetPosition();
 			RE::NiPoint3 angle{};
 			if (pose) {
@@ -512,7 +516,7 @@ namespace Wall
 			}
 
 			const char* why = nullptr;
-			const auto  pose = ComputePose(why, pl->moving.get().get());
+			const auto  pose = ComputePose(why, pl->moving.get().get(), pl->offset);
 			if (!pose) {
 				if (g_previewVisible) {
 					root->SetAppCulled(true);
@@ -551,7 +555,7 @@ namespace Wall
 				return;
 			}
 			const char* why = nullptr;
-			const auto  pose = ComputePose(why, pl->moving.get().get());
+			const auto  pose = ComputePose(why, pl->moving.get().get(), pl->offset);
 			if (!pose) {
 				RE::DebugNotification(why);
 				return;
@@ -863,7 +867,7 @@ namespace Wall
 		// Start converting right away so the texture is usually ready by the time the frame is hung.
 		EnsureTexture(DdsGamePath(a_picture, shape), a_picture, shape);
 		g_placing = true;
-		Notify("Aim at a wall, left-click to hang. Wheel: size, Shift+wheel: frame. Right-click/Esc cancels.");
+		Notify("Aim at a wall, left-click to hang. Wheel: size, Shift+wheel: frame, Up/Down: distance from wall. Right-click/Esc cancels.");
 	}
 
 	bool IsPlacing()
@@ -898,6 +902,38 @@ namespace Wall
 			scale = sc;
 		}
 		Notify(fmt::format("Size: {:.0f}%", scale * 100.0f));
+	}
+
+	void AdjustOffset(int a_steps)
+	{
+		float offset = 0.0f;
+		{
+			std::lock_guard lk(g_mtx);
+			if (!g_placement) {
+				return;
+			}
+			auto& o = g_placement->offset;
+			o = std::clamp(o + 0.25f * a_steps, kMinOffset, kMaxOffset);
+			offset = o;
+		}
+		Notify(fmt::format("Distance from wall: {:+.2f}", offset - kDefaultOffset));
+	}
+
+	void NudgeFrame(RE::ObjectRefHandle a_ref, float a_distance)
+	{
+		SKSE::GetTaskInterface()->AddTask([a_ref, a_distance] {
+			auto ref = a_ref.get();
+			if (!ref) {
+				return;
+			}
+			// The frame's front is its local +Y, which the Z angle turns to (sin z, cos z).
+			const float  z = ref->GetAngleZ();
+			RE::NiPoint3 pos = ref->GetPosition();
+			pos.x += std::sin(z) * a_distance;
+			pos.y += std::cos(z) * a_distance;
+			ref->SetPosition(pos);
+			spdlog::info("Frame {:08X} nudged {:+.2f} from the wall", ref->GetFormID(), a_distance);
+		});
 	}
 
 	void SetFrameScale(RE::ObjectRefHandle a_ref, float a_scale)

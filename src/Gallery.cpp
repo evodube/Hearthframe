@@ -25,6 +25,8 @@ namespace Gallery
 		constexpr std::uint32_t kDIK_Escape = 0x01;
 		constexpr std::uint32_t kDIK_Left = 0xCB;
 		constexpr std::uint32_t kDIK_Right = 0xCD;
+		constexpr std::uint32_t kDIK_Up = 0xC8;
+		constexpr std::uint32_t kDIK_Down = 0xD0;
 
 		// ---------------------------------------------------------------- settings
 		struct Settings
@@ -491,8 +493,14 @@ namespace Gallery
 									Wall::AdjustScale(dir);
 								}
 							}
-						} else if (e->GetDevice() == RE::INPUT_DEVICE::kKeyboard && (code == kDIK_Escape || code == cfg.toggleScan)) {
-							Wall::CancelPlacement();
+						} else if (e->GetDevice() == RE::INPUT_DEVICE::kKeyboard) {
+							if (code == kDIK_Escape || code == cfg.toggleScan) {
+								Wall::CancelPlacement();
+							} else if (code == kDIK_Up) {
+								Wall::AdjustOffset(+1);  // away from the wall
+							} else if (code == kDIK_Down) {
+								Wall::AdjustOffset(-1);  // closer / into the wall
+							}
 						}
 						continue;
 					}
@@ -806,6 +814,14 @@ namespace Gallery
 					g_frameMenu.scale = pct / 100.0f;
 					Wall::SetFrameScale(f.ref, g_frameMenu.scale);
 				}
+				ImGui::TextUnformatted("Distance from wall");
+				if (ImGui::Button("Closer", ImVec2(97, 0))) {
+					Wall::NudgeFrame(f.ref, -0.5f);
+				}
+				ImGui::SameLine(0.0f, 6.0f);
+				if (ImGui::Button("Further", ImVec2(97, 0))) {
+					Wall::NudgeFrame(f.ref, +0.5f);
+				}
 				const ImVec2 bs(200, 0);
 				if (ImGui::Button("Change picture...", bs)) {
 					g_replaceTarget = f.ref;
@@ -896,8 +912,9 @@ namespace Gallery
 		auto& wall = Wall::GetSettings();
 		wall.resolution = std::clamp(static_cast<int>(::GetPrivateProfileIntA("Frames", "iPictureResolution", 1024, ini.c_str())), 256, 4096);
 		wall.defaultStyle = std::clamp(static_cast<int>(::GetPrivateProfileIntA("Frames", "iDefaultFrameStyle", 2, ini.c_str())), 0, Frames::kStyleCount - 1);
-		::GetPrivateProfileStringA("Frames", "fMaxPlaceDistance", "400", buf, MAX_PATH, ini.c_str());
-		wall.maxDistance = std::clamp(static_cast<float>(std::atof(buf)), 100.0f, 3000.0f);
+		// fPlaceReach replaces the old fMaxPlaceDistance (default went from 400 to 2000)
+		::GetPrivateProfileStringA("Frames", "fPlaceReach", "2000", buf, MAX_PATH, ini.c_str());
+		wall.maxDistance = std::clamp(static_cast<float>(std::atof(buf)), 100.0f, 10000.0f);
 		spdlog::info("Frames: resolution {}  default style {}  reach {}", wall.resolution, Frames::kStyles[wall.defaultStyle], wall.maxDistance);
 		dbg.hookPresent = ::GetPrivateProfileIntA("Debug", "bHookPresent", 1, ini.c_str()) != 0;
 		dbg.inputSink = ::GetPrivateProfileIntA("Debug", "bInputSink", 1, ini.c_str()) != 0;
