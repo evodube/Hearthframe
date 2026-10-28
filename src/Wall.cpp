@@ -15,6 +15,8 @@ namespace Wall
 		constexpr std::uint32_t    kRecordVersion = 1;
 		constexpr std::uint32_t    kRecordPreview = 'PREV';
 		constexpr const char*      kPlacedDir = "textures\\FolderGallery\\Placed\\";
+		constexpr float            kMinScale = 0.3f;
+		constexpr float            kMaxScale = 3.0f;
 		constexpr const char*      kFlatNormal = "textures\\FolderGallery\\canvas_flat_n.dds";
 
 		Settings g_settings;
@@ -45,6 +47,7 @@ namespace Wall
 			int                 shape = 0;
 			int                 style = 0;
 			RE::ObjectRefHandle moving;
+			float               scale = 1.0f;
 		};
 		std::optional<Placement> g_placement;
 		std::atomic<bool>        g_placing{ false };
@@ -176,25 +179,66 @@ namespace Wall
 			return true;
 		}
 
-		// Main thread only.
-		void ApplyToRef(RE::FormID a_id)
+		// Main thread only. Returns true when done (applied, or nothing to apply), false to retry later.
+		bool ApplyToRef(RE::FormID a_id)
 		{
 			std::string dds;
 			{
 				std::lock_guard lk(g_mtx);
 				const auto      it = g_frames.find(a_id);
 				if (it == g_frames.end()) {
-					return;
+					return true;
 				}
 				const auto c = g_conversions.find(it->second.dds);
-				if (c == g_conversions.end() || c->second != Conv::Ready) {
-					return;  // applied when the conversion finishes
+				if (c == g_conversions.end() || c->second == Conv::Failed) {
+					return true;
+				}
+				if (c->second != Conv::Ready) {
+					return false;  // still converting
 				}
 				dds = it->second.dds;
 			}
 			auto* ref = RE::TESForm::LookupByID<RE::TESObjectREFR>(a_id);
-			if (ref && ApplyTexture(ref, dds)) {
+			if (!ref || ref->IsDisabled()) {
+				return true;
+			}
+			if (!ref->Get3D()) {
+				return false;  // 3D not loaded yet
+			}
+			if (ApplyTexture(ref, dds)) {
 				spdlog::info("{:08X}: picture applied ({})", a_id, dds);
+			}
+			return true;
+		}
+
+		// Frames whose picture still has to be put on once their 3D exists (main thread only).
+		std::unordered_map<RE::FormID, int> g_pending;  // form id -> ticks left
+
+		void QueueApply(RE::FormID a_id, int a_ticks = 600)
+		{
+			auto& left = g_pending[a_id];
+			left = (std::max)(left, a_ticks);
+		}
+
+		void ProcessPending()
+		{
+			for (auto it = g_pending.begin(); it != g_pending.end();) {
+				if (ApplyToRef(it->first) || --it->second <= 0) {
+					it = g_pending.erase(it);
+				} else {
+					++it;
+				}
+			}
+		}
+
+		void SetRefScale(RE::TESObjectREFR* a_ref, float a_scale)
+		{
+			a_ref->GetReferenceRuntimeData().refScale = static_cast<std::uint16_t>(std::lround(a_scale * 100.0f));
+			a_ref->AddChange(1u << 4);  // CHANGE_REFR_SCALE - kept in the save
+			if (auto* root = a_ref->Get3D()) {
+				root->local.scale = a_scale;
+				RE::NiUpdateData ud{};
+				root->Update(ud);
 			}
 		}
 
@@ -210,7 +254,7 @@ namespace Wall
 				}
 			}
 			for (const auto id : ids) {
-				ApplyToRef(id);
+				QueueApply(id);
 			}
 		}
 
@@ -246,7 +290,7 @@ namespace Wall
 				}
 				if (ok) {
 					spdlog::info("Converted {} -> {} ({}x{}, {} ms)", ToUtf8(a_picture), a_dds, w, h, ms);
-					SKSE::GetTaskInterface()->AddTask([a_dds] { ApplyToAllUsing(a_dds); });
+					SKSE::GetTaskInterface()->AddTask([a_dds] { ApplyToAllUsing(a_dds); });  // queues the frames using it
 				} else {
 					spdlog::error("Could not convert {}: {}", ToUtf8(a_picture), err);
 					Notify("Folder Gallery: could not convert that picture (see FolderGallery.log)");
@@ -368,6 +412,8 @@ namespace Wall
 		std::string         g_previewTexture;          // dds already applied to the preview
 		bool                g_previewVisible = false;
 		std::atomic<bool>   g_previewQueued{ false };
+		int                 g_previewTicks = 0;         // ticks since the preview was created (diagnostics)
+		bool                g_previewMoved = false;
 		RE::FormID          g_stalePreview = 0;         // from a save made while aiming; deleted after load
 
 		void DeletePreview()
@@ -395,11 +441,23 @@ namespace Wall
 			if (!pl || !player || !base) {
 				return;
 			}
-			// Spawn out of the way (below the player); it is moved onto the wall every frame.
-			auto at = player->GetPosition();
-			at.z -= 2000.0f;
+			// Spawn where the player is aiming (or in front of them); it follows the aim every frame.
+			const char* why = nullptr;
+			auto        pose = ComputePose(why, pl->moving.get().get());
+			RE::NiPoint3 at = player->GetPosition();
+			RE::NiPoint3 angle{};
+			if (pose) {
+				at = pose->pos;
+				angle.z = AngleZ(*pose);
+			} else {
+				const float h = player->GetAngleZ();
+				at = { at.x + std::sin(h) * 150.0f, at.y + std::cos(h) * 150.0f, at.z + 100.0f };
+				angle.z = h + 3.14159265f;
+			}
 			auto handle = RE::TESDataHandler::GetSingleton()->CreateReferenceAtLocation(
-				base, at, RE::NiPoint3{}, player->GetParentCell(), player->GetWorldspace(), nullptr, nullptr, RE::ObjectRefHandle(), false, true);
+				base, at, angle, player->GetParentCell(), player->GetWorldspace(), nullptr, nullptr, RE::ObjectRefHandle(), false, true);
+			g_previewTicks = 0;
+			g_previewMoved = false;
 			if (auto old = pl->moving.get(); old && old->Get3D()) {
 				old->Get3D()->SetAppCulled(true);  // the original disappears while it is being moved
 			}
@@ -427,11 +485,16 @@ namespace Wall
 				CreatePreview();
 				return;
 			}
+			++g_previewTicks;
 			auto* root = ref->Get3D();
 			if (!root) {
+				if (g_previewTicks == 120) {
+					spdlog::warn("Preview {:08X}: 3D still not loaded after 120 frames", ref->GetFormID());
+				}
 				return;  // still loading
 			}
 			if (!g_previewReady) {
+				spdlog::info("Preview {:08X}: 3D loaded after {} frame(s)", ref->GetFormID(), g_previewTicks);
 				root->SetCollisionLayer(RE::COL_LAYER::kNonCollidable);  // the aiming ray must not hit the preview
 				g_previewReady = true;
 			}
@@ -457,15 +520,22 @@ namespace Wall
 				}
 				return;
 			}
+			// Same as Papyrus SetPosition/SetAngle: update the reference, let the game move its 3D.
 			ref->data.location = pose->pos;
 			ref->data.angle = { 0.0f, 0.0f, AngleZ(*pose) };
-			root->local.translate = pose->pos;
-			root->local.rotate = RotationFor(*pose);
-			RE::NiUpdateData ud{};
-			root->Update(ud);
+			ref->Update3DPosition(true);
+			if (std::fabs(root->local.scale - pl->scale) > 0.001f) {
+				SetRefScale(ref.get(), pl->scale);
+			}
 			if (!g_previewVisible) {
 				root->SetAppCulled(false);
 				g_previewVisible = true;
+			}
+			if (!g_previewMoved) {
+				g_previewMoved = true;
+				const auto& w = root->world.translate;
+				spdlog::info("Preview {:08X}: first move to ({:.0f}, {:.0f}, {:.0f}); 3D now at ({:.0f}, {:.0f}, {:.0f})",
+					ref->GetFormID(), pose->pos.x, pose->pos.y, pose->pos.z, w.x, w.y, w.z);
 			}
 		}
 
@@ -498,6 +568,9 @@ namespace Wall
 			auto handle = RE::TESDataHandler::GetSingleton()->CreateReferenceAtLocation(
 				base, pose->pos, angle, player->GetParentCell(), player->GetWorldspace(), nullptr, nullptr, RE::ObjectRefHandle(), true, true);
 			auto ref = handle.get();
+			if (ref && std::fabs(pl->scale - 1.0f) > 0.001f) {
+				SetRefScale(ref.get(), pl->scale);
+			}
 			if (!ref) {
 				RE::DebugNotification("Folder Gallery: could not place the frame here");
 				spdlog::error("CreateReferenceAtLocation failed");
@@ -509,11 +582,11 @@ namespace Wall
 				std::lock_guard lk(g_mtx);
 				g_frames[ref->GetFormID()] = Entry{ dds, ToUtf8(pl->picture), static_cast<std::uint8_t>(pl->shape), static_cast<std::uint8_t>(pl->style) };
 			}
-			spdlog::info("Placed frame {:08X} ({} {}) at ({:.0f}, {:.0f}, {:.0f}) facing {:.0f} deg, picture {}",
-				ref->GetFormID(), Frames::kShapes[pl->shape].name, Frames::kStyles[pl->style], pose->pos.x, pose->pos.y, pose->pos.z,
+			spdlog::info("Placed frame {:08X} ({} {}, {:.0f}%) at ({:.0f}, {:.0f}, {:.0f}) facing {:.0f} deg, picture {}",
+				ref->GetFormID(), Frames::kShapes[pl->shape].name, Frames::kStyles[pl->style], pl->scale * 100.0f, pose->pos.x, pose->pos.y, pose->pos.z,
 				angle.z * 57.2958f, ToUtf8(pl->picture));
 			EnsureTexture(dds, pl->picture, pl->shape);
-			ApplyToRef(ref->GetFormID());  // works right away if the texture already exists and the 3D is loaded
+			QueueApply(ref->GetFormID());  // applied as soon as the new frame's 3D exists
 
 			if (auto old = pl->moving.get()) {
 				{
@@ -530,6 +603,7 @@ namespace Wall
 
 		// ------------------------------------------------------------------ events
 		class EventSink final :
+			public RE::BSTEventSink<RE::TESCellAttachDetachEvent>,
 			public RE::BSTEventSink<RE::TESObjectLoadedEvent>,
 			public RE::BSTEventSink<RE::TESActivateEvent>
 		{
@@ -544,7 +618,23 @@ namespace Wall
 					}
 					if (ours) {
 						const auto id = a_event->formID;
-						SKSE::GetTaskInterface()->AddTask([id] { ApplyToRef(id); });
+						SKSE::GetTaskInterface()->AddTask([id] { QueueApply(id, 120); });
+					}
+				}
+				return RE::BSEventNotifyControl::kContinue;
+			}
+
+			RE::BSEventNotifyControl ProcessEvent(const RE::TESCellAttachDetachEvent* a_event, RE::BSTEventSource<RE::TESCellAttachDetachEvent>*) override
+			{
+				if (a_event && a_event->attached && a_event->reference) {
+					const auto id = a_event->reference->GetFormID();
+					bool       ours = false;
+					{
+						std::lock_guard lk(g_mtx);
+						ours = g_frames.contains(id);
+					}
+					if (ours) {
+						SKSE::GetTaskInterface()->AddTask([id] { QueueApply(id, 300); });
 					}
 				}
 				return RE::BSEventNotifyControl::kContinue;
@@ -562,6 +652,7 @@ namespace Wall
 				}
 				FrameInfo info;
 				info.ref = ref->GetHandle();
+				info.scale = ref->GetReferenceRuntimeData().refScale / 100.0f;
 				info.shape = idx / Frames::kStyleCount;
 				info.style = idx % Frames::kStyleCount;
 				{
@@ -732,6 +823,7 @@ namespace Wall
 
 		if (auto* events = RE::ScriptEventSourceHolder::GetSingleton()) {
 			events->AddEventSink<RE::TESObjectLoadedEvent>(&g_sink);
+			events->AddEventSink<RE::TESCellAttachDetachEvent>(&g_sink);
 			events->AddEventSink<RE::TESActivateEvent>(&g_sink);
 		}
 		return found == static_cast<int>(g_frameForms.size());
@@ -756,22 +848,22 @@ namespace Wall
 			}
 		}
 		for (const auto id : ids) {
-			ApplyToRef(id);
+			QueueApply(id, 300);
 		}
 	}
 
-	void BeginPlacement(const fs::path& a_picture, int a_shape, int a_style, RE::ObjectRefHandle a_moving)
+	void BeginPlacement(const fs::path& a_picture, int a_shape, int a_style, RE::ObjectRefHandle a_moving, float a_scale)
 	{
 		const int shape = std::clamp(a_shape, 0, Frames::kShapeCount - 1);
 		const int style = std::clamp(a_style, 0, Frames::kStyleCount - 1);
 		{
 			std::lock_guard lk(g_mtx);
-			g_placement = Placement{ a_picture, shape, style, a_moving };
+			g_placement = Placement{ a_picture, shape, style, a_moving, std::clamp(a_scale, kMinScale, kMaxScale) };
 		}
 		// Start converting right away so the texture is usually ready by the time the frame is hung.
 		EnsureTexture(DdsGamePath(a_picture, shape), a_picture, shape);
 		g_placing = true;
-		Notify("Aim at a wall and left-click to hang. Mouse wheel changes the frame, right-click or Esc cancels.");
+		Notify("Aim at a wall, left-click to hang. Wheel: size, Shift+wheel: frame. Right-click/Esc cancels.");
 	}
 
 	bool IsPlacing()
@@ -779,11 +871,43 @@ namespace Wall
 		return g_placing;
 	}
 
-	void TickPlacement()
+	void Tick()
 	{
-		if (g_placing && !g_previewQueued.exchange(true)) {
-			SKSE::GetTaskInterface()->AddTask([] { UpdatePreview(); });
+		if (!g_previewQueued.exchange(true)) {
+			SKSE::GetTaskInterface()->AddTask([] {
+				if (g_placing || g_preview) {
+					UpdatePreview();
+				} else {
+					g_previewQueued = false;
+				}
+				ProcessPending();
+			});
 		}
+	}
+
+	void AdjustScale(int a_steps)
+	{
+		float scale = 1.0f;
+		{
+			std::lock_guard lk(g_mtx);
+			if (!g_placement) {
+				return;
+			}
+			auto& sc = g_placement->scale;
+			sc = std::clamp(std::round((sc + 0.1f * a_steps) * 10.0f) / 10.0f, kMinScale, kMaxScale);
+			scale = sc;
+		}
+		Notify(fmt::format("Size: {:.0f}%", scale * 100.0f));
+	}
+
+	void SetFrameScale(RE::ObjectRefHandle a_ref, float a_scale)
+	{
+		const float scale = std::clamp(a_scale, kMinScale, kMaxScale);
+		SKSE::GetTaskInterface()->AddTask([a_ref, scale] {
+			if (auto ref = a_ref.get()) {
+				SetRefScale(ref.get(), scale);
+			}
+		});
 	}
 
 	void CycleStyle(int a_delta)
@@ -877,7 +1001,7 @@ namespace Wall
 			}
 			spdlog::info("Frame {:08X}: picture changed to {}", ref->GetFormID(), ToUtf8(a_picture));
 			EnsureTexture(dds, a_picture, shape);
-			ApplyToRef(ref->GetFormID());
+			QueueApply(ref->GetFormID());
 		});
 	}
 }

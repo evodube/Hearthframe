@@ -23,10 +23,11 @@ namespace Wall
 	std::pair<int, int> TextureSize(int a_shape);
 
 	// ---- placement mode (aim at a wall, left click to hang)
-	void BeginPlacement(const std::filesystem::path& a_picture, int a_shape, int a_style, RE::ObjectRefHandle a_moving = {});
+	void BeginPlacement(const std::filesystem::path& a_picture, int a_shape, int a_style, RE::ObjectRefHandle a_moving = {}, float a_scale = 1.0f);
 	bool IsPlacing();
-	void TickPlacement();          // every frame while placing: moves the preview frame (SKSE task)
-	void CycleStyle(int a_delta);  // mouse wheel while placing
+	void Tick();                    // every frame: moves the preview frame, puts pictures on new frames (SKSE task)
+	void CycleStyle(int a_delta);   // Shift + mouse wheel while placing
+	void AdjustScale(int a_steps);  // mouse wheel while placing (10% per step)
 	void RequestPlace();  // from the input handler; the raycast + placement run as an SKSE task
 	void CancelPlacement(bool a_notify = true);
 
@@ -36,11 +37,13 @@ namespace Wall
 		RE::ObjectRefHandle ref;
 		int                 shape = 0;
 		int                 style = 0;
+		float               scale = 1.0f;
 		std::string         picture;  // UTF-8 file name of the picture shown, empty if unknown
 		std::filesystem::path picturePath;
 	};
 	// Set by the activation sink when the player activates one of our frames; taken by the UI.
 	std::optional<FrameInfo> TakeActivatedFrame();
 	void                     RemoveFrame(RE::ObjectRefHandle a_ref);
+	void                     SetFrameScale(RE::ObjectRefHandle a_ref, float a_scale);
 	void                     ChangePicture(RE::ObjectRefHandle a_ref, const std::filesystem::path& a_picture);
 }

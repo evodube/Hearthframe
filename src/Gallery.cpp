@@ -138,6 +138,7 @@ namespace Gallery
 		int                                g_hangShape = 0;
 		int                                g_hangStyle = 2;
 		bool                               g_placementControls = false;
+		std::atomic<bool>                  g_shiftDown{ false };
 
 		std::atomic<bool> g_open{ false };
 		std::atomic<bool> g_wantOpen{ false };  // toggled by the input sink, applied in Present
@@ -469,6 +470,9 @@ namespace Gallery
 						continue;  // held / repeating
 					}
 
+					if (e->GetDevice() == RE::INPUT_DEVICE::kKeyboard && (code == 0x2A || code == 0x36)) {
+						g_shiftDown = down;  // left / right shift
+					}
 					if (Wall::IsPlacing()) {
 						if (!down) {
 							continue;
@@ -479,10 +483,13 @@ namespace Gallery
 								Wall::RequestPlace();  // left click
 							} else if (code == 1) {
 								Wall::CancelPlacement();  // right click
-							} else if (code == MouseKey::kWheelUp) {
-								Wall::CycleStyle(+1);
-							} else if (code == MouseKey::kWheelDown) {
-								Wall::CycleStyle(-1);
+							} else if (code == MouseKey::kWheelUp || code == MouseKey::kWheelDown) {
+								const int dir = code == MouseKey::kWheelUp ? +1 : -1;
+								if (g_shiftDown) {
+									Wall::CycleStyle(dir);
+								} else {
+									Wall::AdjustScale(dir);
+								}
 							}
 						} else if (e->GetDevice() == RE::INPUT_DEVICE::kKeyboard && (code == kDIK_Escape || code == cfg.toggleScan)) {
 							Wall::CancelPlacement();
@@ -793,6 +800,12 @@ namespace Gallery
 				ImGui::Text("%s frame, %s", Frames::kStyles[f.style], Frames::kShapes[f.shape].name);
 				ImGui::Text("Picture: %s", f.picture.empty() ? "(none - placed some other way)" : f.picture.c_str());
 				ImGui::Spacing();
+				int pct = static_cast<int>(std::lround(g_frameMenu.scale * 100.0f));
+				ImGui::SetNextItemWidth(200.0f);
+				if (ImGui::SliderInt("Size", &pct, 30, 300, "%d%%")) {
+					g_frameMenu.scale = pct / 100.0f;
+					Wall::SetFrameScale(f.ref, g_frameMenu.scale);
+				}
 				const ImVec2 bs(200, 0);
 				if (ImGui::Button("Change picture...", bs)) {
 					g_replaceTarget = f.ref;
@@ -802,7 +815,7 @@ namespace Gallery
 				}
 				ImGui::BeginDisabled(f.picture.empty());
 				if (ImGui::Button("Move", bs)) {
-					Wall::BeginPlacement(f.picturePath, f.shape, f.style, f.ref);
+					Wall::BeginPlacement(f.picturePath, f.shape, f.style, f.ref, f.scale);
 					open = false;
 				}
 				ImGui::EndDisabled();
@@ -957,7 +970,7 @@ namespace Gallery
 		}
 
 		ApplyPlacementControls(Wall::IsPlacing());
-		Wall::TickPlacement();
+		Wall::Tick();
 		if (auto activated = Wall::TakeActivatedFrame(); activated && !g_open && !g_wantOpen && !Wall::IsPlacing()) {
 			g_frameMenu = *activated;
 			g_uiMode = UiMode::FrameMenu;
