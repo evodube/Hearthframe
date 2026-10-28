@@ -1,0 +1,69 @@
+name: Build FolderGallery
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      VCPKG_COMMIT: 53bef8994c541b6561884a8395ea35715ece75db   # vcpkg 2024.01.12, matches builtin-baseline
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg-bincache
+      VCPKG_DEFAULT_TRIPLET: x64-windows-static-md
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Restore vcpkg binary cache
+        uses: actions/cache@v4
+        with:
+          path: vcpkg-bincache
+          key: vcpkg-${{ env.VCPKG_COMMIT }}-${{ hashFiles('vcpkg.json') }}
+          restore-keys: vcpkg-${{ env.VCPKG_COMMIT }}-
+
+      - name: Set up vcpkg
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "$env:VCPKG_DEFAULT_BINARY_CACHE" | Out-Null
+          git clone https://github.com/microsoft/vcpkg "$env:VCPKG_ROOT"
+          git -C "$env:VCPKG_ROOT" checkout $env:VCPKG_COMMIT
+          & "$env:VCPKG_ROOT/bootstrap-vcpkg.bat" -disableMetrics
+
+      - name: Configure
+        shell: pwsh
+        run: >
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+          -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+          -DVCPKG_TARGET_TRIPLET=x64-windows-static-md
+          -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded$<$<CONFIG:Debug>:Debug>DLL"
+
+      - name: Build
+        shell: pwsh
+        run: cmake --build build --config Release --parallel -- /p:CL_MPCount=4
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $out = "package"
+          New-Item -ItemType Directory -Force -Path "$out/Data/SKSE/Plugins/FolderGallery/Pictures" | Out-Null
+          Copy-Item build/Release/FolderGallery.dll "$out/Data/SKSE/Plugins/"
+          Copy-Item FolderGallery.ini "$out/Data/SKSE/Plugins/"
+          Copy-Item FolderGallery.esp "$out/Data/"
+          Get-ChildItem -Recurse $out | Format-Table FullName, Length
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: FolderGallery
+          path: package/
+
+      - name: Upload PDB
+        uses: actions/upload-artifact@v4
+        with:
+          name: FolderGallery-pdb
+          path: build/Release/FolderGallery.pdb
+          if-no-files-found: ignore
