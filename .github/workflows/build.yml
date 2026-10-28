@@ -96,6 +96,18 @@ jobs:
           Copy-Item FolderGallery.esp "$out/Data/"
           Get-ChildItem -Recurse $out | Format-Table FullName, Length
 
+      - name: Publish package to dist branch
+        shell: pwsh
+        run: |
+          Copy-Item -Recurse package $env:RUNNER_TEMP/dist-out
+          if (Test-Path build/Release/FolderGallery.pdb) { Copy-Item build/Release/FolderGallery.pdb $env:RUNNER_TEMP/dist-out/ }
+          "run ${{ github.run_id }} sha ${{ github.sha }}" | Out-File $env:RUNNER_TEMP/dist-out/BUILD.txt
+          cd $env:RUNNER_TEMP/dist-out
+          git init -q -b dist
+          git config user.name "ci"; git config user.email "ci@users.noreply.github.com"
+          git add -A; git commit -q -m "FolderGallery build ${{ github.run_id }}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" dist
+
       - name: Upload package
         uses: actions/upload-artifact@v4
         with:
