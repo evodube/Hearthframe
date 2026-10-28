@@ -124,6 +124,54 @@ namespace Wall
 			return fmt::format("{}{}_{}_{:016x}.dds", kPlacedDir, stem, Frames::kShapes[a_shape].name, Fnv1a(key));
 		}
 
+		// Deletes converted pictures in Placed\ that nothing in this save uses any more. Other saves are
+		// safe: their frames re-create a missing texture from the original picture when loaded.
+		void CleanupUnusedTextures()
+		{
+			if (!g_settings.cleanUp) {
+				return;
+			}
+			std::unordered_set<std::string> keep;
+			{
+				std::lock_guard lk(g_mtx);
+				for (const auto& [id, e] : g_frames) {
+					keep.insert(DataPath(e.dds).filename().string());
+				}
+				if (g_placement) {
+					keep.insert(DataPath(DdsGamePath(g_placement->picture, g_placement->shape)).filename().string());
+				}
+				for (const auto& [dds, state] : g_conversions) {
+					if (state == Conv::Running) {
+						keep.insert(DataPath(dds).filename().string());
+					}
+				}
+			}
+			std::thread([keep = std::move(keep)] {
+				std::error_code ec;
+				const auto      dir = DataPath(kPlacedDir);
+				int             removed = 0;
+				for (fs::directory_iterator it(dir, ec), end; !ec && it != end; it.increment(ec)) {
+					const auto& p = it->path();
+					auto        ext = p.extension().string();
+					std::transform(ext.begin(), ext.end(), ext.begin(), [](char c) { return static_cast<char>(std::tolower(static_cast<unsigned char>(c))); });
+					if (ext != ".dds" || keep.contains(p.filename().string())) {
+						continue;
+					}
+					std::error_code rm;
+					if (fs::remove(p, rm)) {
+						++removed;
+						std::lock_guard lk(g_mtx);
+						for (auto c = g_conversions.begin(); c != g_conversions.end();) {
+							c = DataPath(c->first).filename() == p.filename() ? g_conversions.erase(c) : std::next(c);
+						}
+					}
+				}
+				if (removed) {
+					spdlog::info("Cleaned up {} unused picture texture(s) in {}", removed, ToUtf8(dir));
+				}
+			}).detach();
+		}
+
 		// ------------------------------------------------------------------ applying a picture to a frame's 3D
 		std::string NormalMapFor(RE::BSLightingShaderMaterialBase* a_material)
 		{
@@ -602,6 +650,7 @@ namespace Wall
 			}
 			DeletePreview();
 			CancelPlacement(false);
+			CleanupUnusedTextures();  // e.g. the old texture of a moved frame, or other shapes tried while aiming
 			RE::DebugNotification("Picture hung");
 		}
 
@@ -976,6 +1025,7 @@ namespace Wall
 		for (const auto id : ids) {
 			QueueApply(id, 300);
 		}
+		CleanupUnusedTextures();
 	}
 
 	void BeginPlacement(const fs::path& a_picture, int a_shape, int a_style, RE::ObjectRefHandle a_moving, float a_scale)
@@ -1122,8 +1172,11 @@ namespace Wall
 		}
 		const bool was = g_placing.exchange(false);
 		if (was) {
-			SKSE::GetTaskInterface()->AddTask([moving] {
+			SKSE::GetTaskInterface()->AddTask([moving, a_notify] {
 				DeletePreview();
+				if (a_notify) {
+					CleanupUnusedTextures();  // the texture converted in advance for a cancelled hang
+				}
 				if (auto old = moving.get(); old && !old->IsDisabled() && old->Get3D()) {
 					old->Get3D()->SetAppCulled(false);  // move cancelled (or the old frame is gone anyway)
 				}
@@ -1156,6 +1209,7 @@ namespace Wall
 			spdlog::info("Removed frame {:08X}", ref->GetFormID());
 			ref->Disable();
 			ref->SetDelete(true);
+			CleanupUnusedTextures();
 			RE::DebugNotification("Picture taken down");
 		});
 	}
@@ -1180,6 +1234,7 @@ namespace Wall
 			spdlog::info("Frame {:08X}: picture changed to {}", ref->GetFormID(), ToUtf8(a_picture));
 			EnsureTexture(dds, a_picture, shape);
 			QueueApply(ref->GetFormID());
+			CleanupUnusedTextures();
 		});
 	}
 }

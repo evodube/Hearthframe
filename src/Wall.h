@@ -8,6 +8,7 @@ namespace Wall
 		int   defaultStyle = 2;    // index into Frames::kStyles (Dark Oak)
 		float maxDistance = 2000.0f;   // how far you can hang a picture
 		float examineReach = 600.0f;   // how far a hung picture can be examined with Activate
+		bool  cleanUp = true;          // delete converted textures no picture in the current save uses
 	};
 	Settings& GetSettings();
 

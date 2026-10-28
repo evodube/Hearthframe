@@ -74,6 +74,7 @@ namespace Theme
 		g_base = a_baseSize;
 		auto& io = ImGui::GetIO();
 		const float size = g_base * g_s;
+		io.Fonts->Clear();  // Setup may run again when the interface size changes
 
 		g_body = LoadFont(a_files.regular, size);
 		if (!g_body) {

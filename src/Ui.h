@@ -29,6 +29,7 @@ namespace Ui
 		bool                        replaceMode = false;  // choosing a new picture for an existing frame
 		const char*                 notice = nullptr;     // shown above the grid when set
 		int*                        thumbSize = nullptr;  // in/out, 100..320
+		int*                        uiScalePct = nullptr; // in/out, 60..200 (applied on release -> UiScale)
 		std::function<void(int)>    requestThumb;          // called for visible pictures without a thumbnail
 
 		// viewer
@@ -61,6 +62,7 @@ namespace Ui
 		OpenHangDialog,
 		Hang,         // index, *hangShape, *hangStyle
 		UseForFrame,  // index
+		UiScale,      // *uiScalePct changed
 	};
 
 	struct GalleryResult

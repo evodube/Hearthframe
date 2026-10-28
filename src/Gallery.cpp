@@ -120,6 +120,7 @@ namespace Gallery
 				MouseMove,
 				MouseButton,
 				Wheel,
+				UiScale,  // Ctrl + wheel: x = steps
 				Key
 			} kind;
 			float    x = 0.0f, y = 0.0f;
@@ -148,6 +149,14 @@ namespace Gallery
 		int                                g_hangStyle = 2;
 		bool                               g_placementControls = false;
 		std::atomic<bool>                  g_shiftDown{ false };
+		std::atomic<bool>                  g_ctrlDown{ false };
+		float                              g_pendingUiScale = -1.0f;  // applied between frames (fonts are rebuilt)
+		std::string                        g_iniPath;
+
+		void RequestUiScale(float a_scale)
+		{
+			g_pendingUiScale = std::clamp(std::round(a_scale * 20.0f) / 20.0f, 0.6f, 2.0f);
+		}
 
 		std::atomic<bool> g_open{ false };
 		std::atomic<bool> g_wantOpen{ false };  // toggled by the input sink, applied in Present
@@ -486,6 +495,9 @@ namespace Gallery
 					if (e->GetDevice() == RE::INPUT_DEVICE::kKeyboard && (code == 0x2A || code == 0x36)) {
 						g_shiftDown = down;  // left / right shift
 					}
+					if (e->GetDevice() == RE::INPUT_DEVICE::kKeyboard && (code == 0x1D || code == 0x9D)) {
+						g_ctrlDown = down;  // left / right ctrl
+					}
 					// Activate on a hung picture: find it ourselves, so it works past the game's short
 					// activation range and when the frame sits in the wall (its collision can't be hit).
 					if (down && !g_open && !Wall::IsPlacing()) {
@@ -569,7 +581,8 @@ namespace Gallery
 						using MouseKey = RE::BSWin32MouseDevice::Key;
 						if (code == MouseKey::kWheelUp || code == MouseKey::kWheelDown) {
 							if (down) {
-								InputMsg m{ InputMsg::Kind::Wheel };
+								InputMsg m{ g_ctrlDown ? InputMsg::Kind::UiScale : InputMsg::Kind::Wheel };
+								m.x = code == MouseKey::kWheelUp ? 1.0f : -1.0f;
 								m.y = code == MouseKey::kWheelUp ? 1.0f : -1.0f;
 								PushInput(m);
 							}
@@ -622,6 +635,9 @@ namespace Gallery
 				case InputMsg::Kind::MouseButton:
 					io.AddMouseButtonEvent(m.button, m.down);
 					break;
+				case InputMsg::Kind::UiScale:
+					RequestUiScale(cfg.uiScale + 0.1f * m.x);
+					break;
 				case InputMsg::Kind::Wheel:
 					io.AddMouseWheelEvent(0.0f, m.y);
 					break;
@@ -630,6 +646,23 @@ namespace Gallery
 					break;
 				}
 			}
+		}
+
+		// Builds fonts + style for the current screen and interface size. Can run again between frames.
+		void ApplyTheme()
+		{
+			// Georgia ships with Windows; falls back to ImGui's built-in font if missing.
+			char windir[MAX_PATH]{};
+			::GetWindowsDirectoryA(windir, MAX_PATH);
+			const std::string fonts = std::string(windir) + "\\Fonts\\";
+			const std::string regular = fonts + "georgia.ttf", bold = fonts + "georgiab.ttf", italic = fonts + "georgiai.ttf";
+			const float       scale = (std::max)(1.0f, g_displayH / 1080.0f) * cfg.uiScale;
+			if (g_imguiReady) {
+				ImGui_ImplDX11_InvalidateDeviceObjects();  // font texture is recreated by the next NewFrame
+			}
+			Theme::Setup(scale, cfg.fontSize, { regular.c_str(), bold.c_str(), italic.c_str() });
+			ImGui::GetIO().MouseDrawCursor = g_open;
+			spdlog::info("UI: scale {:.2f}, font {} ({})", scale, cfg.fontSize, Theme::Body() && Theme::Body()->ConfigData ? "Georgia" : "default");
 		}
 
 		bool InitImGui()
@@ -641,14 +674,7 @@ namespace Gallery
 			io.LogFilename = nullptr;
 			io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
 
-			// Georgia ships with Windows; falls back to ImGui's built-in font if missing.
-			char windir[MAX_PATH]{};
-			::GetWindowsDirectoryA(windir, MAX_PATH);
-			const std::string fonts = std::string(windir) + "\\Fonts\\";
-			const std::string regular = fonts + "georgia.ttf", bold = fonts + "georgiab.ttf", italic = fonts + "georgiai.ttf";
-			const float       scale = (std::max)(1.0f, g_displayH / 1080.0f) * cfg.uiScale;
-			Theme::Setup(scale, cfg.fontSize, { regular.c_str(), bold.c_str(), italic.c_str() });
-			spdlog::info("UI: scale {:.2f}, font {} ({})", scale, cfg.fontSize, Theme::Body() && Theme::Body()->ConfigData ? "Georgia" : "default");
+			ApplyTheme();
 			if (!ImGui_ImplDX11_Init(g_dev, g_ctx)) {
 				return false;
 			}
@@ -731,6 +757,11 @@ namespace Gallery
 			                "Leave sFolder empty in FolderGallery.ini to use Documents\\My Games\\Skyrim Special Edition\\FolderGallery\\Pictures, where new pictures work right away." :
 			                nullptr;
 			gm.thumbSize = &cfg.thumbSize;
+			static int uiPct = 100;
+			if (g_pendingUiScale < 0.0f && !ImGui::IsAnyItemActive()) {
+				uiPct = static_cast<int>(std::lround(cfg.uiScale * 100.0f));
+			}
+			gm.uiScalePct = &uiPct;
 			gm.pictures.reserve(items.size());
 			for (const auto& it : items) {
 				Ui::Picture p;
@@ -797,6 +828,9 @@ namespace Gallery
 				Wall::BeginPlacement(items[r.index].path, g_hangShape, g_hangStyle);
 				ApplyOpen(false);
 				break;
+			case Ui::GalleryAction::UiScale:
+				RequestUiScale(uiPct / 100.0f);
+				break;
 			case Ui::GalleryAction::UseForFrame:
 				Wall::ChangePicture(*g_replaceTarget, items[r.index].path);
 				ApplyOpen(false);
@@ -811,6 +845,7 @@ namespace Gallery
 	{
 		std::error_code ec;
 		const auto      ini = fs::absolute(fs::path(L"Data\\SKSE\\Plugins\\FolderGallery.ini"), ec).string();
+		g_iniPath = ini;
 
 		char buf[MAX_PATH]{};
 		::GetPrivateProfileStringA("General", "sFolder", "", buf, MAX_PATH, ini.c_str());
@@ -838,7 +873,7 @@ namespace Gallery
 		::GetPrivateProfileStringA("General", "fFontSize", "18", buf, MAX_PATH, ini.c_str());
 		cfg.fontSize = std::clamp(static_cast<float>(std::atof(buf)), 8.0f, 64.0f);
 		::GetPrivateProfileStringA("General", "fUIScale", "1.0", buf, MAX_PATH, ini.c_str());
-		cfg.uiScale = std::clamp(static_cast<float>(std::atof(buf)), 0.5f, 3.0f);
+		cfg.uiScale = std::clamp(static_cast<float>(std::atof(buf)), 0.6f, 2.0f);
 		::GetPrivateProfileStringA("General", "fMouseSpeed", "1.0", buf, MAX_PATH, ini.c_str());
 		cfg.mouseSpeed = std::clamp(static_cast<float>(std::atof(buf)), 0.1f, 10.0f);
 		auto& wall = Wall::GetSettings();
@@ -848,6 +883,7 @@ namespace Gallery
 		// fPlaceReach replaces the old fMaxPlaceDistance (default went from 400 to 2000)
 		::GetPrivateProfileStringA("Frames", "fPlaceReach", "2000", buf, MAX_PATH, ini.c_str());
 		wall.maxDistance = std::clamp(static_cast<float>(std::atof(buf)), 100.0f, 10000.0f);
+		wall.cleanUp = ::GetPrivateProfileIntA("Frames", "bCleanUpTextures", 1, ini.c_str()) != 0;
 		::GetPrivateProfileStringA("Frames", "fExamineReach", "600", buf, MAX_PATH, ini.c_str());
 		wall.examineReach = std::clamp(static_cast<float>(std::atof(buf)), 100.0f, 5000.0f);
 		spdlog::info("Frames: resolution {}  default style {}  reach {}", wall.resolution, Frames::kStyles[wall.defaultStyle], wall.maxDistance);
@@ -977,6 +1013,15 @@ namespace Gallery
 		DrainInput();
 		UploadReady();
 
+		if (g_pendingUiScale > 0.0f) {
+			if (std::fabs(g_pendingUiScale - cfg.uiScale) > 0.001f) {
+				cfg.uiScale = g_pendingUiScale;
+				ApplyTheme();
+				::WritePrivateProfileStringA("General", "fUIScale", fmt::format("{:.2f}", cfg.uiScale).c_str(), g_iniPath.c_str());
+				spdlog::info("Interface size {:.0f}%", cfg.uiScale * 100.0f);
+			}
+			g_pendingUiScale = -1.0f;
+		}
 		ImGui_ImplDX11_NewFrame();
 		ImGui::NewFrame();
 		DrawUI();

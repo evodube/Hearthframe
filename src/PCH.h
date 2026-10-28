@@ -19,6 +19,7 @@
 #include <cstring>
 #include <optional>
 #include <unordered_map>
+#include <unordered_set>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>

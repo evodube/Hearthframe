@@ -62,6 +62,19 @@ namespace Ui
 			ImGui::TextDisabled("Thumbnails");
 			ImGui::SameLine();
 			Theme::SliderInt("##thumbs", m.thumbSize, 100, 320, "%d px", S(260.0f));
+			if (m.uiScalePct) {
+				ImGui::SameLine(0.0f, S(24.0f));
+				ImGui::AlignTextToFramePadding();
+				ImGui::TextDisabled("Interface");
+				ImGui::SameLine();
+				Theme::SliderInt("##uiscale", m.uiScalePct, 60, 200, "%d%%", S(220.0f));
+				if (ImGui::IsItemDeactivatedAfterEdit()) {
+					r.action = GalleryAction::UiScale;
+				}
+				if (ImGui::IsItemHovered()) {
+					ImGui::SetTooltip("Size of all Folder Gallery windows.\nCtrl + mouse wheel also works in any of them.");
+				}
+			}
 			ImGui::Spacing();
 
 			if (Theme::BeginParchment("##grid", ImVec2(0, 0), true)) {
