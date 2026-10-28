@@ -35,6 +35,9 @@ namespace Gallery
 			float         mouseSpeed = 1.0f;
 		} cfg;
 
+		DebugSwitches dbg;
+		std::atomic<bool> g_inputDisabled{ false };
+
 		std::uint32_t VirtualKeyToDIK(int vk)
 		{
 			const UINT sc = ::MapVirtualKeyW(static_cast<UINT>(vk), MAPVK_VK_TO_VSC_EX);
@@ -406,13 +409,10 @@ namespace Gallery
 		}
 
 		// ---------------------------------------------------------------- input (game input events)
-		class InputSink final : public RE::BSTEventSink<RE::InputEvent*>
+		void HandleInput(RE::InputEvent* const* a_event)
 		{
-		public:
-			RE::BSEventNotifyControl ProcessEvent(RE::InputEvent* const* a_event, RE::BSTEventSource<RE::InputEvent*>*) override
-			{
 				if (!a_event) {
-					return RE::BSEventNotifyControl::kContinue;
+					return;
 				}
 				for (auto* e = *a_event; e; e = e->next) {
 					if (e->GetEventType() == RE::INPUT_EVENT_TYPE::kMouseMove) {
@@ -483,6 +483,25 @@ namespace Gallery
 							PushInput(m);
 						}
 					}
+				}
+		}
+
+		void SafeHandleInput(RE::InputEvent* const* a_event)
+		{
+			__try {
+				HandleInput(a_event);
+			} __except (SehFilter(GetExceptionInformation(), "HandleInput")) {
+				g_inputDisabled = true;
+			}
+		}
+
+		class InputSink final : public RE::BSTEventSink<RE::InputEvent*>
+		{
+		public:
+			RE::BSEventNotifyControl ProcessEvent(RE::InputEvent* const* a_event, RE::BSTEventSource<RE::InputEvent*>*) override
+			{
+				if (!g_inputDisabled) {
+					SafeHandleInput(a_event);
 				}
 				return RE::BSEventNotifyControl::kContinue;
 			}
@@ -706,15 +725,46 @@ namespace Gallery
 		cfg.fontSize = std::clamp(static_cast<float>(std::atof(buf)), 8.0f, 64.0f);
 		::GetPrivateProfileStringA("General", "fMouseSpeed", "1.0", buf, MAX_PATH, ini.c_str());
 		cfg.mouseSpeed = std::clamp(static_cast<float>(std::atof(buf)), 0.1f, 10.0f);
-		spdlog::info("INI: {}", ini);
+		dbg.hookPresent = ::GetPrivateProfileIntA("Debug", "bHookPresent", 1, ini.c_str()) != 0;
+		dbg.inputSink = ::GetPrivateProfileIntA("Debug", "bInputSink", 1, ini.c_str()) != 0;
+		std::error_code ec2;
+		spdlog::info("INI: {} ({})", ini, fs::exists(ini, ec2) ? "found" : "NOT FOUND - using defaults");
+		spdlog::info("Debug: bHookPresent={} bInputSink={}", dbg.hookPresent, dbg.inputSink);
 		spdlog::info("Folder: {}  key: {} (scan 0x{:02X})  recursive: {}  mouse speed: {}",
 			ToUtf8(cfg.folder), cfg.toggleKey, cfg.toggleScan, cfg.recursive, cfg.mouseSpeed);
+	}
+
+	const DebugSwitches& GetDebugSwitches()
+	{
+		return dbg;
+	}
+
+	int SehFilter(EXCEPTION_POINTERS* a_info, const char* a_where)
+	{
+		const auto* rec = a_info ? a_info->ExceptionRecord : nullptr;
+		const auto  addr = rec ? reinterpret_cast<std::uintptr_t>(rec->ExceptionAddress) : 0;
+		HMODULE     mod = nullptr;
+		wchar_t     modPath[MAX_PATH]{};
+		if (addr && ::GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+						reinterpret_cast<LPCWSTR>(addr), &mod)) {
+			::GetModuleFileNameW(mod, modPath, MAX_PATH);
+		}
+		const auto modName = ToUtf8(fs::path(modPath).filename());
+		const auto offset = mod ? addr - reinterpret_cast<std::uintptr_t>(mod) : addr;
+		std::string detail;
+		if (rec && rec->ExceptionCode == EXCEPTION_ACCESS_VIOLATION && rec->NumberParameters >= 2) {
+			detail = fmt::format(" ({} address 0x{:X})", rec->ExceptionInformation[0] ? "writing" : "reading", rec->ExceptionInformation[1]);
+		}
+		spdlog::critical("CRASH CAUGHT in {}: exception 0x{:08X} at {}+0x{:X}{} - this part is now switched off so the game keeps running",
+			a_where, rec ? static_cast<std::uint32_t>(rec->ExceptionCode) : 0u, modName.empty() ? "?" : modName, offset, detail);
+		return EXCEPTION_EXECUTE_HANDLER;
 	}
 
 	bool InstallInputSink()
 	{
 		static InputSink sink;
 		auto*            mgr = RE::BSInputDeviceManager::GetSingleton();
+		spdlog::info("  BSInputDeviceManager = {}", static_cast<void*>(mgr));
 		if (!mgr) {
 			return false;
 		}
@@ -725,6 +775,7 @@ namespace Gallery
 	void OnPresent(IDXGISwapChain* sc)
 	{
 		if (!g_sc) {
+			spdlog::info("OnPresent: attaching to swap chain {}", static_cast<void*>(sc));
 			DXGI_SWAP_CHAIN_DESC desc{};
 			if (FAILED(sc->GetDesc(&desc)) || !desc.OutputWindow) {
 				return;
