@@ -174,27 +174,27 @@ namespace Theme
 	float SmallCapsWidth(ImFont* a_font, float a_size, const char* a_text)
 	{
 		float       w = 0.0f;
-		const float small = a_size * 0.78f;
+		const float smallSize = a_size * 0.78f;
 		const float track = a_size * 0.06f;
 		char        ch[2] = { 0, 0 };
 		for (const char* p = a_text; *p; ++p) {
 			const bool lower = std::islower(static_cast<unsigned char>(*p)) != 0;
 			ch[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(*p)));
-			w += a_font->CalcTextSizeA(lower ? small : a_size, FLT_MAX, 0.0f, ch).x + track;
+			w += a_font->CalcTextSizeA(lower ? smallSize : a_size, FLT_MAX, 0.0f, ch).x + track;
 		}
 		return w;
 	}
 
 	void SmallCaps(ImDrawList* a_dl, ImFont* a_font, float a_size, const ImVec2& a_pos, ImU32 a_col, const char* a_text)
 	{
-		const float small = a_size * 0.78f;
+		const float smallSize = a_size * 0.78f;
 		const float track = a_size * 0.06f;
-		const float drop = (a_size - small) * 0.80f;  // keep the small letters on the same baseline
+		const float drop = (a_size - smallSize) * 0.80f;  // keep the smallSize letters on the same baseline
 		float       x = a_pos.x;
 		char        ch[2] = { 0, 0 };
 		for (const char* p = a_text; *p; ++p) {
 			const bool  lower = std::islower(static_cast<unsigned char>(*p)) != 0;
-			const float sz = lower ? small : a_size;
+			const float sz = lower ? smallSize : a_size;
 			ch[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(*p)));
 			a_dl->AddText(a_font, sz, ImVec2(x, a_pos.y + (lower ? drop : 0.0f)), a_col, ch);
 			x += a_font->CalcTextSizeA(sz, FLT_MAX, 0.0f, ch).x + track;
