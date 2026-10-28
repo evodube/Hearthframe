@@ -27,6 +27,7 @@
 #include <cwctype>
 #include <deque>
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <string>

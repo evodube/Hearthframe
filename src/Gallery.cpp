@@ -481,6 +481,7 @@ namespace Gallery
 						auto* ue = RE::UserEvents::GetSingleton();
 						auto* ui = RE::UI::GetSingleton();
 						if (ue && btn->QUserEvent() == ue->activate && ui && !ui->GameIsPaused() && !ui->IsMenuOpen(RE::DialogueMenu::MENU_NAME)) {
+							spdlog::info("Activate pressed");
 							Wall::RequestExamine();
 						}
 					}
@@ -521,8 +522,11 @@ namespace Gallery
 							} else {
 								auto* ui = RE::UI::GetSingleton();
 								if (!(ui && ui->GameIsPaused())) {
-									g_uiMode = UiMode::Gallery;
-									g_wantOpen = true;
+									// Looking at a hung picture: open its menu; otherwise the gallery.
+									Wall::RequestExamine([] {
+										g_uiMode = UiMode::Gallery;
+										g_wantOpen = true;
+									});
 								}
 							}
 							continue;

@@ -628,17 +628,20 @@ namespace Wall
 
 		// The hung frame closest to the line of sight, ignoring collision (so frames sunk into a wall
 		// or beyond the game's short activation range can still be examined). Main thread.
-		void DoExamine()
+		bool DoExamine(bool a_respectCrosshair)
 		{
 			// If the game's crosshair is on something else (an NPC, a door...), that activation wins.
-			if (auto* pick = RE::CrosshairPickData::GetSingleton()) {
+			if (auto* pick = RE::CrosshairPickData::GetSingleton(); pick && a_respectCrosshair) {
 				if (auto target = pick->target.get(); target && FrameIndex(target->GetBaseObject()) < 0) {
-					return;
+					spdlog::info("Examine: crosshair is on {:08X} ({}), leaving it to the game", target->GetFormID(),
+						target->GetBaseObject() ? target->GetBaseObject()->GetName() : "?");
+					return false;
 				}
 			}
 			auto* camera = RE::PlayerCamera::GetSingleton();
 			if (!camera || !camera->cameraRoot) {
-				return;
+				spdlog::warn("Examine: no camera");
+				return false;
 			}
 			const auto&  xf = camera->cameraRoot->world;
 			const auto   from = xf.translate;
@@ -658,11 +661,15 @@ namespace Wall
 			}
 			RE::TESObjectREFR* best = nullptr;
 			float              bestT = 1e30f;
+			float              nearestMiss = 1e30f;
+			RE::FormID         nearestID = 0;
+			int                checked = 0;
 			for (const auto& [id, shape] : frames) {
 				auto* ref = RE::TESForm::LookupByID<RE::TESObjectREFR>(id);
 				if (!ref || ref->IsDisabled() || !ref->Get3D()) {
 					continue;
 				}
+				++checked;
 				// Centre of the canvas: a little in front of the frame's back.
 				const float z = ref->GetAngleZ();
 				auto        c = ref->GetPosition();
@@ -677,14 +684,22 @@ namespace Wall
 				const float        miss = std::sqrt(off.x * off.x + off.y * off.y + off.z * off.z);
 				const auto&        sh = Frames::kShapes[std::clamp(shape, 0, Frames::kShapeCount - 1)];
 				const float        radius = 0.5f * (std::min)(sh.canvasW, sh.canvasH) * (ref->GetReferenceRuntimeData().refScale / 100.0f) + 4.0f;
+				if (miss < nearestMiss) {
+					nearestMiss = miss;
+					nearestID = id;
+				}
 				if (miss <= radius && t < bestT) {
 					best = ref;
 					bestT = t;
 				}
 			}
 			if (best) {
-				OpenFrameMenu(best);
+				spdlog::info("Examine: frame {:08X} at {:.0f} units", best->GetFormID(), bestT);
+				return OpenFrameMenu(best);
 			}
+			spdlog::info("Examine: no frame in the line of sight ({} loaded frame(s) checked; nearest {:08X} missed by {:.0f} units)",
+				checked, nearestID, nearestMiss < 1e29f ? nearestMiss : -1.0f);
+			return false;
 		}
 
 		// Diffuse texture currently on a frame's canvas ("" if the 3D isn't there).
@@ -1073,9 +1088,13 @@ namespace Wall
 		Notify(fmt::format("Frame: {}", name));
 	}
 
-	void RequestExamine()
+	void RequestExamine(std::function<void()> a_otherwise)
 	{
-		SKSE::GetTaskInterface()->AddTask([] { DoExamine(); });
+		SKSE::GetTaskInterface()->AddTask([a_otherwise] {
+			if (!DoExamine(!a_otherwise) && a_otherwise) {
+				a_otherwise();
+			}
+		});
 	}
 
 	void RequestPlace()
