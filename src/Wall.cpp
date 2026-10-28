@@ -16,7 +16,7 @@ namespace Wall
 		constexpr std::uint32_t    kRecordPreview = 'PREV';
 		constexpr const char*      kPlacedDir = "textures\\FolderGallery\\Placed\\";
 		constexpr float            kDefaultOffset = 0.3f;
-		constexpr float            kMinOffset = -4.0f;
+		constexpr float            kMinOffset = -40.0f;  // wall collision often sits well in front of the visible wall
 		constexpr float            kMaxOffset = 12.0f;
 		constexpr float            kMinScale = 0.3f;
 		constexpr float            kMaxScale = 3.0f;
@@ -1061,6 +1061,12 @@ namespace Wall
 			QueueApply(ref->GetFormID());  // moving rebuilds the 3D; the watchdog also catches it
 			spdlog::info("Frame {:08X} nudged {:+.2f} from the wall", ref->GetFormID(), a_distance);
 		});
+	}
+
+	int FrameCount()
+	{
+		std::lock_guard lk(g_mtx);
+		return static_cast<int>(g_frames.size());
 	}
 
 	void SetFrameScale(RE::ObjectRefHandle a_ref, float a_scale)

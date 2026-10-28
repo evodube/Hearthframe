@@ -1,6 +1,7 @@
 #include "Gallery.h"
 
 #include "Frames.h"
+#include "Ui.h"
 #include "Wall.h"
 
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -17,7 +18,7 @@ namespace Gallery
 {
 	namespace
 	{
-		constexpr int kThumbMaxDim = 320;
+		constexpr int kThumbMaxDim = 480;  // sharp enough for 320 px thumbnails on a 4K screen
 		constexpr int kFullMaxDim = 4096;
 		constexpr int kTexturesPerFrame = 6;
 
@@ -38,6 +39,7 @@ namespace Gallery
 			int           thumbSize = 200;
 			float         fontSize = 18.0f;
 			float         mouseSpeed = 1.0f;
+			float         uiScale = 1.0f;  // extra UI scale on top of the automatic screen-height scale
 		} cfg;
 
 		DebugSwitches dbg;
@@ -154,6 +156,7 @@ namespace Gallery
 		ID3D11DeviceContext* g_ctx = nullptr;
 		float                g_mouseX = 0.0f, g_mouseY = 0.0f;
 		std::chrono::steady_clock::time_point g_lastFrame{};
+		float                g_displayH = 1080.0f;
 
 		std::string ToUtf8(const fs::path& p)
 		{
@@ -507,9 +510,9 @@ namespace Gallery
 							if (code == kDIK_Escape || code == cfg.toggleScan) {
 								Wall::CancelPlacement();
 							} else if (code == kDIK_Up) {
-								Wall::AdjustOffset(+1);  // away from the wall
+								Wall::AdjustOffset(g_shiftDown ? +8 : +1);  // away from the wall (Shift: 2 units)
 							} else if (code == kDIK_Down) {
-								Wall::AdjustOffset(-1);  // closer / into the wall
+								Wall::AdjustOffset(g_shiftDown ? -8 : -1);  // closer / into the wall (Shift: 2 units)
 							}
 						}
 						continue;
@@ -629,10 +632,15 @@ namespace Gallery
 			io.IniFilename = nullptr;
 			io.LogFilename = nullptr;
 			io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
-			ImFontConfig fc;
-			fc.SizePixels = cfg.fontSize;
-			io.Fonts->AddFontDefault(&fc);
-			ImGui::StyleColorsDark();
+
+			// Georgia ships with Windows; falls back to ImGui's built-in font if missing.
+			char windir[MAX_PATH]{};
+			::GetWindowsDirectoryA(windir, MAX_PATH);
+			const std::string fonts = std::string(windir) + "\\Fonts\\";
+			const std::string regular = fonts + "georgia.ttf", bold = fonts + "georgiab.ttf", italic = fonts + "georgiai.ttf";
+			const float       scale = (std::max)(1.0f, g_displayH / 1080.0f) * cfg.uiScale;
+			Theme::Setup(scale, cfg.fontSize, { regular.c_str(), bold.c_str(), italic.c_str() });
+			spdlog::info("UI: scale {:.2f}, font {} ({})", scale, cfg.fontSize, Theme::Body() && Theme::Body()->ConfigData ? "Georgia" : "default");
 			if (!ImGui_ImplDX11_Init(g_dev, g_ctx)) {
 				return false;
 			}
@@ -641,77 +649,11 @@ namespace Gallery
 		}
 
 		// ---------------------------------------------------------------- UI
-		ImVec2 Fit(float w, float h, float maxW, float maxH)
-		{
-			if (w <= 0 || h <= 0) {
-				return { maxW, maxH };
-			}
-			const float s = (std::min)(maxW / w, maxH / h);
-			return { w * s, h * s };
-		}
-
 		void OpenViewer(int i)
 		{
 			viewing = i;
 			ReleaseFull();
 			Submit({ g_gen.load(), i, items[i].path, kFullMaxDim, true }, true);
-		}
-
-		void DrawGrid()
-		{
-			const float cell = static_cast<float>(cfg.thumbSize);
-			const auto& style = ImGui::GetStyle();
-			const float labelH = ImGui::GetTextLineHeight() + 2.0f;
-			ImGui::BeginChild("grid");
-			const float  availW = ImGui::GetContentRegionAvail().x;
-			const int    cols = (std::max)(1, static_cast<int>(availW / (cell + style.ItemSpacing.x)));
-			const ImVec2 cellSize(cell, cell + labelH);
-
-			for (int i = 0; i < static_cast<int>(items.size()); ++i) {
-				if (i % cols != 0) {
-					ImGui::SameLine();
-				}
-				ImGui::PushID(i);
-				ImGui::BeginGroup();
-				if (ImGui::IsRectVisible(cellSize)) {
-					Item& it = items[i];
-					if (it.state == State::None) {
-						it.state = State::Queued;
-						Submit({ g_gen.load(), i, it.path, kThumbMaxDim, false });
-					}
-					const ImVec2 p = ImGui::GetCursorScreenPos();
-					const bool   clicked = ImGui::InvisibleButton("##pic", ImVec2(cell, cell));
-					const bool   hovered = ImGui::IsItemHovered();
-					auto*        dl = ImGui::GetWindowDrawList();
-					dl->AddRectFilled(p, p + ImVec2(cell, cell), IM_COL32(25, 25, 25, 255));
-					if (it.srv) {
-						const ImVec2 sz = Fit(static_cast<float>(it.w), static_cast<float>(it.h), cell, cell);
-						const ImVec2 a = p + (ImVec2(cell, cell) - sz) * 0.5f;
-						dl->AddImage(reinterpret_cast<ImTextureID>(it.srv), a, a + sz);
-					} else {
-						dl->AddText(p + ImVec2(8, 8), IM_COL32(160, 160, 160, 255), it.state == State::Failed ? "Can't read" : "Loading...");
-					}
-					if (hovered) {
-						dl->AddRect(p, p + ImVec2(cell, cell), IM_COL32(255, 200, 80, 255), 0.0f, 0, 2.0f);
-						ImGui::SetTooltip("%s\n%d x %d", it.name.c_str(), it.origW, it.origH);
-					}
-					dl->PushClipRect(p + ImVec2(0, cell), p + ImVec2(cell, cell + labelH), true);
-					dl->AddText(p + ImVec2(2, cell + 1), IM_COL32(220, 220, 220, 255), it.name.c_str());
-					dl->PopClipRect();
-					ImGui::Dummy(ImVec2(cell, labelH));
-					if (clicked) {
-						OpenViewer(i);
-					}
-				} else {
-					ImGui::Dummy(cellSize);
-				}
-				ImGui::EndGroup();
-				ImGui::PopID();
-			}
-			if (items.empty()) {
-				ImGui::TextWrapped("No pictures found. Put .png, .jpg, .bmp or .tga files in:\n%s", ToUtf8(cfg.folder).c_str());
-			}
-			ImGui::EndChild();
 		}
 
 		void Step(int delta)
@@ -722,181 +664,132 @@ namespace Gallery
 			}
 		}
 
-		void DrawViewer()
-		{
-			if (ImGui::Button("< Back") || ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
-				viewing = -1;
-				ReleaseFull();
-				return;
-			}
-			ImGui::SameLine();
-			if (ImGui::Button("Prev") || ImGui::IsKeyPressed(ImGuiKey_LeftArrow)) {
-				Step(-1);
-				return;
-			}
-			ImGui::SameLine();
-			if (ImGui::Button("Next") || ImGui::IsKeyPressed(ImGuiKey_RightArrow)) {
-				Step(+1);
-				return;
-			}
-			const Item& it = items[viewing];
-			ImGui::SameLine();
-			if (g_replaceTarget) {
-				if (ImGui::Button("Use for this frame")) {
-					Wall::ChangePicture(*g_replaceTarget, it.path);
-					ApplyOpen(false);
-					return;
-				}
-			} else if (ImGui::Button("Hang on wall...")) {
-				g_hangShape = Wall::AutoShape(it.origW, it.origH);
-				g_hangStyle = std::clamp(Wall::GetSettings().defaultStyle, 0, Frames::kStyleCount - 1);
-				ImGui::OpenPopup("Hang on wall");
-			}
-			ImGui::SameLine();
-			ImGui::Text("%s   %d x %d   (%d / %d)", it.name.c_str(), it.origW, it.origH, viewing + 1, static_cast<int>(items.size()));
-
-			bool startHanging = false;
-			ImGui::SetNextWindowPos(ImGui::GetIO().DisplaySize * 0.5f, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-			if (ImGui::BeginPopupModal("Hang on wall", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-				ImGui::TextUnformatted("Frame");
-				ImGui::SetNextItemWidth(260.0f);
-				ImGui::Combo("##style", &g_hangStyle, Frames::kStyles, Frames::kStyleCount);
-				ImGui::TextUnformatted("Shape");
-				ImGui::SetNextItemWidth(260.0f);
-				if (ImGui::BeginCombo("##shape", Frames::kShapes[g_hangShape].name)) {
-					for (int i = 0; i < Frames::kShapeCount; ++i) {
-						const auto& sh = Frames::kShapes[i];
-						const auto  label = fmt::format("{}{}", sh.name, i == Wall::AutoShape(it.origW, it.origH) ? "  (best fit)" : "");
-						if (ImGui::Selectable(label.c_str(), i == g_hangShape)) {
-							g_hangShape = i;
-						}
-					}
-					ImGui::EndCombo();
-				}
-				const auto [tw, th] = Wall::TextureSize(g_hangShape);
-				ImGui::TextDisabled("The picture is cropped to fill the frame (%d x %d texture).", tw, th);
-				ImGui::Spacing();
-				if (ImGui::Button("Hang it", ImVec2(120, 0))) {
-					startHanging = true;
-					ImGui::CloseCurrentPopup();
-				}
-				ImGui::SameLine();
-				if (ImGui::Button("Cancel", ImVec2(120, 0))) {
-					ImGui::CloseCurrentPopup();
-				}
-				ImGui::EndPopup();
-			}
-			if (startHanging) {
-				Wall::BeginPlacement(it.path, g_hangShape, g_hangStyle);
-				ApplyOpen(false);
-				return;
-			}
-
-			const ImVec2              avail = ImGui::GetContentRegionAvail();
-			ID3D11ShaderResourceView* tex = fullSrv ? fullSrv : it.srv;
-			if (tex) {
-				const int    tw = fullSrv ? fullW : it.w;
-				const int    th = fullSrv ? fullH : it.h;
-				const ImVec2 sz = Fit(static_cast<float>(tw), static_cast<float>(th), avail.x, avail.y);
-				ImGui::SetCursorPos(ImGui::GetCursorPos() + (avail - sz) * 0.5f);
-				ImGui::Image(reinterpret_cast<ImTextureID>(tex), sz);
-			} else if (fullFailed) {
-				ImGui::TextUnformatted("This picture could not be read.");
-			} else {
-				ImGui::TextUnformatted("Loading...");
-			}
-		}
-
 		void DrawFrameMenu()
 		{
-			auto& io = ImGui::GetIO();
-			if (ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
+			auto&          f = g_frameMenu;
+			int            pct = static_cast<int>(std::lround(f.scale * 100.0f));
+			Ui::FrameModel fm;
+			fm.style = Frames::kStyles[f.style];
+			fm.shape = Frames::kShapes[f.shape].name;
+			fm.picture = f.picture.c_str();
+			fm.sizePct = &pct;
+			fm.canMove = !f.picture.empty();
+			switch (Ui::DrawFrameMenu(fm)) {
+			case Ui::FrameAction::Close:
 				ApplyOpen(false);
-				return;
-			}
-			ImGui::SetNextWindowPos(io.DisplaySize * 0.5f, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-			bool open = true;
-			if (ImGui::Begin("Framed picture", &open, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse)) {
-				const auto& f = g_frameMenu;
-				ImGui::Text("%s frame, %s", Frames::kStyles[f.style], Frames::kShapes[f.shape].name);
-				ImGui::Text("Picture: %s", f.picture.empty() ? "(none - placed some other way)" : f.picture.c_str());
-				ImGui::Spacing();
-				int pct = static_cast<int>(std::lround(g_frameMenu.scale * 100.0f));
-				ImGui::SetNextItemWidth(200.0f);
-				if (ImGui::SliderInt("Size", &pct, 30, 300, "%d%%")) {
-					g_frameMenu.scale = pct / 100.0f;
-					Wall::SetFrameScale(f.ref, g_frameMenu.scale);
-				}
-				ImGui::TextUnformatted("Distance from wall");
-				if (ImGui::Button("Closer", ImVec2(97, 0))) {
-					Wall::NudgeFrame(f.ref, -0.5f);
-				}
-				ImGui::SameLine(0.0f, 6.0f);
-				if (ImGui::Button("Further", ImVec2(97, 0))) {
-					Wall::NudgeFrame(f.ref, +0.5f);
-				}
-				const ImVec2 bs(200, 0);
-				if (ImGui::Button("Change picture...", bs)) {
-					g_replaceTarget = f.ref;
-					g_uiMode = UiMode::Gallery;
-					g_needScan = true;
-					viewing = -1;
-				}
-				ImGui::BeginDisabled(f.picture.empty());
-				if (ImGui::Button("Move", bs)) {
-					Wall::BeginPlacement(f.picturePath, f.shape, f.style, f.ref, f.scale);
-					open = false;
-				}
-				ImGui::EndDisabled();
-				if (ImGui::Button("Take down", bs)) {
-					Wall::RemoveFrame(f.ref);
-					open = false;
-				}
-				if (ImGui::Button("Close", bs)) {
-					open = false;
-				}
-			}
-			ImGui::End();
-			if (!open) {
+				break;
+			case Ui::FrameAction::SizeChanged:
+				f.scale = pct / 100.0f;
+				Wall::SetFrameScale(f.ref, f.scale);
+				break;
+			case Ui::FrameAction::Closer:
+				Wall::NudgeFrame(f.ref, -0.5f);
+				break;
+			case Ui::FrameAction::Further:
+				Wall::NudgeFrame(f.ref, +0.5f);
+				break;
+			case Ui::FrameAction::ChangePicture:
+				g_replaceTarget = f.ref;
+				g_uiMode = UiMode::Gallery;
+				g_needScan = true;
+				viewing = -1;
+				break;
+			case Ui::FrameAction::Move:
+				Wall::BeginPlacement(f.picturePath, f.shape, f.style, f.ref, f.scale);
 				ApplyOpen(false);
+				break;
+			case Ui::FrameAction::TakeDown:
+				Wall::RemoveFrame(f.ref);
+				ApplyOpen(false);
+				break;
+			default:
+				break;
 			}
 		}
 
 		void DrawUI()
 		{
-			auto& io = ImGui::GetIO();
 			if (g_uiMode == UiMode::FrameMenu) {
 				DrawFrameMenu();
 				return;
 			}
-			if (viewing < 0 && ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
-				ApplyOpen(false);
-				return;
+			const auto       folder = ToUtf8(cfg.folder);
+			Ui::GalleryModel gm;
+			gm.folder = folder.c_str();
+			gm.framesOnWalls = Wall::FrameCount();
+			gm.replaceMode = g_replaceTarget.has_value();
+			gm.thumbSize = &cfg.thumbSize;
+			gm.pictures.reserve(items.size());
+			for (const auto& it : items) {
+				Ui::Picture p;
+				p.name = it.name.c_str();
+				p.thumb = it.srv ? reinterpret_cast<ImTextureID>(it.srv) : 0;
+				p.thumbW = it.w;
+				p.thumbH = it.h;
+				p.origW = it.origW;
+				p.origH = it.origH;
+				p.failed = it.state == State::Failed;
+				gm.pictures.push_back(p);
 			}
-			ImGui::SetNextWindowSize(ImVec2(io.DisplaySize.x * 0.8f, io.DisplaySize.y * 0.8f), ImGuiCond_FirstUseEver);
-			ImGui::SetNextWindowPos(io.DisplaySize * 0.5f, ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
-			bool open = true;
-			if (ImGui::Begin("Folder Gallery", &open)) {
-				if (g_replaceTarget) {
-					ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.3f, 1.0f), "Choosing a new picture for the frame - open a picture and click \"Use for this frame\".");
+			gm.requestThumb = [](int i) {
+				Item& it = items[i];
+				if (it.state == State::None) {
+					it.state = State::Queued;
+					Submit({ g_gen.load(), i, it.path, kThumbMaxDim, false });
 				}
-				if (viewing < 0) {
-					if (ImGui::Button("Refresh")) {
-						g_needScan = true;
-					}
-					ImGui::SameLine();
-					ImGui::SetNextItemWidth(200.0f);
-					ImGui::SliderInt("Size", &cfg.thumbSize, 100, kThumbMaxDim);
-					ImGui::SameLine();
-					ImGui::Text("%d picture(s) in %s", static_cast<int>(items.size()), ToUtf8(cfg.folder).c_str());
-					DrawGrid();
-				} else {
-					DrawViewer();
+			};
+			gm.viewing = viewing;
+			gm.full = fullSrv ? reinterpret_cast<ImTextureID>(fullSrv) : 0;
+			gm.fullW = fullW;
+			gm.fullH = fullH;
+			gm.fullFailed = fullFailed;
+			static std::vector<const char*> shapeNames = [] {
+				std::vector<const char*> v;
+				for (const auto& sh : Frames::kShapes) {
+					v.push_back(sh.name);
 				}
-			}
-			ImGui::End();
-			if (!open) {
+				return v;
+			}();
+			gm.styles = Frames::kStyles;
+			gm.styleCount = Frames::kStyleCount;
+			gm.shapes = shapeNames.data();
+			gm.shapeCount = Frames::kShapeCount;
+			gm.hangStyle = &g_hangStyle;
+			gm.hangShape = &g_hangShape;
+			gm.bestShape = [](int w, int h) { return Wall::AutoShape(w, h); };
+			gm.textureSize = [](int shape) { return Wall::TextureSize(shape); };
+
+			const auto r = Ui::DrawGallery(gm);
+			switch (r.action) {
+			case Ui::GalleryAction::Close:
 				ApplyOpen(false);
+				break;
+			case Ui::GalleryAction::Refresh:
+				g_needScan = true;
+				break;
+			case Ui::GalleryAction::Open:
+				OpenViewer(r.index);
+				break;
+			case Ui::GalleryAction::Back:
+				viewing = -1;
+				ReleaseFull();
+				break;
+			case Ui::GalleryAction::Prev:
+				Step(-1);
+				break;
+			case Ui::GalleryAction::Next:
+				Step(+1);
+				break;
+			case Ui::GalleryAction::Hang:
+				Wall::BeginPlacement(items[r.index].path, g_hangShape, g_hangStyle);
+				ApplyOpen(false);
+				break;
+			case Ui::GalleryAction::UseForFrame:
+				Wall::ChangePicture(*g_replaceTarget, items[r.index].path);
+				ApplyOpen(false);
+				break;
+			default:
+				break;
 			}
 		}
 	}  // namespace
@@ -920,11 +813,14 @@ namespace Gallery
 		cfg.thumbSize = std::clamp(static_cast<int>(::GetPrivateProfileIntA("General", "iThumbnailSize", 200, ini.c_str())), 100, kThumbMaxDim);
 		::GetPrivateProfileStringA("General", "fFontSize", "18", buf, MAX_PATH, ini.c_str());
 		cfg.fontSize = std::clamp(static_cast<float>(std::atof(buf)), 8.0f, 64.0f);
+		::GetPrivateProfileStringA("General", "fUIScale", "1.0", buf, MAX_PATH, ini.c_str());
+		cfg.uiScale = std::clamp(static_cast<float>(std::atof(buf)), 0.5f, 3.0f);
 		::GetPrivateProfileStringA("General", "fMouseSpeed", "1.0", buf, MAX_PATH, ini.c_str());
 		cfg.mouseSpeed = std::clamp(static_cast<float>(std::atof(buf)), 0.1f, 10.0f);
 		auto& wall = Wall::GetSettings();
 		wall.resolution = std::clamp(static_cast<int>(::GetPrivateProfileIntA("Frames", "iPictureResolution", 1024, ini.c_str())), 256, 4096);
 		wall.defaultStyle = std::clamp(static_cast<int>(::GetPrivateProfileIntA("Frames", "iDefaultFrameStyle", 2, ini.c_str())), 0, Frames::kStyleCount - 1);
+		g_hangStyle = wall.defaultStyle;
 		// fPlaceReach replaces the old fMaxPlaceDistance (default went from 400 to 2000)
 		::GetPrivateProfileStringA("Frames", "fPlaceReach", "2000", buf, MAX_PATH, ini.c_str());
 		wall.maxDistance = std::clamp(static_cast<float>(std::atof(buf)), 100.0f, 10000.0f);
@@ -995,6 +891,7 @@ namespace Gallery
 				g_workerStarted = true;
 				std::thread(WorkerMain).detach();
 			}
+			g_displayH = static_cast<float>(desc.BufferDesc.Height);
 			spdlog::info("Attached to the game's swap chain ({}x{})", desc.BufferDesc.Width, desc.BufferDesc.Height);
 		}
 		if (sc != g_sc) {

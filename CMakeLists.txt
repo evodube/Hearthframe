@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(FolderGallery VERSION 0.3.2 LANGUAGES CXX)
+project(FolderGallery VERSION 0.4.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -20,7 +20,7 @@ find_path(STB_INCLUDE_DIRS "stb_image.h" REQUIRED)
 add_commonlibsse_plugin(${PROJECT_NAME}
     AUTHOR "evodube"
     USE_ADDRESS_LIBRARY
-    SOURCES src/main.cpp src/Gallery.cpp src/Wall.cpp src/Dds.cpp)
+    SOURCES src/main.cpp src/Gallery.cpp src/Wall.cpp src/Dds.cpp src/Theme.cpp src/Ui.cpp)
 
 target_include_directories(${PROJECT_NAME} PRIVATE src ${STB_INCLUDE_DIRS})
 target_precompile_headers(${PROJECT_NAME} PRIVATE src/PCH.h)

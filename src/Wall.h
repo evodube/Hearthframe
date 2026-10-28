@@ -45,6 +45,7 @@ namespace Wall
 	};
 	// Set by the activation sink when the player activates one of our frames; taken by the UI.
 	std::optional<FrameInfo> TakeActivatedFrame();
+	int                      FrameCount();  // pictures hanging in this save
 	// Opens the menu of the hung picture being looked at. Activate: no fallback (and the game's crosshair
 	// target wins). Gallery key: a_otherwise runs when no picture is being looked at.
 	void                     RequestExamine(std::function<void()> a_otherwise = {});
