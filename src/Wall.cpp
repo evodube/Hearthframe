@@ -14,6 +14,7 @@ namespace Wall
 		constexpr std::uint32_t    kRecordFrames = 'FRMS';
 		constexpr std::uint32_t    kRecordVersion = 1;
 		constexpr std::uint32_t    kRecordPreview = 'PREV';
+		constexpr std::uint32_t    kRecordRemovals = 'DELS';
 		constexpr const char*      kPlacedDir = "textures\\FolderGallery\\Placed\\";
 		constexpr float            kDefaultOffset = 0.3f;
 		constexpr float            kMinOffset = -40.0f;  // wall collision often sits well in front of the visible wall
@@ -302,6 +303,59 @@ namespace Wall
 				spdlog::info("{:08X}: picture applied ({})", a_id, dds);
 			}
 			return true;
+		}
+
+		// Frames taken down while their cell wasn't loaded: the game only really removes a reference once
+		// its 3D exists, so they are hidden now and deleted for good the next time their cell loads.
+		std::unordered_set<RE::FormID> g_removals;  // guarded by g_mtx
+
+		// Takes a frame out of the world. Main thread.
+		void DeleteFrameRef(RE::TESObjectREFR* a_ref)
+		{
+			if (!a_ref) {
+				return;
+			}
+			const auto id = a_ref->GetFormID();
+			const bool loaded = a_ref->Get3D() != nullptr;
+			a_ref->Disable();
+			if (!loaded) {
+				// keep it from showing when its cell loads, and remember to finish the job then
+				a_ref->formFlags |= RE::TESForm::RecordFlags::kDisabled;
+				a_ref->AddChange(1u << 0);  // CHANGE_FORM_FLAGS - kept in the save
+				std::lock_guard lk(g_mtx);
+				g_removals.insert(id);
+				spdlog::info("Frame {:08X} is in an unloaded cell: hidden now, removed when its cell loads", id);
+			}
+			a_ref->SetDelete(true);
+		}
+
+		// Finishes removals whose frame has loaded since. Main thread.
+		void ProcessRemovals()
+		{
+			std::vector<RE::FormID> ids;
+			{
+				std::lock_guard lk(g_mtx);
+				if (g_removals.empty()) {
+					return;
+				}
+				ids.assign(g_removals.begin(), g_removals.end());
+			}
+			for (const auto id : ids) {
+				auto* ref = RE::TESForm::LookupByID<RE::TESObjectREFR>(id);
+				if (!ref) {
+					std::lock_guard lk(g_mtx);
+					g_removals.erase(id);  // already gone
+					continue;
+				}
+				if (!ref->Get3D()) {
+					continue;  // still unloaded
+				}
+				ref->Disable();
+				ref->SetDelete(true);
+				std::lock_guard lk(g_mtx);
+				g_removals.erase(id);
+				spdlog::info("Frame {:08X}: removal finished now that its cell is loaded", id);
+			}
 		}
 
 		// Frames whose picture still has to be put on once their 3D exists (main thread only).
@@ -861,13 +915,17 @@ namespace Wall
 			{
 				if (a_event && a_event->attached && a_event->reference) {
 					const auto id = a_event->reference->GetFormID();
-					bool       ours = false;
+					bool       ours = false, remove = false;
 					{
 						std::lock_guard lk(g_mtx);
 						ours = g_frames.contains(id);
+						remove = g_removals.contains(id);
 					}
 					if (ours) {
 						SKSE::GetTaskInterface()->AddTask([id] { QueueApply(id, 300); });
+					}
+					if (remove) {
+						SKSE::GetTaskInterface()->AddTask([] { ProcessRemovals(); });
 					}
 				}
 				return RE::BSEventNotifyControl::kContinue;
@@ -921,12 +979,19 @@ namespace Wall
 			if (auto preview = g_preview.get(); preview && a_intfc->OpenRecord(kRecordPreview, 1)) {
 				a_intfc->WriteRecordData(preview->GetFormID());
 			}
+			if (!g_removals.empty() && a_intfc->OpenRecord(kRecordRemovals, 1)) {
+				a_intfc->WriteRecordData(static_cast<std::uint32_t>(g_removals.size()));
+				for (const auto id : g_removals) {
+					a_intfc->WriteRecordData(id);
+				}
+			}
 		}
 
 		void OnRevert(SKSE::SerializationInterface*)
 		{
 			std::lock_guard lk(g_mtx);
 			g_frames.clear();
+			g_removals.clear();
 			g_activated.reset();
 		}
 
@@ -1009,6 +1074,18 @@ namespace Wall
 					RE::FormID oldID = 0, newID = 0;
 					if (a_intfc->ReadRecordData(oldID) == sizeof(oldID) && a_intfc->ResolveFormID(oldID, newID)) {
 						g_stalePreview = newID;
+					}
+					continue;
+				}
+				if (type == kRecordRemovals) {
+					std::uint32_t n = 0;
+					a_intfc->ReadRecordData(n);
+					std::lock_guard lk(g_mtx);
+					for (std::uint32_t i = 0; i < n; ++i) {
+						RE::FormID oldID = 0, newID = 0;
+						if (a_intfc->ReadRecordData(oldID) == sizeof(oldID) && a_intfc->ResolveFormID(oldID, newID)) {
+							g_removals.insert(newID);
+						}
 					}
 					continue;
 				}
@@ -1123,6 +1200,7 @@ namespace Wall
 	void OnGameLoaded()
 	{
 		g_preview = {};
+		ProcessRemovals();
 		if (g_stalePreview) {
 			if (auto* stale = RE::TESForm::LookupByID<RE::TESObjectREFR>(g_stalePreview)) {
 				spdlog::info("Removing preview frame {:08X} left in the save", g_stalePreview);
@@ -1189,6 +1267,7 @@ namespace Wall
 				static int ticks = 0;
 				if (++ticks % 30 == 0) {
 					Watchdog();
+					ProcessRemovals();
 				}
 			});
 		}
@@ -1410,8 +1489,7 @@ namespace Wall
 				g_frames.erase(ref->GetFormID());
 			}
 			spdlog::info("Removed frame {:08X}", ref->GetFormID());
-			ref->Disable();
-			ref->SetDelete(true);
+			DeleteFrameRef(ref.get());
 			CleanupUnusedTextures();
 			Notify(Note::Confirm, "Picture taken down");
 		});
