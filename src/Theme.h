@@ -51,6 +51,9 @@ namespace Theme
 	ImU32 Muted();       // "loading..." text
 	ImU32 ViewerBg();    // behind the full-size picture
 	ImU32 Warning();
+	ImU32 Parchment();   // panel colour
+	ImU32 TabIdle();     // folder tab, not selected
+	ImU32 TabHover();
 	float Rounding();    // corner radius for cards (pixels)
 	// Thumbnail card: CardBack before the picture, CardFront after it; CardInset = padding around the picture.
 	float CardInset();
@@ -69,10 +72,11 @@ namespace Theme
 	{
 		const char* label;
 		const char* value;
+		const char* tooltip = nullptr;  // set = the box is a button (Header reports it in a_clickedStat)
 	};
 	// Gold small-caps title + italic subtitle on the left, stat boxes and a close box on the right.
 	// Returns true when the close box was clicked.
-	bool Header(const char* a_title, const char* a_subtitle, const Stat* a_stats = nullptr, int a_statCount = 0, bool a_closeBox = true);
+	bool Header(const char* a_title, const char* a_subtitle, const Stat* a_stats = nullptr, int a_statCount = 0, bool a_closeBox = true, int* a_clickedStat = nullptr);
 
 	// ---- parchment panel (child window); text inside is dark ink
 	bool BeginParchment(const char* a_id, const ImVec2& a_size, bool a_scroll = false, bool a_autoHeight = false);

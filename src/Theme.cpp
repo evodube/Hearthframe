@@ -482,6 +482,9 @@ namespace Theme
 	ImU32   Cream() { return L->text; }
 	ImU32   Well() { return L->well; }
 	ImU32   CardBorder() { return L->cardBorder; }
+	ImU32   Parchment() { return L->panel; }
+	ImU32   TabIdle() { return L->boxBg; }
+	ImU32   TabHover() { return L->closeHov; }
 	ImU32   CardShadow() { return L->shadow; }
 	ImU32   Muted() { return L->muted; }
 	ImU32   ViewerBg() { return L->viewerBg; }
@@ -879,7 +882,7 @@ namespace Theme
 		ImGui::End();
 	}
 
-	bool Header(const char* a_title, const char* a_subtitle, const Stat* a_stats, int a_statCount, bool a_closeBox)
+	bool Header(const char* a_title, const char* a_subtitle, const Stat* a_stats, int a_statCount, bool a_closeBox, int* a_clickedStat)
 	{
 		auto*        dl = ImGui::GetWindowDrawList();
 		const ImVec2 p = ImGui::GetCursorScreenPos();
@@ -935,12 +938,29 @@ namespace Theme
 		for (int i = a_statCount - 1; i >= 0; --i) {
 			const float  bw = S(130.0f), bh = box;
 			const ImVec2 sa(right - bw, p.y + S(4.0f)), sb(right, p.y + S(4.0f) + bh);
-			dl->AddRectFilled(sa, sb, L->fx.bevel ? Dark(L->boxBg, 0.25f) : L->boxBg, r);
+			bool         hov = false;
+			if (a_stats[i].tooltip) {
+				ImGui::SetCursorScreenPos(sa);
+				ImGui::PushID(i);
+				if (ImGui::InvisibleButton("##stat", sb - sa) && a_clickedStat) {
+					*a_clickedStat = i;
+				}
+				ImGui::PopID();
+				hov = ImGui::IsItemHovered();
+				if (hov) {
+					ImGui::SetTooltip("%s", a_stats[i].tooltip);
+				}
+			}
+			dl->AddRectFilled(sa, sb, hov ? L->closeHov : (L->fx.bevel ? Dark(L->boxBg, 0.25f) : L->boxBg), r);
 			if (L->fx.bevel) {  // sunken counter
 				dl->AddRectFilledMultiColor(sa, ImVec2(sb.x, sa.y + S(12.0f)), IM_COL32(0, 0, 0, 90), IM_COL32(0, 0, 0, 90), IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 0));
 				Bevel(dl, sa, sb, S(1.5f), true, 40, 140);
 			}
-			dl->AddRect(sa, sb, L->accentDim, r, 0, S(1.2f));
+			dl->AddRect(sa, sb, hov ? L->accent : L->accentDim, r, 0, S(1.2f));
+			if (a_stats[i].tooltip) {  // small arrow: this box opens something
+				const ImVec2 c(sb.x - S(10.0f), sb.y - S(10.0f));
+				dl->AddTriangleFilled(c + ImVec2(-S(4), -S(4)), c + ImVec2(S(4), -S(4)), c + ImVec2(0, S(3)), hov ? L->accent : L->accentDim);
+			}
 			const float lw = HeadingWidth(g_body, S(13.0f), a_stats[i].label);
 			Heading(dl, g_body, S(13.0f), ImVec2((sa.x + sb.x - lw) * 0.5f, sa.y + S(6.0f)), L->textDim, a_stats[i].label);
 			const float vs = S(26.0f);

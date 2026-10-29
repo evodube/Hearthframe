@@ -21,6 +21,22 @@ namespace Ui
 		const char* error = "";  // reason, shown in the tooltip when failed
 	};
 
+	// A picture hanging somewhere in this save (Placed pictures window).
+	struct PlacedPicture
+	{
+		const char* name = "";       // picture file name
+		ImTextureID thumb = 0;       // 0 while loading / missing
+		int         thumbW = 0, thumbH = 0;
+		bool        missing = false;  // picture file not found
+		const char* frame = "";      // frame name
+		const char* shape = "";
+		float       canvasAspect = 1.0f;
+		int         sizePct = 100;
+		const char* place = "";      // cell, e.g. "Breezehome"
+		const char* region = "";     // location / hold, e.g. "Whiterun" ("" if none)
+		bool        interior = true;  // interior cell (else an exterior worldspace cell)
+	};
+
 	struct GalleryModel
 	{
 		const char*                 folder = "";
@@ -29,14 +45,19 @@ namespace Ui
 		bool                        replaceMode = false;  // choosing a new picture for an existing frame
 		const char*                 notice = nullptr;     // shown above the grid when set
 		int*                        thumbSize = nullptr;  // in/out, 100..320 (ThumbSize when let go)
-		bool*                       thumbFill = nullptr;  // in/out: true = crop to fill the card, false = whole picture (ThumbFill)
 		int*                        uiScalePct = nullptr; // in/out, 60..200 (applied on release -> UiScale)
+		std::vector<PlacedPicture>  placed;                // filled after OpenPlaced
+		bool                        placedLoading = false;
 		std::function<void(int)>    requestThumb;          // called for visible pictures without a thumbnail
 
 		// search (pictures holds only the matches; totalPictures counts all)
 		char* search = nullptr;
 		int   searchSize = 0;
 		int   totalPictures = 0;
+
+		// folders: 0 = all, 1.. = one per frame shape (Landscape, Square, Portrait); pictures holds only that folder
+		int* shapeFolder = nullptr; // in/out
+		int  folderCounts[4] = {};  // pictures in each (after the search)
 
 		// rename (the box edits the name without its extension)
 		char*       renameBuf = nullptr;
@@ -77,7 +98,8 @@ namespace Ui
 		Rename,       // index, new name (without extension) in renameBuf
 		RenameOpened, // index: the rename box opened (clear the old error)
 		ThumbSize,    // *thumbSize changed (slider let go)
-		ThumbFill,    // *thumbFill changed
+		OpenPlaced,   // the On walls box was clicked: fill placed
+		DeletePlaced, // index into placed: take that picture down
 	};
 
 	struct GalleryResult

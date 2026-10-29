@@ -65,6 +65,23 @@ namespace Wall
 	// Set by the activation sink when the player activates one of our frames; taken by the UI.
 	std::optional<FrameInfo> TakeActivatedFrame();
 	int                      FrameCount();  // pictures hanging in this save
+
+	// Every picture hanging in this save, for the Placed pictures window (sorted by location).
+	struct PlacedInfo
+	{
+		RE::ObjectRefHandle   ref;
+		std::filesystem::path picture;
+		std::string           name;      // file name (UTF-8)
+		int                   shape = 0;
+		int                   style = 0;
+		float                 scale = 1.0f;
+		std::string           place;     // cell / location name
+		std::string           region;    // parent location, hold or worldspace ("" if none)
+		bool                  interior = true;
+	};
+	// Gathers the list on the main thread; TakePlacedList returns it once ready (any thread).
+	void                                   RequestPlacedList();
+	std::optional<std::vector<PlacedInfo>> TakePlacedList();
 	// Opens the menu of the hung picture being looked at. Activate: no fallback (and the game's crosshair
 	// target wins). Gallery key: a_otherwise runs when no picture is being looked at.
 	void                     RequestExamine(std::function<void()> a_otherwise = {});

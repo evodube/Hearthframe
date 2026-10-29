@@ -1242,6 +1242,79 @@ namespace Wall
 		});
 	}
 
+	namespace
+	{
+		std::mutex                             g_placedMtx;
+		std::optional<std::vector<PlacedInfo>> g_placedList;
+
+		std::string NameOf(const RE::TESForm* a_form)
+		{
+			if (!a_form) {
+				return {};
+			}
+			const char* n = a_form->GetName();
+			return n ? std::string(n) : std::string();
+		}
+	}
+
+	void RequestPlacedList()
+	{
+		SKSE::GetTaskInterface()->AddTask([] {
+			std::vector<std::pair<RE::FormID, Entry>> frames;
+			{
+				std::lock_guard lk(g_mtx);
+				for (const auto& [id, e] : g_frames) {
+					frames.emplace_back(id, e);
+				}
+			}
+			std::vector<PlacedInfo> out;
+			for (const auto& [id, e] : frames) {
+				auto* ref = RE::TESForm::LookupByID<RE::TESObjectREFR>(id);
+				if (!ref || ref->IsDisabled() || ref->IsMarkedForDeletion()) {
+					continue;
+				}
+				PlacedInfo info;
+				info.ref = ref->GetHandle();
+				const int idx = FrameIndex(ref->GetBaseObject());
+				info.shape = idx >= 0 ? Frames::ShapeOf(idx) : e.shape;
+				info.style = idx >= 0 ? Frames::StyleOf(idx) : e.style;
+				info.scale = ref->GetReferenceRuntimeData().refScale / 100.0f;
+				info.picture = FromUtf8(e.picture);
+				info.name = ToUtf8(info.picture.filename());
+				auto* cell = ref->GetParentCell();
+				auto* loc = ref->GetCurrentLocation();
+				if (!loc && cell) {
+					loc = cell->GetLocation();
+				}
+				info.interior = cell ? cell->IsInteriorCell() : false;
+				const std::string cellName = NameOf(cell), locName = NameOf(loc);
+				const std::string parentName = loc ? NameOf(loc->parentLoc) : std::string();
+				const std::string worldName = NameOf(ref->GetWorldspace());
+				if (info.interior) {
+					info.place = !cellName.empty() ? cellName : (!locName.empty() ? locName : "Unnamed interior");
+					info.region = !locName.empty() && locName != info.place ? locName : parentName;
+				} else {
+					info.place = !locName.empty() ? locName : (!cellName.empty() ? cellName : (!worldName.empty() ? worldName : "Wilderness"));
+					info.region = !parentName.empty() ? parentName : (worldName != info.place ? worldName : std::string());
+				}
+				out.push_back(std::move(info));
+			}
+			std::sort(out.begin(), out.end(), [](const PlacedInfo& a, const PlacedInfo& b) {
+				return std::tie(a.region, a.place, a.name) < std::tie(b.region, b.place, b.name);
+			});
+			std::lock_guard lk(g_placedMtx);
+			g_placedList = std::move(out);
+		});
+	}
+
+	std::optional<std::vector<PlacedInfo>> TakePlacedList()
+	{
+		std::lock_guard lk(g_placedMtx);
+		auto            out = std::move(g_placedList);
+		g_placedList.reset();
+		return out;
+	}
+
 	int FrameCount()
 	{
 		std::lock_guard lk(g_mtx);

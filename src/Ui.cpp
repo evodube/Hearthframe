@@ -4,6 +4,7 @@
 #include <cfloat>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 #include <string>
 
 namespace Ui
@@ -51,6 +52,35 @@ namespace Ui
 			return !ImGui::GetIO().WantTextInput && !ImGui::IsAnyItemActive() && !ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId);
 		}
 
+		// A file-folder tab: drawn folder icon + label. The selected one is parchment-coloured, joining the panel.
+		bool FolderTab(const char* a_label, bool a_selected, float a_h)
+		{
+			const ImVec2 ts = ImGui::CalcTextSize(a_label);
+			const float  icon = S(22.0f), padX = S(16.0f);
+			const ImVec2 size(padX * 2 + icon + S(10.0f) + ts.x, a_h);
+			const ImVec2 p = ImGui::GetCursorScreenPos();
+			const bool   pressed = ImGui::InvisibleButton("##tab", size);
+			const bool   hov = ImGui::IsItemHovered();
+			auto*        dl = ImGui::GetWindowDrawList();
+			const ImVec2 a = p, b = p + ImVec2(size.x, size.y + (a_selected ? S(10.0f) : 0.0f));  // selected runs into the panel
+			const float  r = S(6.0f);
+			const ImU32  bg = a_selected ? Theme::Parchment() : (hov ? Theme::TabHover() : Theme::TabIdle());
+			dl->AddRectFilled(a, b, bg, r, ImDrawFlags_RoundCornersTop);
+			dl->AddRect(a, b + ImVec2(0, a_selected ? 2.0f : 0.0f), a_selected ? Theme::GoldDim() : Theme::CardBorder(), r, ImDrawFlags_RoundCornersTop, S(1.2f));
+			if (!a_selected) {
+				dl->AddLine(ImVec2(a.x + 1, a.y + 1.5f), ImVec2(b.x - 1, a.y + 1.5f), IM_COL32(255, 245, 220, 40), 1.0f);
+			}
+			// folder glyph
+			const ImU32  ink = a_selected ? Theme::Ink() : Theme::Cream();
+			const ImVec2 f0(a.x + padX, a.y + (a_h - icon * 0.78f) * 0.5f);
+			const ImVec2 f1 = f0 + ImVec2(icon, icon * 0.78f);
+			dl->AddRectFilled(f0, ImVec2(f0.x + icon * 0.45f, f0.y + icon * 0.22f), ink, S(2.0f), ImDrawFlags_RoundCornersTop);
+			dl->AddRectFilled(ImVec2(f0.x, f0.y + icon * 0.14f), f1, ink, S(2.5f));
+			dl->AddRectFilled(ImVec2(f0.x + S(2), f0.y + icon * 0.30f), f1 - ImVec2(S(2), S(2)), a_selected ? Theme::Gold() : Theme::GoldDim(), S(2.0f));
+			dl->AddText(ImVec2(f1.x + S(10.0f), a.y + (a_h - ts.y) * 0.5f), a_selected ? Theme::Ink() : Theme::Cream(), a_label);
+			return pressed;
+		}
+
 		int  g_renameIndex = -1;
 		bool g_openRename = false;
 		bool g_renameFocus = false;
@@ -89,24 +119,6 @@ namespace Ui
 			if (ImGui::IsItemDeactivatedAfterEdit()) {
 				r.action = GalleryAction::ThumbSize;
 			}
-			if (m.thumbFill) {
-				ImGui::SameLine(0.0f, S(12.0f));
-				if (Theme::Chip("Fill", *m.thumbFill) && !*m.thumbFill) {
-					*m.thumbFill = true;
-					r.action = GalleryAction::ThumbFill;
-				}
-				if (ImGui::IsItemHovered()) {
-					ImGui::SetTooltip("Pictures fill their cards (edges trimmed in the grid only)");
-				}
-				ImGui::SameLine(0.0f, S(6.0f));
-				if (Theme::Chip("Fit", !*m.thumbFill) && *m.thumbFill) {
-					*m.thumbFill = false;
-					r.action = GalleryAction::ThumbFill;
-				}
-				if (ImGui::IsItemHovered()) {
-					ImGui::SetTooltip("Whole pictures, with empty space around them");
-				}
-			}
 			if (m.uiScalePct) {
 				ImGui::SameLine(0.0f, S(24.0f));
 				ImGui::AlignTextToFramePadding();
@@ -122,12 +134,31 @@ namespace Ui
 			}
 			ImGui::Spacing();
 
+			if (m.shapeFolder && m.shapes) {
+				// folder tabs: All / one per shape
+				const float tabH = S(46.0f);
+				for (int f = 0; f <= m.shapeCount && f < 4; ++f) {
+					char label[64];
+					std::snprintf(label, sizeof label, "%s  %d", f == 0 ? "All" : m.shapes[f - 1], m.folderCounts[f]);
+					if (f > 0) {
+						ImGui::SameLine(0.0f, S(8.0f));
+					}
+					ImGui::PushID(500 + f);
+					if (FolderTab(label, *m.shapeFolder == f, tabH)) {
+						*m.shapeFolder = f;
+					}
+					ImGui::PopID();
+				}
+			}
 			if (Theme::BeginParchment("##grid", ImVec2(0, 0), true)) {
 				if (m.notice) {
 					Theme::TextColoredWrapped(Theme::Warning(), m.notice);
 					ImGui::Dummy(ImVec2(0, S(8.0f)));
 				}
-				if (m.pictures.empty() && m.search && m.search[0] && m.totalPictures > 0) {
+				if (m.pictures.empty() && m.shapeFolder && *m.shapeFolder > 0 && m.totalPictures > 0 && !(m.search && m.search[0])) {
+					Theme::SectionLabel("Empty folder");
+					ImGui::TextWrapped("No %s pictures in this folder.", m.shapes[*m.shapeFolder - 1]);
+				} else if (m.pictures.empty() && m.search && m.search[0] && m.totalPictures > 0) {
 					Theme::SectionLabel("No matches");
 					ImGui::TextWrapped("No picture name contains \"%s\".", m.search);
 				} else if (m.pictures.empty()) {
@@ -170,37 +201,31 @@ namespace Ui
 						}
 						ImGui::EndPopup();
 					}
-					// picture well
-					const ImVec2 a = p, b = p + ImVec2(cell, cell);
+					// card shaped like the picture (fitted inside the square slot, on the bottom), so no empty bars
+					const float  in = Theme::CardInset();
+					ImVec2       cardSz(cell, cell);
+					const float  pw = static_cast<float>(pic.thumb ? pic.thumbW : pic.origW);
+					const float  ph = static_cast<float>(pic.thumb ? pic.thumbH : pic.origH);
+					if (pw > 0 && ph > 0) {
+						const ImVec2 inner = Fit(pw, ph, cell - 2 * in, cell - 2 * in);
+						cardSz = inner + ImVec2(2 * in, 2 * in);
+					}
+					const ImVec2 a = p + ImVec2((cell - cardSz.x) * 0.5f, cell - cardSz.y), b = a + cardSz;  // sits on its name
 					Theme::CardBack(dl, a, b, hovered);
-					if (pic.thumb && m.thumbFill && *m.thumbFill && pic.thumbW > 0 && pic.thumbH > 0) {
-						// crop to a square, centred
-						const float  in = Theme::CardInset() * 0.5f;
-						const float  ia = static_cast<float>(pic.thumbW) / pic.thumbH;
-						ImVec2       uv0(0, 0), uv1(1, 1);
-						if (ia > 1.0f) {
-							uv0.x = (1.0f - 1.0f / ia) * 0.5f;
-							uv1.x = 1.0f - uv0.x;
-						} else {
-							uv0.y = (1.0f - ia) * 0.5f;
-							uv1.y = 1.0f - uv0.y;
-						}
-						dl->AddImage(pic.thumb, a + ImVec2(in, in), b - ImVec2(in, in), uv0, uv1);
-					} else if (pic.thumb) {
-						const ImVec2 sz = Fit(static_cast<float>(pic.thumbW), static_cast<float>(pic.thumbH), cell - 2 * Theme::CardInset(), cell - 2 * Theme::CardInset());
-						const ImVec2 ia = a + (ImVec2(cell, cell) - sz) * 0.5f;
-						dl->AddImage(pic.thumb, ia, ia + sz);
+					if (pic.thumb) {
+						dl->AddImage(pic.thumb, a + ImVec2(in, in), b - ImVec2(in, in));
 					} else {
 						Centered(Theme::Italic(), Theme::Italic()->FontSize, Theme::Muted(), a, b, pic.failed ? "can't read" : "loading...");
 					}
 					Theme::CardFront(dl, a, b, hovered);
 					// caption
-					dl->PushClipRect(ImVec2(a.x, b.y), ImVec2(b.x, b.y + labelH), true);
-					dl->AddText(ImVec2(a.x + S(2), b.y + S(6)), Theme::Ink(), pic.name);
+					const ImVec2 slotA = p, slotB = p + ImVec2(cell, cell);
+					dl->PushClipRect(ImVec2(slotA.x, slotB.y), ImVec2(slotB.x, slotB.y + labelH), true);
+					dl->AddText(ImVec2(slotA.x + S(2), slotB.y + S(6)), Theme::Ink(), pic.name);
 					char dims[64];
 					std::snprintf(dims, sizeof dims, "%d %s %d", pic.origW, kTimes, pic.origH);
 					if (pic.origW > 0) {
-						dl->AddText(Theme::Italic(), Theme::Italic()->FontSize, ImVec2(a.x + S(2), b.y + S(6) + ImGui::GetTextLineHeight()), Theme::InkSoft(), dims);
+						dl->AddText(Theme::Italic(), Theme::Italic()->FontSize, ImVec2(slotA.x + S(2), slotB.y + S(6) + ImGui::GetTextLineHeight()), Theme::InkSoft(), dims);
 					}
 					dl->PopClipRect();
 					if (hovered) {
@@ -405,6 +430,121 @@ namespace Ui
 			return r;
 		}
 
+		// ------------------------------------------------------------------ placed pictures
+		void MapPin(ImDrawList* a_dl, const ImVec2& a_pos, float a_size, ImU32 a_col)
+		{
+			const float  r = a_size * 0.36f;
+			const ImVec2 c(a_pos.x + a_size * 0.5f, a_pos.y + r + a_size * 0.04f);
+			a_dl->AddTriangleFilled(ImVec2(c.x - r * 0.86f, c.y + r * 0.5f), ImVec2(c.x + r * 0.86f, c.y + r * 0.5f), ImVec2(c.x, a_pos.y + a_size), a_col);
+			a_dl->AddCircleFilled(c, r, a_col, 20);
+			a_dl->AddCircleFilled(c, r * 0.42f, Theme::Parchment(), 16);
+		}
+
+		int g_confirmDelete = -1;  // placed picture whose Delete was clicked once
+
+		void DrawPlacedDialog(GalleryModel& m, GalleryResult& r)
+		{
+			const ImVec2 center = ImGui::GetIO().DisplaySize * 0.5f;
+			ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+			ImGui::SetNextWindowSize(ImVec2((std::min)(S(1180.0f), ImGui::GetIO().DisplaySize.x * 0.95f), 0));
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(S(30.0f), S(26.0f)));
+			const bool open = ImGui::BeginPopupModal("Placed pictures", nullptr,
+				ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar);
+			ImGui::PopStyleVar();
+			if (!open) {
+				g_confirmDelete = -1;
+				return;
+			}
+			Theme::DrawChrome();
+			char sub[96];
+			std::snprintf(sub, sizeof sub, "%d picture%s on walls in this save", static_cast<int>(m.placed.size()), m.placed.size() == 1 ? "" : "s");
+			if (Theme::Header("Placed Pictures", sub) || ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
+				ImGui::CloseCurrentPopup();
+			}
+			const float listH = (std::min)(S(640.0f), ImGui::GetIO().DisplaySize.y * 0.66f);
+			if (Theme::BeginParchment("##placed", ImVec2(0, listH), true)) {
+				if (m.placedLoading) {
+					Theme::TextItalic("Looking for your pictures...");
+				} else if (m.placed.empty()) {
+					Theme::SectionLabel("Nothing on the walls yet");
+					ImGui::TextWrapped("Open a picture and use Hang on wall to put it up.");
+				}
+				auto*       dl = ImGui::GetWindowDrawList();
+				const float cell = S(230.0f);
+				const float lh = ImGui::GetTextLineHeight(), ih = Theme::Italic()->FontSize;
+				const float textH = S(8.0f) + lh + S(2.0f) + ih + S(10.0f);
+				const float btnH = S(40.0f);
+				const float gap = S(22.0f);
+				const float availW = ImGui::GetContentRegionAvail().x;
+				const int   cols = (std::max)(1, static_cast<int>((availW + gap) / (cell + gap)));
+				for (int i = 0; i < static_cast<int>(m.placed.size()); ++i) {
+					const auto& pp = m.placed[i];
+					if (i % cols != 0) {
+						ImGui::SameLine(0.0f, gap);
+					} else if (i > 0) {
+						ImGui::Dummy(ImVec2(0, S(6.0f)));
+					}
+					ImGui::PushID(i);
+					ImGui::BeginGroup();
+					const ImVec2 p = ImGui::GetCursorScreenPos();
+					// picture, shaped like its frame, sitting on its name
+					const float  in = Theme::CardInset();
+					const float  ar = pp.canvasAspect > 0.0f ? pp.canvasAspect : 1.0f;
+					ImVec2       inner = Fit(ar, 1.0f, cell - 2 * in, cell - 2 * in);
+					const ImVec2 cardSz = inner + ImVec2(2 * in, 2 * in);
+					const ImVec2 a = p + ImVec2((cell - cardSz.x) * 0.5f, cell - cardSz.y), b = a + cardSz;
+					Theme::CardBack(dl, a, b, false);
+					if (pp.thumb && pp.thumbW > 0 && pp.thumbH > 0) {
+						const float ia = static_cast<float>(pp.thumbW) / pp.thumbH;
+						ImVec2      uv0(0, 0), uv1(1, 1);
+						if (ia > ar) {
+							uv0.x = (1.0f - ar / ia) * 0.5f;
+							uv1.x = 1.0f - uv0.x;
+						} else {
+							uv0.y = (1.0f - ia / ar) * 0.5f;
+							uv1.y = 1.0f - uv0.y;
+						}
+						dl->AddImage(pp.thumb, a + ImVec2(in, in), b - ImVec2(in, in), uv0, uv1);
+					} else {
+						Centered(Theme::Italic(), ih, Theme::Muted(), a, b, pp.missing ? "picture file not found" : "loading...");
+					}
+					Theme::CardFront(dl, a, b, false);
+					ImGui::Dummy(ImVec2(cell, cell));
+					// name + where
+					const ImVec2 t = ImGui::GetCursorScreenPos();
+					dl->PushClipRect(t, t + ImVec2(cell, textH), true);
+					dl->AddText(ImVec2(t.x + S(2.0f), t.y + S(6.0f)), Theme::Ink(), pp.name);
+					const std::string where = std::string(pp.place) + (*pp.region && std::strcmp(pp.region, pp.place) != 0 ? std::string(", ") + pp.region : std::string()) +
+					                          (pp.interior ? "  (interior)" : "  (exterior)");
+					MapPin(dl, ImVec2(t.x + S(2.0f), t.y + S(8.0f) + lh + S(2.0f)), ih, Theme::InkSoft());
+					dl->AddText(Theme::Italic(), ih, ImVec2(t.x + S(4.0f) + ih, t.y + S(8.0f) + lh), Theme::InkSoft(), where.c_str());
+					dl->PopClipRect();
+					ImGui::Dummy(ImVec2(cell, textH));
+					if (ImGui::IsMouseHoveringRect(t, t + ImVec2(cell, textH))) {
+						ImGui::SetTooltip("%s\n%s\n%s frame  %s  %s  %s  %d%%", pp.name, where.c_str(), pp.frame, kDot, pp.shape, kDot, pp.sizePct);
+					}
+					// delete, with a second click to confirm
+					const bool confirming = g_confirmDelete == i;
+					if (Theme::Button(confirming ? "Click again to delete" : "Delete", ImVec2(cell, btnH), confirming)) {
+						if (confirming) {
+							r = { GalleryAction::DeletePlaced, i };
+							g_confirmDelete = -1;
+						} else {
+							g_confirmDelete = i;
+						}
+					}
+					ImGui::EndGroup();
+					ImGui::PopID();
+				}
+			}
+			Theme::EndParchment();
+			ImGui::Dummy(ImVec2(0, S(6.0f)));
+			if (Theme::Button("Done", ImVec2(ImGui::GetContentRegionAvail().x, S(52.0f)), true)) {
+				ImGui::CloseCurrentPopup();
+			}
+			ImGui::EndPopup();
+		}
+
 		// ------------------------------------------------------------------ rename
 		void DrawRenameDialog(GalleryModel& m, GalleryResult& r)
 		{
@@ -518,10 +658,15 @@ namespace Ui
 				std::snprintf(pics, sizeof pics, "%d", static_cast<int>(m.pictures.size()));
 			}
 			std::snprintf(walls, sizeof walls, "%d", m.framesOnWalls);
-			const Theme::Stat stats[] = { { "Pictures", pics }, { "On walls", walls } };
+			const Theme::Stat stats[] = { { "Pictures", pics }, { "On walls", walls, "Show the pictures hanging in this save, and where" } };
 			const char*       subtitle = m.replaceMode ? "Choose a new picture for the frame" : m.folder;
-			if (Theme::Header("Folder Gallery", subtitle, stats, 2)) {
+			int               clicked = -1;
+			if (Theme::Header("Folder Gallery", subtitle, stats, 2, true, &clicked)) {
 				r.action = GalleryAction::Close;
+			}
+			if (clicked == 1) {
+				r.action = GalleryAction::OpenPlaced;
+				ImGui::OpenPopup("Placed pictures");
 			}
 			if (m.viewing >= 0 && m.viewing < static_cast<int>(m.pictures.size())) {
 				const auto v = DrawViewer(m);
@@ -554,6 +699,7 @@ namespace Ui
 				}
 			}
 			DrawRenameDialog(m, r);
+			DrawPlacedDialog(m, r);
 		}
 		Theme::EndWindow();
 		return r;

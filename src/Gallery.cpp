@@ -42,7 +42,6 @@ namespace Gallery
 			float         mouseSpeed = 1.0f;
 			float         uiScale = 1.0f;  // extra UI scale on top of the automatic screen-height scale
 			bool          placementInfo = true;  // size / distance / frame line at the bottom while hanging
-			bool          thumbFill = true;      // thumbnails fill their cards (cropped) instead of fitting inside
 		} cfg;
 
 		DebugSwitches dbg;
@@ -90,6 +89,7 @@ namespace Gallery
 			int      maxDim = 0;
 			bool     full = false;
 			bool     preview = false;  // frame menu picture (not part of the list)
+			bool     placed = false;   // Placed pictures window thumbnail
 		};
 
 		struct Result
@@ -98,6 +98,7 @@ namespace Gallery
 			int                       index = 0;
 			bool                      full = false;
 			bool                      preview = false;
+			bool                      placed = false;
 			fs::path                  path;
 			bool                      ok = false;
 			bool                      notFound = false;
@@ -161,6 +162,18 @@ namespace Gallery
 		float                              g_pendingUiScale = -1.0f;  // applied between frames (fonts are rebuilt)
 		std::string                        g_iniPath;
 		char                               g_search[128]{};
+		int                                g_shapeFolder = 0;  // gallery folder tab: 0 all, 1 + frame shape
+		int                                g_folderCounts[4]{};
+		// Placed pictures window
+		std::vector<Wall::PlacedInfo>      g_placed;
+		bool                               g_placedLoading = false;
+		struct ExtraThumb
+		{
+			ID3D11ShaderResourceView* srv = nullptr;
+			int                       w = 0, h = 0;
+			bool                      loading = false, missing = false;
+		};
+		std::map<fs::path, ExtraThumb>     g_placedThumbs;  // pictures not in the gallery list (other folders, renamed...)
 		char                               g_renameBuf[256]{};
 		std::string                        g_renameError;
 		bool                               g_renameDone = false;
@@ -262,7 +275,7 @@ namespace Gallery
 					job = std::move(S.jobs.front());
 					S.jobs.pop_front();
 				}
-				if (job.gen != g_gen.load() && !job.preview) {
+				if (job.gen != g_gen.load() && !job.preview && !job.placed) {
 					continue;  // the list was refreshed while this was waiting
 				}
 				Result r;
@@ -270,6 +283,7 @@ namespace Gallery
 				r.index = job.index;
 				r.full = job.full;
 				r.preview = job.preview;
+				r.placed = job.placed;
 				r.path = job.path;
 				try {
 					r.ok = LoadPixels(job.path, job.maxDim, r);
@@ -343,6 +357,18 @@ namespace Gallery
 					}
 					r = std::move(S.results.front());
 					S.results.pop_front();
+				}
+				if (r.placed) {
+					if (auto it = g_placedThumbs.find(r.path); it != g_placedThumbs.end()) {
+						if (r.ok && !it->second.srv) {
+							it->second.srv = MakeSRV(r.px.data(), r.w, r.h);
+							it->second.w = r.w;
+							it->second.h = r.h;
+						}
+						it->second.loading = false;
+						it->second.missing = !it->second.srv;
+					}
+					continue;
 				}
 				if (r.preview) {
 					if (r.path == g_previewPath) {
@@ -445,6 +471,11 @@ namespace Gallery
 				Item it;
 				it.path = path;
 				it.name = ToUtf8(path.filename());
+				int w = 0, h = 0, comp = 0;  // header only: sorts the picture into its folder right away
+				if (stbi_info(ToUtf8(path).c_str(), &w, &h, &comp)) {
+					it.origW = w;
+					it.origH = h;
+				}
 				items.push_back(std::move(it));
 			}
 			spdlog::info("Scanned {} -> {} picture(s)", ToUtf8(cfg.folder), items.size());
@@ -470,6 +501,13 @@ namespace Gallery
 				}
 				g_previewPath.clear();
 				g_previewLoading = g_previewMissing = false;
+				for (auto& [path, t] : g_placedThumbs) {
+					if (t.srv) {
+						t.srv->Release();
+					}
+				}
+				g_placedThumbs.clear();
+				g_placed.clear();
 			}
 
 			using UEFlag = RE::ControlMap::UEFlag;
@@ -866,15 +904,52 @@ namespace Gallery
 			return a_s;
 		}
 
+		// Folder tab a picture belongs to: 1 + its best frame shape (0 = size not known yet: All only).
+		int FolderOf(const Item& a_item)
+		{
+			return (a_item.origW > 0 && a_item.origH > 0) ? 1 + Wall::AutoShape(a_item.origW, a_item.origH) : 0;
+		}
+
 		void UpdateVisible()
 		{
 			visible.clear();
+			std::fill(std::begin(g_folderCounts), std::end(g_folderCounts), 0);
 			const std::string needle = LowerUtf8(g_search);
 			for (int i = 0; i < static_cast<int>(items.size()); ++i) {
-				if (needle.empty() || LowerUtf8(items[i].name).find(needle) != std::string::npos) {
+				if (!needle.empty() && LowerUtf8(items[i].name).find(needle) == std::string::npos) {
+					continue;
+				}
+				const int folder = FolderOf(items[i]);
+				++g_folderCounts[0];
+				if (folder > 0 && folder < 4) {
+					++g_folderCounts[folder];
+				}
+				if (g_shapeFolder == 0 || g_shapeFolder == folder) {
 					visible.push_back(i);
 				}
 			}
+		}
+
+		// Thumbnail for the Placed pictures window: the gallery's own when the picture is listed, else loaded.
+		const ExtraThumb* PlacedThumb(const fs::path& a_path, ExtraThumb& a_tmp)
+		{
+			for (auto& it : items) {
+				if (it.path == a_path) {
+					if (it.srv) {
+						a_tmp = { it.srv, it.w, it.h, false, false };
+						return &a_tmp;
+					}
+					break;
+				}
+			}
+			auto [it, added] = g_placedThumbs.try_emplace(a_path);
+			if (added) {
+				it->second.loading = true;
+				Job job{ g_gen.load(), -1, a_path, kThumbMaxDim, false };
+				job.placed = true;
+				Submit(std::move(job));
+			}
+			return &it->second;
 		}
 
 		// Renames a picture file (keeps its extension). Returns "" on success, else the reason.
@@ -1036,13 +1111,41 @@ namespace Gallery
 			                "Leave sFolder empty in FolderGallery.ini to use Documents\\My Games\\Skyrim Special Edition\\FolderGallery\\Pictures, where new pictures work right away." :
 			                nullptr;
 			gm.thumbSize = &cfg.thumbSize;
-			gm.thumbFill = &cfg.thumbFill;
 			static int uiPct = 100;
 			if (g_pendingUiScale < 0.0f && !ImGui::IsAnyItemActive()) {
 				uiPct = static_cast<int>(std::lround(cfg.uiScale * 100.0f));
 			}
 			gm.uiScalePct = &uiPct;
 			UpdateVisible();
+			gm.shapeFolder = &g_shapeFolder;
+			for (int i = 0; i < 4; ++i) {
+				gm.folderCounts[i] = g_folderCounts[i];
+			}
+			if (auto list = Wall::TakePlacedList()) {
+				g_placed = std::move(*list);
+				g_placedLoading = false;
+			}
+			gm.placedLoading = g_placedLoading;
+			std::vector<std::string> frameNames;  // keep the strings alive for this frame
+			frameNames.reserve(g_placed.size());
+			for (const auto& pi : g_placed) {
+				ExtraThumb        tmp;
+				const ExtraThumb* th = PlacedThumb(pi.picture, tmp);
+				Ui::PlacedPicture pp;
+				pp.name = pi.name.c_str();
+				pp.thumb = th->srv ? reinterpret_cast<ImTextureID>(th->srv) : 0;
+				pp.thumbW = th->w;
+				pp.thumbH = th->h;
+				pp.missing = th->missing;
+				pp.frame = Frames::StyleName(pi.shape, pi.style);
+				pp.shape = Frames::kShapes[Frames::ClampShape(pi.shape)].name;
+				pp.canvasAspect = Frames::kShapes[Frames::ClampShape(pi.shape)].canvasW / Frames::kShapes[Frames::ClampShape(pi.shape)].canvasH;
+				pp.sizePct = static_cast<int>(std::lround(pi.scale * 100.0f));
+				pp.place = pi.place.c_str();
+				pp.region = pi.region.c_str();
+				pp.interior = pi.interior;
+				gm.placed.push_back(pp);
+			}
 			gm.search = g_search;
 			gm.searchSize = static_cast<int>(sizeof g_search);
 			gm.totalPictures = static_cast<int>(items.size());
@@ -1100,15 +1203,29 @@ namespace Gallery
 			gm.bestShape = [](int w, int h) { return Wall::AutoShape(w, h); };
 			gm.textureSize = [](int shape) { return Wall::TextureSize(shape); };
 
+			const int  folderBefore = g_shapeFolder;
 			const auto r = Ui::DrawGallery(gm);
+			if (g_shapeFolder != folderBefore) {
+				::WritePrivateProfileStringA("General", "iGalleryFolder", std::to_string(g_shapeFolder).c_str(), g_iniPath.c_str());
+				viewing = -1;
+				ReleaseFull();
+			}
 			const int  item = (r.index >= 0 && r.index < static_cast<int>(visible.size())) ? visible[r.index] : -1;
 			switch (r.action) {
+			case Ui::GalleryAction::OpenPlaced:
+				g_placedLoading = true;
+				Wall::RequestPlacedList();
+				break;
+			case Ui::GalleryAction::DeletePlaced:
+				if (r.index >= 0 && r.index < static_cast<int>(g_placed.size())) {
+					Wall::RemoveFrame(g_placed[r.index].ref);
+					g_placed.erase(g_placed.begin() + r.index);  // gone from the list right away
+					Wall::RequestPlacedList();                   // and re-read once the game has removed it
+				}
+				break;
 			case Ui::GalleryAction::ThumbSize:
 				::WritePrivateProfileStringA("General", "iThumbnailSize", std::to_string(cfg.thumbSize).c_str(), g_iniPath.c_str());
 				spdlog::info("Thumbnail size {} saved", cfg.thumbSize);
-				break;
-			case Ui::GalleryAction::ThumbFill:
-				::WritePrivateProfileStringA("General", "bThumbnailFill", cfg.thumbFill ? "1" : "0", g_iniPath.c_str());
 				break;
 			case Ui::GalleryAction::RenameOpened:
 				g_renameError.clear();
@@ -1190,7 +1307,7 @@ namespace Gallery
 		}
 		cfg.recursive = ::GetPrivateProfileIntA("General", "bRecursive", 0, ini.c_str()) != 0;
 		cfg.thumbSize = std::clamp(static_cast<int>(::GetPrivateProfileIntA("General", "iThumbnailSize", 200, ini.c_str())), 100, 320);
-		cfg.thumbFill = ::GetPrivateProfileIntA("General", "bThumbnailFill", 1, ini.c_str()) != 0;
+		g_shapeFolder = std::clamp(static_cast<int>(::GetPrivateProfileIntA("General", "iGalleryFolder", 0, ini.c_str())), 0, Frames::kShapeCount);
 		::GetPrivateProfileStringA("General", "fFontSize", "18", buf, MAX_PATH, ini.c_str());
 		cfg.fontSize = std::clamp(static_cast<float>(std::atof(buf)), 8.0f, 64.0f);
 		::GetPrivateProfileStringA("General", "fUIScale", "1.0", buf, MAX_PATH, ini.c_str());
