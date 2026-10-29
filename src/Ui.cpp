@@ -86,6 +86,27 @@ namespace Ui
 			ImGui::TextDisabled("Thumbnails");
 			ImGui::SameLine();
 			Theme::SliderInt("##thumbs", m.thumbSize, 100, 320, "%d px", S(260.0f));
+			if (ImGui::IsItemDeactivatedAfterEdit()) {
+				r.action = GalleryAction::ThumbSize;
+			}
+			if (m.thumbFill) {
+				ImGui::SameLine(0.0f, S(12.0f));
+				if (Theme::Chip("Fill", *m.thumbFill) && !*m.thumbFill) {
+					*m.thumbFill = true;
+					r.action = GalleryAction::ThumbFill;
+				}
+				if (ImGui::IsItemHovered()) {
+					ImGui::SetTooltip("Pictures fill their cards (edges trimmed in the grid only)");
+				}
+				ImGui::SameLine(0.0f, S(6.0f));
+				if (Theme::Chip("Fit", !*m.thumbFill) && *m.thumbFill) {
+					*m.thumbFill = false;
+					r.action = GalleryAction::ThumbFill;
+				}
+				if (ImGui::IsItemHovered()) {
+					ImGui::SetTooltip("Whole pictures, with empty space around them");
+				}
+			}
 			if (m.uiScalePct) {
 				ImGui::SameLine(0.0f, S(24.0f));
 				ImGui::AlignTextToFramePadding();
@@ -152,7 +173,20 @@ namespace Ui
 					// picture well
 					const ImVec2 a = p, b = p + ImVec2(cell, cell);
 					Theme::CardBack(dl, a, b, hovered);
-					if (pic.thumb) {
+					if (pic.thumb && m.thumbFill && *m.thumbFill && pic.thumbW > 0 && pic.thumbH > 0) {
+						// crop to a square, centred
+						const float  in = Theme::CardInset() * 0.5f;
+						const float  ia = static_cast<float>(pic.thumbW) / pic.thumbH;
+						ImVec2       uv0(0, 0), uv1(1, 1);
+						if (ia > 1.0f) {
+							uv0.x = (1.0f - 1.0f / ia) * 0.5f;
+							uv1.x = 1.0f - uv0.x;
+						} else {
+							uv0.y = (1.0f - ia) * 0.5f;
+							uv1.y = 1.0f - uv0.y;
+						}
+						dl->AddImage(pic.thumb, a + ImVec2(in, in), b - ImVec2(in, in), uv0, uv1);
+					} else if (pic.thumb) {
 						const ImVec2 sz = Fit(static_cast<float>(pic.thumbW), static_cast<float>(pic.thumbH), cell - 2 * Theme::CardInset(), cell - 2 * Theme::CardInset());
 						const ImVec2 ia = a + (ImVec2(cell, cell) - sz) * 0.5f;
 						dl->AddImage(pic.thumb, ia, ia + sz);

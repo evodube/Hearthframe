@@ -28,7 +28,8 @@ namespace Ui
 		int                         framesOnWalls = 0;
 		bool                        replaceMode = false;  // choosing a new picture for an existing frame
 		const char*                 notice = nullptr;     // shown above the grid when set
-		int*                        thumbSize = nullptr;  // in/out, 100..320
+		int*                        thumbSize = nullptr;  // in/out, 100..320 (ThumbSize when let go)
+		bool*                       thumbFill = nullptr;  // in/out: true = crop to fill the card, false = whole picture (ThumbFill)
 		int*                        uiScalePct = nullptr; // in/out, 60..200 (applied on release -> UiScale)
 		std::function<void(int)>    requestThumb;          // called for visible pictures without a thumbnail
 
@@ -75,6 +76,8 @@ namespace Ui
 		UiScale,      // *uiScalePct changed
 		Rename,       // index, new name (without extension) in renameBuf
 		RenameOpened, // index: the rename box opened (clear the old error)
+		ThumbSize,    // *thumbSize changed (slider let go)
+		ThumbFill,    // *thumbFill changed
 	};
 
 	struct GalleryResult

@@ -42,6 +42,7 @@ namespace Gallery
 			float         mouseSpeed = 1.0f;
 			float         uiScale = 1.0f;  // extra UI scale on top of the automatic screen-height scale
 			bool          placementInfo = true;  // size / distance / frame line at the bottom while hanging
+			bool          thumbFill = true;      // thumbnails fill their cards (cropped) instead of fitting inside
 		} cfg;
 
 		DebugSwitches dbg;
@@ -1035,6 +1036,7 @@ namespace Gallery
 			                "Leave sFolder empty in FolderGallery.ini to use Documents\\My Games\\Skyrim Special Edition\\FolderGallery\\Pictures, where new pictures work right away." :
 			                nullptr;
 			gm.thumbSize = &cfg.thumbSize;
+			gm.thumbFill = &cfg.thumbFill;
 			static int uiPct = 100;
 			if (g_pendingUiScale < 0.0f && !ImGui::IsAnyItemActive()) {
 				uiPct = static_cast<int>(std::lround(cfg.uiScale * 100.0f));
@@ -1101,6 +1103,13 @@ namespace Gallery
 			const auto r = Ui::DrawGallery(gm);
 			const int  item = (r.index >= 0 && r.index < static_cast<int>(visible.size())) ? visible[r.index] : -1;
 			switch (r.action) {
+			case Ui::GalleryAction::ThumbSize:
+				::WritePrivateProfileStringA("General", "iThumbnailSize", std::to_string(cfg.thumbSize).c_str(), g_iniPath.c_str());
+				spdlog::info("Thumbnail size {} saved", cfg.thumbSize);
+				break;
+			case Ui::GalleryAction::ThumbFill:
+				::WritePrivateProfileStringA("General", "bThumbnailFill", cfg.thumbFill ? "1" : "0", g_iniPath.c_str());
+				break;
 			case Ui::GalleryAction::RenameOpened:
 				g_renameError.clear();
 				break;
@@ -1180,7 +1189,8 @@ namespace Gallery
 			cfg.toggleScan = 0x42;
 		}
 		cfg.recursive = ::GetPrivateProfileIntA("General", "bRecursive", 0, ini.c_str()) != 0;
-		cfg.thumbSize = std::clamp(static_cast<int>(::GetPrivateProfileIntA("General", "iThumbnailSize", 200, ini.c_str())), 100, kThumbMaxDim);
+		cfg.thumbSize = std::clamp(static_cast<int>(::GetPrivateProfileIntA("General", "iThumbnailSize", 200, ini.c_str())), 100, 320);
+		cfg.thumbFill = ::GetPrivateProfileIntA("General", "bThumbnailFill", 1, ini.c_str()) != 0;
 		::GetPrivateProfileStringA("General", "fFontSize", "18", buf, MAX_PATH, ini.c_str());
 		cfg.fontSize = std::clamp(static_cast<float>(std::atof(buf)), 8.0f, 64.0f);
 		::GetPrivateProfileStringA("General", "fUIScale", "1.0", buf, MAX_PATH, ini.c_str());
