@@ -133,7 +133,7 @@ namespace Ui
 					r.action = GalleryAction::UiScale;
 				}
 				if (ImGui::IsItemHovered()) {
-					ImGui::SetTooltip("Size of all Folder Gallery windows.\nCtrl + mouse wheel also works in any of them.");
+					ImGui::SetTooltip("Size of all Hearthframe windows.\nCtrl + mouse wheel also works in any of them.");
 				}
 			}
 			ImGui::Spacing();
@@ -672,7 +672,7 @@ namespace Ui
 		}
 		ImGui::SetNextWindowSizeConstraints(ImVec2((std::min)(S(760.0f), io.DisplaySize.x), (std::min)(S(520.0f), io.DisplaySize.y)), io.DisplaySize);
 		GalleryResult r;
-		const bool visible = Theme::BeginWindow("Folder Gallery", nullptr);
+		const bool visible = Theme::BeginWindow("Hearthframe", nullptr);
 		lastScale = scale;
 		lastSize = ImGui::GetWindowSize();
 		lastCenter = ImGui::GetWindowPos() + lastSize * 0.5f;
@@ -691,7 +691,7 @@ namespace Ui
 			if (!m.replaceMode && m.openFolderStyle > 0) {
 				Theme::SetSubtitleAction(m.openFolderStyle, &openFolder, "Open this folder in Windows Explorer");
 			}
-			if (Theme::Header("Folder Gallery", subtitle, stats, 2, true, &clicked)) {
+			if (Theme::Header("Hearthframe", subtitle, stats, 2, true, &clicked)) {
 				r.action = GalleryAction::Close;
 			}
 			if (clicked == 1) {
@@ -920,20 +920,20 @@ namespace Ui
 		SettingsResult r;
 		if (g_openSettings) {
 			g_openSettings = false;
-			ImGui::OpenPopup("Folder Gallery settings");
+			ImGui::OpenPopup("Hearthframe settings");
 		}
 		const ImVec2 center = ImGui::GetIO().DisplaySize * 0.5f;
 		ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
 		ImGui::SetNextWindowSize(ImVec2((std::min)(S(1000.0f), ImGui::GetIO().DisplaySize.x * 0.95f), 0));
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(S(30.0f), S(26.0f)));
-		const bool open = ImGui::BeginPopupModal("Folder Gallery settings", nullptr,
+		const bool open = ImGui::BeginPopupModal("Hearthframe settings", nullptr,
 			ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar);
 		ImGui::PopStyleVar();
 		if (!open) {
 			return r;
 		}
 		Theme::DrawChrome();
-		if (Theme::Header("Settings", "Saved to FolderGallery.ini") || (!m.waitingForKey && ImGui::IsKeyPressed(ImGuiKey_Escape, false))) {
+		if (Theme::Header("Settings", "Saved to Hearthframe.ini") || (!m.waitingForKey && ImGui::IsKeyPressed(ImGuiKey_Escape, false))) {
 			r.action = SettingsAction::Cancel;
 		}
 		// tabs
@@ -990,7 +990,7 @@ namespace Ui
 				Theme::SectionLabel("Look");
 				Row("Thumbnail size");
 				Theme::SliderInt("##thumb", &m.thumbSize, 100, 320, "%d px", ctl);
-				Row("Interface size", "Size of all Folder Gallery windows (Ctrl + wheel also works)");
+				Row("Interface size", "Size of all Hearthframe windows (Ctrl + wheel also works)");
 				Theme::SliderInt("##ui", &m.uiScalePct, 60, 200, "%d%%", ctl);
 				Row("Text size");
 				Theme::SliderInt("##font", &m.fontSize, 12, 32, "%d px", ctl);

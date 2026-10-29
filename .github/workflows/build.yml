@@ -1,4 +1,4 @@
-name: Build FolderGallery
+name: Build Hearthframe
 
 on:
   push:
@@ -90,33 +90,33 @@ jobs:
         shell: pwsh
         run: |
           $out = "package"
-          New-Item -ItemType Directory -Force -Path "$out/Data/SKSE/Plugins/FolderGallery/Pictures" | Out-Null
-          Copy-Item build/Release/FolderGallery.dll "$out/Data/SKSE/Plugins/"
-          Copy-Item FolderGallery.ini "$out/Data/SKSE/Plugins/"
-          Copy-Item FolderGallery.esp "$out/Data/"
+          New-Item -ItemType Directory -Force -Path "$out/Data/SKSE/Plugins/Hearthframe/Pictures" | Out-Null
+          Copy-Item build/Release/Hearthframe.dll "$out/Data/SKSE/Plugins/"
+          Copy-Item Hearthframe.ini "$out/Data/SKSE/Plugins/"
+          Copy-Item Hearthframe.esp "$out/Data/"
           Get-ChildItem -Recurse $out | Format-Table FullName, Length
 
       - name: Publish package to dist branch
         shell: pwsh
         run: |
           Copy-Item -Recurse package $env:RUNNER_TEMP/dist-out
-          if (Test-Path build/Release/FolderGallery.pdb) { Copy-Item build/Release/FolderGallery.pdb $env:RUNNER_TEMP/dist-out/ }
+          if (Test-Path build/Release/Hearthframe.pdb) { Copy-Item build/Release/Hearthframe.pdb $env:RUNNER_TEMP/dist-out/ }
           "run ${{ github.run_id }} sha ${{ github.sha }}" | Out-File $env:RUNNER_TEMP/dist-out/BUILD.txt
           cd $env:RUNNER_TEMP/dist-out
           git init -q -b dist
           git config user.name "ci"; git config user.email "ci@users.noreply.github.com"
-          git add -A; git commit -q -m "FolderGallery build ${{ github.run_id }}"
+          git add -A; git commit -q -m "Hearthframe build ${{ github.run_id }}"
           git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" dist
 
       - name: Upload package
         uses: actions/upload-artifact@v4
         with:
-          name: FolderGallery
+          name: Hearthframe
           path: package/
 
       - name: Upload PDB
         uses: actions/upload-artifact@v4
         with:
-          name: FolderGallery-pdb
-          path: build/Release/FolderGallery.pdb
+          name: Hearthframe-pdb
+          path: build/Release/Hearthframe.pdb
           if-no-files-found: ignore

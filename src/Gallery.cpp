@@ -40,7 +40,7 @@ namespace Gallery
 		// ---------------------------------------------------------------- settings
 		struct Settings
 		{
-			fs::path      folder{ L"Data\\SKSE\\Plugins\\FolderGallery\\Pictures" };
+			fs::path      folder{ L"Data\\SKSE\\Plugins\\Hearthframe\\Pictures" };
 			int           toggleKey = VK_F8;  // virtual-key code from the INI
 			std::uint32_t toggleScan = 0x42;  // same key as a DirectInput scan code
 			bool          recursive = false;
@@ -332,7 +332,7 @@ namespace Gallery
 		}
 
 		// ---------------------------------------------------------------- thumbnail cache on disk
-		// Documents\My Games\Skyrim Special Edition\FolderGallery\ThumbCache\<picture key>_<size>.jpg/.png
+		// Documents\My Games\Skyrim Special Edition\Hearthframe\ThumbCache\<picture key>_<size>.jpg/.png
 		// The key covers the picture's path, size and time, so an edited or renamed picture gets a new one.
 		fs::path g_cacheDir;
 
@@ -788,11 +788,11 @@ namespace Gallery
 			PWSTR    docs = nullptr;
 			fs::path out;
 			if (SUCCEEDED(::SHGetKnownFolderPath(FOLDERID_Documents, 0, nullptr, &docs)) && docs) {
-				out = fs::path(docs) / L"My Games" / L"Skyrim Special Edition" / L"FolderGallery" / L"Pictures";
+				out = fs::path(docs) / L"My Games" / L"Skyrim Special Edition" / L"Hearthframe" / L"Pictures";
 				::CoTaskMemFree(docs);
 			} else {
 				std::error_code ec;
-				out = fs::absolute(fs::path(L"Data\\SKSE\\Plugins\\FolderGallery\\Pictures"), ec);
+				out = fs::absolute(fs::path(L"Data\\SKSE\\Plugins\\Hearthframe\\Pictures"), ec);
 			}
 			return out;
 		}
@@ -1613,7 +1613,7 @@ namespace Gallery
 			gm.replaceMode = g_replaceTarget.has_value();
 			gm.notice = g_virtualFileHint ?
 			                "Some pictures can't be opened until the game restarts - this folder is inside Mod Organizer's virtual Data folder. "
-			                "Leave sFolder empty in FolderGallery.ini to use Documents\\My Games\\Skyrim Special Edition\\FolderGallery\\Pictures, where new pictures work right away." :
+			                "Leave sFolder empty in Hearthframe.ini to use Documents\\My Games\\Skyrim Special Edition\\Hearthframe\\Pictures, where new pictures work right away." :
 			                nullptr;
 			gm.thumbSize = &cfg.thumbSize;
 			static int uiPct = 100;
@@ -1844,14 +1844,14 @@ namespace Gallery
 	void LoadSettings()
 	{
 		std::error_code ec;
-		const auto      ini = fs::absolute(fs::path(L"Data\\SKSE\\Plugins\\FolderGallery.ini"), ec).string();
+		const auto      ini = fs::absolute(fs::path(L"Data\\SKSE\\Plugins\\Hearthframe.ini"), ec).string();
 		g_iniPath = ini;
 
 		char buf[MAX_PATH]{};
 		{
 			wchar_t wbuf[1024]{};
 			::GetPrivateProfileStringW(L"General", L"sFolder", L"", wbuf, 1024, fs::path(ini).c_str());
-			// empty = Documents\...\FolderGallery\Pictures: outside Data on purpose, Mod Organizer's virtual Data
+			// empty = Documents\...\Hearthframe\Pictures: outside Data on purpose, Mod Organizer's virtual Data
 			// folder can't open files added while the game runs
 			cfg.folder = wbuf[0] ? fs::absolute(fs::path(wbuf), ec) : DefaultPictureFolder();
 		}

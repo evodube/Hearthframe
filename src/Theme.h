@@ -1,6 +1,6 @@
 #pragma once
 
-// Folder Gallery look: dark charcoal window with thin gold lines and diamond corners, gold serif
+// Hearthframe look: dark charcoal window with thin gold lines and diamond corners, gold serif
 // small-caps headings, parchment panels with dark-brown text, outlined buttons and chips.
 // Depends only on Dear ImGui (no game headers), so it can be previewed outside the game.
 

@@ -1,6 +1,6 @@
 #pragma once
 
-// Folder Gallery screens (gallery grid, picture viewer, hang dialog, frame menu).
+// Hearthframe screens (gallery grid, picture viewer, hang dialog, frame menu).
 // Pure ImGui + Theme: data in, the user's action out. Used by the plugin and by the preview harness.
 
 #include "Theme.h"

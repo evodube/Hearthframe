@@ -9,7 +9,7 @@ namespace Wall
 		float maxDistance = 2000.0f;   // how far you can hang a picture
 		float examineReach = 600.0f;   // how far a hung picture can be examined with Activate
 		bool  cleanUp = true;          // delete converted textures no picture in the current save uses
-		std::string placedFolder = "FolderGallery\\Placed";  // under Data\textures: where hung pictures' textures go (fixed)
+		std::string placedFolder = "Hearthframe\\Placed";  // under Data\textures: where hung pictures' textures go (fixed)
 		// top-left game notifications ([Notifications] in the INI); everything is also written to the log
 		bool notifications = true;     // master switch
 		bool showSize = false;         // "Size: 110%" while placing
@@ -24,7 +24,7 @@ namespace Wall
 
 	// Plugin load: registers the SKSE co-save callbacks.
 	void InstallSerialization();
-	// kDataLoaded: finds the 50 frame forms in FolderGallery.esp and registers game event sinks.
+	// kDataLoaded: finds the 50 frame forms in Hearthframe.esp and registers game event sinks.
 	bool Init();
 	// kPostLoadGame / kNewGame: re-applies pictures to frames whose 3D is already loaded.
 	void OnGameLoaded();
@@ -82,12 +82,12 @@ namespace Wall
 		std::string           place;     // cell / location name
 		std::string           region;    // parent location, hold or worldspace ("" if none)
 		bool                  interior = true;
-		bool                  stray = false;  // a frame Folder Gallery has no record of (no picture)
+		bool                  stray = false;  // a frame Hearthframe has no record of (no picture)
 	};
 	// Gathers the list on the main thread; TakePlacedList returns it once ready (any thread).
 	void                                   RequestPlacedList();
 	std::optional<std::vector<PlacedInfo>> TakePlacedList();
-	// Removes every frame Folder Gallery has no record of (leftover previews, frames whose record was lost).
+	// Removes every frame Hearthframe has no record of (leftover previews, frames whose record was lost).
 	void                                   RemoveStrayFrames();
 	// Opens the menu of the hung picture being looked at. Activate: no fallback (and the game's crosshair
 	// target wins). Gallery key: a_otherwise runs when no picture is being looked at.

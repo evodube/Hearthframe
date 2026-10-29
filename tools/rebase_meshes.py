@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Copies the frame meshes to meshes/FolderGallery/ with texture paths moved to textures/FolderGallery/.
+"""Copies the frame meshes to meshes/Hearthframe/ with texture paths moved to textures/Hearthframe/.
 
-  textures\\SkyrimGallery\\Blank.dds        -> textures\\FolderGallery\\Blank.dds
-  textures\\SkyrimGallery\\Canvas_n.dds     -> textures\\FolderGallery\\Canvas_n.dds
-  textures\\SkyrimGallery\\Frames\\X.dds     -> textures\\FolderGallery\\Frames\\X.dds
+  textures\\SkyrimGallery\\Blank.dds        -> textures\\Hearthframe\\Blank.dds
+  textures\\SkyrimGallery\\Canvas_n.dds     -> textures\\Hearthframe\\Canvas_n.dds
+  textures\\SkyrimGallery\\Frames\\X.dds     -> textures\\Hearthframe\\Frames\\X.dds
   (vanilla texture paths are left alone)
 
 Only BSShaderTextureSet blocks change; the header's block-size table is updated to match.
@@ -14,8 +14,8 @@ Usage: python3 tools/rebase_meshes.py <dir with Frame_*.nif> <output Data dir>
 import glob, os, struct, sys
 
 MAP = [
-    ("textures\\skyrimgallery\\frames\\", "textures\\FolderGallery\\Frames\\"),
-    ("textures\\skyrimgallery\\", "textures\\FolderGallery\\"),
+    ("textures\\skyrimgallery\\frames\\", "textures\\Hearthframe\\Frames\\"),
+    ("textures\\skyrimgallery\\", "textures\\Hearthframe\\"),
 ]
 
 
@@ -75,7 +75,7 @@ def rebase(data):
 
 def main():
     src, out = sys.argv[1], sys.argv[2]
-    dst = os.path.join(out, "Meshes", "FolderGallery")
+    dst = os.path.join(out, "Meshes", "Hearthframe")
     os.makedirs(dst, exist_ok=True)
     files = sorted(glob.glob(os.path.join(src, "Frame_*.nif")))
     for f in files:

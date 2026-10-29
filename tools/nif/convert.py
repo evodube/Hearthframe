@@ -1,4 +1,4 @@
-"""LE (bsver 83) painting NIF -> SSE (bsver 100) frame NIF for FolderGallery.
+"""LE (bsver 83) painting NIF -> SSE (bsver 100) frame NIF for Hearthframe.
 - NiTriShape/NiTriShapeData -> BSTriShape (vertex desc as the existing SSE frames)
 - turned 180 degrees so the picture faces +Y, back of the frame at y = 0 (what the plugin expects)
 - shapes renamed Canvas -> SGPicture, Frame -> SGFrame; texture paths left exactly as they are
@@ -104,6 +104,6 @@ def convert(src, dst, root_name):
             raise SystemExit(f'unhandled block {t} in {src}')
     strings = [{'Canvas': 'SGPicture', 'Frame': 'SGFrame', 'Scene Root': root_name}.get(s, s) for s in strings]
     h['bsver'] = 100
-    h['author'] = b'FolderGallery\x00'; h['proc'] = b'\x00'; h['exp'] = b'\x00'
+    h['author'] = b'Hearthframe\x00'; h['proc'] = b'\x00'; h['exp'] = b'\x00'
     write_nif(dst, h, out, strings, [ref(x) for x in roots])
     return ymax

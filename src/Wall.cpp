@@ -9,15 +9,15 @@ namespace Wall
 {
 	namespace
 	{
-		constexpr std::string_view kPluginFile = "FolderGallery.esp"sv;
-		constexpr std::uint32_t    kSerializationID = 'FGAL';
+		constexpr std::string_view kPluginFile = "Hearthframe.esp"sv;
+		constexpr std::uint32_t    kSerializationID = 'HFRM';
 		constexpr std::uint32_t    kRecordFrames = 'FRMS';
 		constexpr std::uint32_t    kRecordVersion = 1;
 		constexpr std::uint32_t    kRecordPreview = 'PREV';
 		constexpr std::uint32_t    kRecordRemovals = 'DELS';
 		// Game path of the folder for hung pictures' textures ("textures\\...\\"), from Settings::placedFolder.
 		std::mutex  g_dirMtx;
-		std::string g_placedDir = "textures\\FolderGallery\\Placed\\";
+		std::string g_placedDir = "textures\\Hearthframe\\Placed\\";
 		std::string PlacedDir()
 		{
 			std::lock_guard lk(g_dirMtx);
@@ -32,20 +32,20 @@ namespace Wall
 				a_relative.erase(a_relative.begin());
 			}
 			std::replace(a_relative.begin(), a_relative.end(), '/', '\\');
-			return "textures\\" + (a_relative.empty() ? std::string("FolderGallery\\Placed") : a_relative) + "\\";
+			return "textures\\" + (a_relative.empty() ? std::string("Hearthframe\\Placed") : a_relative) + "\\";
 		}
 		constexpr float            kDefaultOffset = 0.3f;
 		constexpr float            kMinOffset = -40.0f;  // wall collision often sits well in front of the visible wall
 		constexpr float            kMaxOffset = 12.0f;
 		constexpr float            kMinScale = 0.3f;
 		constexpr float            kMaxScale = 3.0f;
-		constexpr const char*      kFlatNormal = "textures\\FolderGallery\\canvas_flat_n.dds";
+		constexpr const char*      kFlatNormal = "textures\\Hearthframe\\canvas_flat_n.dds";
 
 		Settings g_settings;
 
 		struct Entry
 		{
-			std::string   dds;      // game path, "textures\\FolderGallery\\Placed\\....dds"
+			std::string   dds;      // game path, "textures\\Hearthframe\\Placed\\....dds"
 			std::string   picture;  // UTF-8 full path of the source picture
 			std::uint8_t  shape = 0;
 			std::uint8_t  style = 0;
@@ -454,7 +454,7 @@ namespace Wall
 					SKSE::GetTaskInterface()->AddTask([a_dds] { ApplyToAllUsing(a_dds); });  // queues the frames using it
 				} else {
 					spdlog::error("Could not convert {}: {}", ToUtf8(a_picture), err);
-					Notify(Note::Error, "Folder Gallery: could not convert that picture (see FolderGallery.log)");
+					Notify(Note::Error, "Hearthframe: could not convert that picture (see Hearthframe.log)");
 				}
 			}).detach();
 		}
@@ -581,7 +581,7 @@ namespace Wall
 		bool                g_previewMoved = false;
 		RE::FormID          g_stalePreview = 0;         // from a save made while aiming; deleted after load
 
-		// Frames in the game that Folder Gallery has no record of: a frame record as base, not disabled /
+		// Frames in the game that Hearthframe has no record of: a frame record as base, not disabled /
 		// deleted, not the current preview, not in g_frames. Only frames in memory are found (all hung
 		// frames are persistent; a temporary leftover preview is only in memory while its cell is loaded).
 		// Main thread.
@@ -778,7 +778,7 @@ namespace Wall
 			if (!base || !player) {
 				spdlog::error("Frame form for {} {} not available (form id {:08X})", Frames::kShapes[pl->shape].name,
 					Frames::StyleName(pl->shape, pl->style), g_frameForms[Frames::Index(pl->shape, pl->style)]);
-				Notify(Note::Error, "Folder Gallery: frame record missing - is FolderGallery.esp enabled?");
+				Notify(Note::Error, "Hearthframe: frame record missing - is Hearthframe.esp enabled?");
 				return;
 			}
 			const RE::NiPoint3 angle{ 0.0f, 0.0f, AngleZ(*pose) };
@@ -789,7 +789,7 @@ namespace Wall
 				SetRefScale(ref.get(), pl->scale);
 			}
 			if (!ref) {
-				Notify(Note::Error, "Folder Gallery: could not place the frame here");
+				Notify(Note::Error, "Hearthframe: could not place the frame here");
 				spdlog::error("CreateReferenceAtLocation failed");
 				return;
 			}
@@ -1102,7 +1102,7 @@ namespace Wall
 		fs::path RenameLogPath()
 		{
 			auto dir = SKSE::log::log_directory();
-			return dir ? (*dir / L"FolderGallery_renames.txt") : fs::path(L"FolderGallery_renames.txt");
+			return dir ? (*dir / L"Hearthframe_renames.txt") : fs::path(L"Hearthframe_renames.txt");
 		}
 
 		std::string Lower(std::string a_s)
@@ -1723,7 +1723,7 @@ namespace Wall
 			}
 			auto* base = FrameForm(shape, style);
 			if (!base) {
-				Notify(Note::Error, "Folder Gallery: frame record missing - is FolderGallery.esp enabled?");
+				Notify(Note::Error, "Hearthframe: frame record missing - is Hearthframe.esp enabled?");
 				return;
 			}
 			// New frame in exactly the same spot: position, angle (incl. any tilt), scale, cell.
@@ -1736,7 +1736,7 @@ namespace Wall
 				base, pos, angle, cell, world, nullptr, nullptr, RE::ObjectRefHandle(), true, true);
 			auto ref = handle.get();
 			if (!ref) {
-				Notify(Note::Error, "Folder Gallery: could not change the frame");
+				Notify(Note::Error, "Hearthframe: could not change the frame");
 				spdlog::error("ChangeFrame: CreateReferenceAtLocation failed");
 				return;
 			}

@@ -9,15 +9,15 @@ namespace
 		if (!path) {
 			return;
 		}
-		// keep the last runs: FolderGallery.log (this run), FolderGallery.1.log, FolderGallery.2.log
+		// keep the last runs: Hearthframe.log (this run), Hearthframe.1.log, Hearthframe.2.log
 		{
 			const auto      dir = *path;
 			std::error_code ec;
-			std::filesystem::remove(dir / "FolderGallery.2.log", ec);
-			std::filesystem::rename(dir / "FolderGallery.1.log", dir / "FolderGallery.2.log", ec);
-			std::filesystem::rename(dir / "FolderGallery.log", dir / "FolderGallery.1.log", ec);
+			std::filesystem::remove(dir / "Hearthframe.2.log", ec);
+			std::filesystem::rename(dir / "Hearthframe.1.log", dir / "Hearthframe.2.log", ec);
+			std::filesystem::rename(dir / "Hearthframe.log", dir / "Hearthframe.1.log", ec);
 		}
-		*path /= "FolderGallery.log";
+		*path /= "Hearthframe.log";
 		auto sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(path->string(), true);
 		auto log = std::make_shared<spdlog::logger>("global log", std::move(sink));
 		log->set_level(spdlog::level::info);
@@ -161,7 +161,7 @@ namespace
 		if (Wall::Init()) {
 			spdlog::info("Wall frames ready");
 		} else {
-			spdlog::error("Some frame records are missing - is the new FolderGallery.esp installed and enabled?");
+			spdlog::error("Some frame records are missing - is the new Hearthframe.esp installed and enabled?");
 		}
 		spdlog::info("Setup finished");
 	}
@@ -187,7 +187,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse)
 {
 	SKSE::Init(a_skse);
 	SetupLog();
-	spdlog::info("FolderGallery {} loaded, SKSE {}",
+	spdlog::info("Hearthframe {} loaded, SKSE {}",
 		SKSE::PluginDeclaration::GetSingleton()->GetVersion().string("."sv),
 		REL::Version::unpack(a_skse->SKSEVersion()).string("."sv));
 	LogEnvironment();
