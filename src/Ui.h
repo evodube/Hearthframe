@@ -79,6 +79,12 @@ namespace Ui
 		const char* picture = "";  // file name, "" if unknown
 		int*        sizePct = nullptr;
 		bool        canMove = true;
+		// change frame: the frames of this picture's shape
+		const char* const* styles = nullptr;
+		int                styleCount = 0;
+		int                currentStyle = 0;
+		int*               chosenStyle = nullptr;  // out, with FrameAction::ChangeFrame
+		bool               changing = false;       // a swap is in progress (frame list disabled)
 	};
 
 	enum class FrameAction
@@ -89,9 +95,11 @@ namespace Ui
 		Closer,
 		Further,
 		ChangePicture,
+		ChangeFrame,  // *chosenStyle
 		Move,
 		TakeDown,
 	};
 
 	FrameAction DrawFrameMenu(FrameModel& a_model);
+	void        ResetFrameMenu();  // back to the main frame menu (call when the menu opens)
 }

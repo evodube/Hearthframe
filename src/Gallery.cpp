@@ -144,6 +144,7 @@ namespace Gallery
 		};
 		UiMode                             g_uiMode = UiMode::Gallery;
 		Wall::FrameInfo                    g_frameMenu;           // frame the player activated
+		int                                g_changePending = 0;   // frames left to wait for a Change frame swap
 		std::optional<RE::ObjectRefHandle> g_replaceTarget;       // set while choosing a new picture for a frame
 		int                                g_hangShape = 0;
 		int                                g_hangStyle = 7;
@@ -721,7 +722,21 @@ namespace Gallery
 			fm.picture = f.picture.c_str();
 			fm.sizePct = &pct;
 			fm.canMove = !f.picture.empty();
+			fm.styles = Frames::StyleNames(f.shape);
+			fm.styleCount = Frames::StyleCount(f.shape);
+			fm.currentStyle = f.style;
+			int chosen = f.style;
+			fm.chosenStyle = &chosen;
+			if (g_changePending > 0) {
+				--g_changePending;  // safety timeout (frames) in case the swap never reports back
+			}
+			fm.changing = g_changePending > 0;
 			switch (Ui::DrawFrameMenu(fm)) {
+			case Ui::FrameAction::ChangeFrame:
+				f.style = chosen;  // shown right away; the new frame's info replaces this when it exists
+				g_changePending = 180;
+				Wall::ChangeFrame(f.ref, chosen);
+				break;
 			case Ui::FrameAction::Close:
 				ApplyOpen(false);
 				break;
@@ -972,10 +987,16 @@ namespace Gallery
 
 		ApplyPlacementControls(Wall::IsPlacing());
 		Wall::Tick();
-		if (auto activated = Wall::TakeActivatedFrame(); activated && !g_open && !g_wantOpen && !Wall::IsPlacing()) {
-			g_frameMenu = *activated;
-			g_uiMode = UiMode::FrameMenu;
-			g_wantOpen = true;
+		if (auto activated = Wall::TakeActivatedFrame(); activated && !Wall::IsPlacing()) {
+			if (!g_open && !g_wantOpen) {
+				Ui::ResetFrameMenu();
+				g_frameMenu = *activated;
+				g_uiMode = UiMode::FrameMenu;
+				g_wantOpen = true;
+			} else if (g_open && g_uiMode == UiMode::FrameMenu) {
+				g_frameMenu = *activated;  // after Change frame: the menu now controls the new frame
+				g_changePending = 0;
+			}
 		}
 		if (g_wantOpen != g_open) {
 			ApplyOpen(g_wantOpen);

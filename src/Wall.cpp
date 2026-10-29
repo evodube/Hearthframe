@@ -1212,6 +1212,68 @@ namespace Wall
 		});
 	}
 
+	void ChangeFrame(RE::ObjectRefHandle a_ref, int a_style)
+	{
+		SKSE::GetTaskInterface()->AddTask([a_ref, a_style] {
+			auto old = a_ref.get();
+			if (!old || old->IsDisabled() || old->IsMarkedForDeletion()) {
+				return;  // already swapped
+			}
+			const int idx = FrameIndex(old->GetBaseObject());
+			if (idx < 0) {
+				return;
+			}
+			const int shape = Frames::ShapeOf(idx);  // same shape only: the picture texture fits as is
+			const int style = Frames::ClampStyle(shape, a_style);
+			if (style == Frames::StyleOf(idx)) {
+				OpenFrameMenu(old.get());
+				return;
+			}
+			auto* base = FrameForm(shape, style);
+			if (!base) {
+				RE::DebugNotification("Folder Gallery: frame record missing - is FolderGallery.esp enabled?");
+				return;
+			}
+			// New frame in exactly the same spot: position, angle (incl. any tilt), scale, cell.
+			const RE::NiPoint3 pos = old->GetPosition();
+			const RE::NiPoint3 angle = old->GetAngle();
+			const float        scale = old->GetReferenceRuntimeData().refScale / 100.0f;
+			auto*              cell = old->GetParentCell();
+			auto*              world = old->GetWorldspace();
+			auto handle = RE::TESDataHandler::GetSingleton()->CreateReferenceAtLocation(
+				base, pos, angle, cell, world, nullptr, nullptr, RE::ObjectRefHandle(), true, true);
+			auto ref = handle.get();
+			if (!ref) {
+				RE::DebugNotification("Folder Gallery: could not change the frame");
+				spdlog::error("ChangeFrame: CreateReferenceAtLocation failed");
+				return;
+			}
+			if (std::fabs(scale - 1.0f) > 0.001f) {
+				SetRefScale(ref.get(), scale);
+			}
+			// The picture moves to the new frame before the old one goes, so its texture is never "unused".
+			std::optional<Entry> entry;
+			{
+				std::lock_guard lk(g_mtx);
+				if (const auto it = g_frames.find(old->GetFormID()); it != g_frames.end()) {
+					entry = it->second;
+					entry->style = static_cast<std::uint8_t>(style);
+					g_frames[ref->GetFormID()] = *entry;
+					g_frames.erase(old->GetFormID());
+				}
+			}
+			if (entry) {
+				EnsureTexture(entry->dds, FromUtf8(entry->picture), shape);  // file exists -> just marked ready
+				QueueApply(ref->GetFormID());
+			}
+			old->Disable();
+			old->SetDelete(true);
+			spdlog::info("Frame {:08X} -> {:08X}: changed to {} ({})", old->GetFormID(), ref->GetFormID(), Frames::StyleName(shape, style),
+				entry ? entry->picture : std::string("no picture"));
+			OpenFrameMenu(ref.get());  // the open frame menu switches to the new frame
+		});
+	}
+
 	void ChangePicture(RE::ObjectRefHandle a_ref, const fs::path& a_picture)
 	{
 		SKSE::GetTaskInterface()->AddTask([a_ref, a_picture] {

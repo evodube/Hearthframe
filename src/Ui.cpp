@@ -231,6 +231,48 @@ namespace Ui
 			ImGui::EndPopup();
 		}
 
+		// ------------------------------------------------------------------ change frame (same shape)
+		bool g_choosingFrame = false;  // the frame menu shows the frame list (docked low so the frame stays visible)
+
+		void DrawChangeFrameBody(FrameModel& m, FrameAction& act)
+		{
+			std::string sub = std::string(m.shape) + " frames  " + kDot + "  the picture stays";
+			if (Theme::Header("Change Frame", sub.c_str())) {
+				g_choosingFrame = false;
+			}
+			if (Theme::BeginParchment("##change", ImVec2(0, 0), false, true)) {
+				Theme::SectionLabel(m.style);
+				const bool scroll = m.styleCount > 12;
+				if (scroll) {
+					ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(0, 0, 0, 0));
+					ImGui::BeginChild("##frames", ImVec2(0, S(210.0f)), ImGuiChildFlags_None, 0);
+				}
+				Flow flow;
+				ImGui::BeginDisabled(m.changing);
+				for (int i = 0; i < m.styleCount; ++i) {
+					flow.Next(m.styles[i]);
+					ImGui::PushID(i);
+					if (Theme::Chip(m.styles[i], i == m.currentStyle) && i != m.currentStyle) {
+						if (m.chosenStyle) {
+							*m.chosenStyle = i;
+						}
+						act = FrameAction::ChangeFrame;
+					}
+					ImGui::PopID();
+				}
+				ImGui::EndDisabled();
+				if (scroll) {
+					ImGui::EndChild();
+					ImGui::PopStyleColor();
+				}
+			}
+			Theme::EndParchment();
+			ImGui::Dummy(ImVec2(0, S(6.0f)));
+			if (Theme::Button("Done", ImVec2(ImGui::GetContentRegionAvail().x, S(52.0f)), true)) {
+				g_choosingFrame = false;
+			}
+		}
+
 		// ------------------------------------------------------------------ viewer
 		GalleryResult DrawViewer(GalleryModel& m)
 		{
@@ -350,10 +392,25 @@ namespace Ui
 		return r;
 	}
 
+	void ResetFrameMenu() { g_choosingFrame = false; }
+
 	FrameAction DrawFrameMenu(FrameModel& m)
 	{
 		FrameAction act = FrameAction::None;
 		auto&       io = ImGui::GetIO();
+		if (g_choosingFrame) {
+			// bottom of the screen, so the frame being changed stays in view above it
+			ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y - S(40.0f)), ImGuiCond_Always, ImVec2(0.5f, 1.0f));
+			ImGui::SetNextWindowSize(ImVec2((std::min)(S(980.0f), io.DisplaySize.x - S(40.0f)), 0));
+			if (ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
+				g_choosingFrame = false;
+			}
+			if (Theme::BeginWindow("Change frame", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
+				DrawChangeFrameBody(m, act);
+			}
+			Theme::EndWindow();
+			return act;
+		}
 		ImGui::SetNextWindowPos(io.DisplaySize * 0.5f, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
 		ImGui::SetNextWindowSize(ImVec2(S(640.0f), 0));
 		if (ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
@@ -400,9 +457,11 @@ namespace Ui
 				act = FrameAction::TakeDown;
 			}
 			ImGui::SameLine();
-			if (Theme::Button("Close", big)) {
-				act = FrameAction::Close;
+			ImGui::BeginDisabled(m.styleCount < 2);
+			if (Theme::Button("Change frame", big)) {
+				g_choosingFrame = true;
 			}
+			ImGui::EndDisabled();
 		}
 		Theme::EndWindow();
 		return act;

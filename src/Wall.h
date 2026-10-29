@@ -54,4 +54,7 @@ namespace Wall
 	void                     SetFrameScale(RE::ObjectRefHandle a_ref, float a_scale);
 	void                     NudgeFrame(RE::ObjectRefHandle a_ref, float a_distance);  // + = away from the wall
 	void                     ChangePicture(RE::ObjectRefHandle a_ref, const std::filesystem::path& a_picture);
+	// Swaps a hung frame for another frame of the same shape (style = index in that shape's list), keeping its
+	// spot, size and picture. The frame menu then shows the new frame (via TakeActivatedFrame).
+	void                     ChangeFrame(RE::ObjectRefHandle a_ref, int a_style);
 }
