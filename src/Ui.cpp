@@ -1029,22 +1029,6 @@ namespace Ui
 				Theme::TextItalic("Higher is sharper up close; each step uses 4x the video memory per picture.");
 				Row("Clean up unused textures", "Deletes converted pictures nothing in the current save uses");
 				Toggle("cleanup", &m.cleanUp);
-				Gap();
-				Theme::SectionLabel("Placed Frames");
-				Row("Placed Frames folder", "Where the textures made for hung pictures are stored.\nIt has to be inside the game's Data\\textures folder - the game only loads textures from there.");
-				ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(S(10.0f), S(10.0f)));
-				ImGui::SetNextItemWidth(ctl - S(126.0f));
-				ImGui::InputText("##placed", m.placedFolder, sizeof m.placedFolder);
-				ImGui::PopStyleVar();
-				ImGui::SameLine(0.0f, S(6.0f));
-				ImGui::PushID("placed");
-				if (Theme::Button("Open", ImVec2(S(120.0f), S(40.0f)))) {
-					r.action = SettingsAction::OpenPlaced;
-				}
-				if (ImGui::IsItemHovered()) {
-					ImGui::SetTooltip("Open the Placed Frames folder in Windows Explorer\n(type a new path in the box and press Save to change it)");
-				}
-				ImGui::PopID();
 			} else {
 				Theme::SectionLabel("Messages in the top-left corner");
 				Row("All notifications", "Master switch");

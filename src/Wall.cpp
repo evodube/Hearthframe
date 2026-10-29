@@ -1532,49 +1532,6 @@ namespace Wall
 		});
 	}
 
-	void SetPlacedFolder(const std::string& a_relative)
-	{
-		const auto dir = GamePathFor(a_relative);
-		{
-			std::lock_guard lk(g_dirMtx);
-			if (_stricmp(dir.c_str(), g_placedDir.c_str()) == 0) {
-				return;
-			}
-			g_placedDir = dir;
-		}
-		g_settings.placedFolder = a_relative;
-		spdlog::info("Placed Frames folder: {}", dir);
-		SKSE::GetTaskInterface()->AddTask([] {
-			std::vector<RE::FormID> moved;
-			std::vector<std::pair<RE::FormID, std::string>> entries;
-			{
-				std::lock_guard lk(g_mtx);
-				for (const auto& [id, e] : g_frames) {
-					entries.emplace_back(id, e.dds);
-				}
-			}
-			std::map<std::string, std::string> done;  // frames can share a texture
-			for (const auto& [id, dds] : entries) {
-				auto it = done.find(dds);
-				if (it == done.end()) {
-					it = done.emplace(dds, RelocateTexture(dds)).first;
-				}
-				if (it->second != dds) {
-					std::lock_guard lk(g_mtx);
-					if (auto f = g_frames.find(id); f != g_frames.end()) {
-						f->second.dds = it->second;
-					}
-					g_conversions[it->second] = Conv::Ready;
-					moved.push_back(id);
-				}
-			}
-			for (const auto id : moved) {
-				QueueApply(id);  // frames switch to the moved texture
-			}
-			spdlog::info("Placed Frames folder changed: {} frame(s) moved", moved.size());
-		});
-	}
-
 	void RemoveStrayFrames()
 	{
 		SKSE::GetTaskInterface()->AddTask([] {

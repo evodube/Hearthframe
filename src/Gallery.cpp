@@ -813,33 +813,6 @@ namespace Gallery
 			return fs::absolute(fs::path(L"Data") / L"textures", ec).lexically_normal();
 		}
 
-		// "G:\...\Data\textures\A\B" -> "A\B"; empty + error text when it isn't inside Data\textures.
-		std::string PlacedRelative(const std::string& a_full, std::string& a_error)
-		{
-			std::string s = a_full;
-			while (!s.empty() && (s.back() == ' ' || s.back() == '\\' || s.back() == '/')) {
-				s.pop_back();
-			}
-			if (s.empty()) {
-				a_error = "Choose a folder inside the game's Data\\textures folder.";
-				return {};
-			}
-			std::error_code ec;
-			const auto      full = fs::absolute(FromUtf8Path(s), ec).lexically_normal();
-			const auto      root = DataTexturesFolder();
-			auto            lower = [](std::wstring w) {
-                std::transform(w.begin(), w.end(), w.begin(), [](wchar_t c) { return static_cast<wchar_t>(std::towlower(c)); });
-                return w;
-			};
-			const auto f = lower(full.wstring()), r = lower(root.wstring());
-			if (f.size() <= r.size() + 1 || f.compare(0, r.size(), r) != 0 || (f[r.size()] != L'\\' && f[r.size()] != L'/')) {
-				a_error = "The Placed Frames folder has to be inside the game's Data\\textures folder - the game only loads textures from there.";
-				return {};
-			}
-			a_error.clear();
-			return ToUtf8(full.lexically_relative(root));
-		}
-
 		// Character a key types with the current Windows keyboard layout (0 if none). Input thread.
 		wchar_t KeyToChar(std::uint32_t a_dik, bool a_shift, bool a_altGr)
 		{
@@ -1420,7 +1393,6 @@ namespace Gallery
 			std::snprintf(m.folder, sizeof m.folder, "%s", ToUtf8(cfg.folder).c_str());
 			m.recursive = cfg.recursive;
 			std::error_code ec;
-			std::snprintf(m.placedFolder, sizeof m.placedFolder, "%s", ToUtf8((DataTexturesFolder() / FromUtf8Path(w.placedFolder)).lexically_normal()).c_str());
 			g_smKeyVk = 0;
 			g_smKeyName = KeyName(cfg.toggleScan);
 			g_smKeyWarning.clear();
@@ -1464,7 +1436,6 @@ namespace Gallery
 				m.placeReach = 2000;
 				m.examineReach = 600;
 				m.cleanUp = true;
-				std::snprintf(m.placedFolder, sizeof m.placedFolder, "%s", ToUtf8((DataTexturesFolder() / L"FolderGallery" / L"Placed").lexically_normal()).c_str());
 			} else {
 				m.notifications = true;
 				m.showSize = m.showDistance = m.showFrameName = false;
@@ -1522,12 +1493,6 @@ namespace Gallery
 			WriteIni("Frames", "fPlaceReach", std::to_string(m.placeReach));
 			WriteIni("Frames", "fExamineReach", std::to_string(m.examineReach));
 			WriteIni("Frames", "bCleanUpTextures", m.cleanUp ? "1" : "0");
-			std::string err;
-			const auto  rel = PlacedRelative(m.placedFolder, err);
-			if (!rel.empty()) {
-				Wall::SetPlacedFolder(rel);
-				WriteIni("Frames", "sPlacedFolder", rel);
-			}
 			// notifications
 			w.notifications = m.notifications;
 			w.showSize = m.showSize;
@@ -1548,8 +1513,7 @@ namespace Gallery
 			WriteIni("Notifications", "bShowPlacementWarnings", b(m.showPlacementWarnings));
 			WriteIni("Notifications", "bShowErrors", b(m.showErrors));
 			WriteIni("Notifications", "bShowPlacementInfo", b(m.placementInfo));
-			spdlog::info("Settings saved: folder {} (recursive {}), key {}, Placed Frames folder {}", ToUtf8(cfg.folder), cfg.recursive,
-				cfg.toggleKey, w.placedFolder);
+			spdlog::info("Settings saved: folder {} (recursive {}), key {}", ToUtf8(cfg.folder), cfg.recursive, cfg.toggleKey);
 			if (rescan) {
 				g_needScan = true;
 			}
@@ -1592,7 +1556,6 @@ namespace Gallery
 			g_smOthers = fmt::format("Square: {}  \xC2\xB7  Portrait: {}", Frames::StyleName(1, m.defaultStyle), Frames::StyleName(2, m.defaultStyle));
 			m.defaultStyleOthers = g_smOthers.c_str();
 			m.iniPath = g_iniPath.c_str();
-			PlacedRelative(m.placedFolder, g_smError);
 			m.error = g_smError.empty() ? nullptr : g_smError.c_str();
 
 			const auto r = Ui::DrawSettings(m);
@@ -1606,9 +1569,6 @@ namespace Gallery
 				break;
 			case Ui::SettingsAction::OpenPictures:
 				OpenFolderInExplorer(cfg.folder);
-				break;
-			case Ui::SettingsAction::OpenPlaced:
-				OpenFolderInExplorer((DataTexturesFolder() / FromUtf8Path(Wall::GetSettings().placedFolder)).lexically_normal());
 				break;
 			case Ui::SettingsAction::ChangeKey:
 				g_capturedDik = 0;
@@ -1920,8 +1880,6 @@ namespace Gallery
 		::GetPrivateProfileStringA("Frames", "fPlaceReach", "2000", buf, MAX_PATH, ini.c_str());
 		wall.maxDistance = std::clamp(static_cast<float>(std::atof(buf)), 100.0f, 10000.0f);
 		wall.cleanUp = ::GetPrivateProfileIntA("Frames", "bCleanUpTextures", 1, ini.c_str()) != 0;
-		::GetPrivateProfileStringA("Frames", "sPlacedFolder", "FolderGallery\\Placed", buf, MAX_PATH, ini.c_str());
-		wall.placedFolder = buf[0] ? buf : "FolderGallery\\Placed";
 		::GetPrivateProfileStringA("Frames", "fExamineReach", "600", buf, MAX_PATH, ini.c_str());
 		wall.examineReach = std::clamp(static_cast<float>(std::atof(buf)), 100.0f, 5000.0f);
 		auto note = [&](const char* a_key, bool a_default) { return ::GetPrivateProfileIntA("Notifications", a_key, a_default ? 1 : 0, ini.c_str()) != 0; };

@@ -158,7 +158,6 @@ namespace Ui
 		// gallery
 		char  folder[520] = {};
 		bool  recursive = false;
-		char  placedFolder[520] = {};  // where hung pictures' textures go (inside Data\textures)
 		const char* keyName = "F8";
 		bool  waitingForKey = false;  // "press a key" mode
 		int   thumbSize = 200;
@@ -188,7 +187,6 @@ namespace Ui
 		Save,
 		Cancel,
 		OpenPictures,   // open the (saved) picture folder in Explorer
-		OpenPlaced,     // open the (saved) Placed Frames folder in Explorer
 		ChangeKey,      // start waiting for a key
 		ResetTab,       // index = tab
 	};

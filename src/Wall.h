@@ -9,7 +9,7 @@ namespace Wall
 		float maxDistance = 2000.0f;   // how far you can hang a picture
 		float examineReach = 600.0f;   // how far a hung picture can be examined with Activate
 		bool  cleanUp = true;          // delete converted textures no picture in the current save uses
-		std::string placedFolder = "FolderGallery\\Placed";  // under Data\textures: where hung pictures' textures go
+		std::string placedFolder = "FolderGallery\\Placed";  // under Data\textures: where hung pictures' textures go (fixed)
 		// top-left game notifications ([Notifications] in the INI); everything is also written to the log
 		bool notifications = true;     // master switch
 		bool showSize = false;         // "Size: 110%" while placing
@@ -31,7 +31,6 @@ namespace Wall
 
 	// Moves the hung pictures' textures to another folder under Data\textures (a_relative, e.g. "MyGallery\\Hung")
 	// and uses it from now on. Any thread.
-	void SetPlacedFolder(const std::string& a_relative);
 
 	// Frame shape whose canvas aspect ratio is closest to a picture of a_w x a_h.
 	int AutoShape(int a_w, int a_h);
