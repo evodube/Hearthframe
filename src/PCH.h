@@ -29,6 +29,8 @@
 #include <cwctype>
 #include <deque>
 #include <filesystem>
+#include <fstream>
+#include <map>
 #include <functional>
 #include <memory>
 #include <mutex>

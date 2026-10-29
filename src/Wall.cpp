@@ -77,9 +77,50 @@ namespace Wall
 			return fs::absolute(fs::path(L"Data") / FromUtf8(a_gamePath), ec);
 		}
 
-		void Notify(const std::string& a_msg)
+		enum class Note
 		{
-			SKSE::GetTaskInterface()->AddTask([a_msg] { RE::DebugNotification(a_msg.c_str()); });
+			Size,
+			Distance,
+			FrameName,
+			Help,
+			Confirm,
+			Warning,
+			Error
+		};
+
+		// Top-left game notification, if that kind is switched on in the INI. Any thread.
+		void Notify(Note a_kind, const std::string& a_msg)
+		{
+			const auto& s = g_settings;
+			bool        show = false;
+			switch (a_kind) {
+			case Note::Size:
+				show = s.showSize;
+				break;
+			case Note::Distance:
+				show = s.showDistance;
+				break;
+			case Note::FrameName:
+				show = s.showFrameName;
+				break;
+			case Note::Help:
+				show = s.showPlacementHelp;
+				break;
+			case Note::Confirm:
+				show = s.showConfirmations;
+				break;
+			case Note::Warning:
+				show = s.showPlacementWarnings;
+				spdlog::info("Notice: {}", a_msg);
+				break;
+			case Note::Error:
+				show = s.showErrors;
+				spdlog::warn("Notice: {}", a_msg);
+				break;
+			}
+			if (show && s.notifications) {
+				SKSE::GetTaskInterface()->AddTask([a_msg] { RE::DebugNotification(a_msg.c_str()); });
+			}
 		}
 
 		int FrameIndex(const RE::TESForm* a_base)
@@ -345,7 +386,7 @@ namespace Wall
 					SKSE::GetTaskInterface()->AddTask([a_dds] { ApplyToAllUsing(a_dds); });  // queues the frames using it
 				} else {
 					spdlog::error("Could not convert {}: {}", ToUtf8(a_picture), err);
-					Notify("Folder Gallery: could not convert that picture (see FolderGallery.log)");
+					Notify(Note::Error, "Folder Gallery: could not convert that picture (see FolderGallery.log)");
 				}
 			}).detach();
 		}
@@ -605,7 +646,7 @@ namespace Wall
 			const char* why = nullptr;
 			const auto  pose = ComputePose(why, pl->moving.get().get(), pl->offset);
 			if (!pose) {
-				RE::DebugNotification(why);
+				Notify(Note::Warning, why ? why : "Can't hang the picture here");
 				return;
 			}
 			auto* base = FrameForm(pl->shape, pl->style);
@@ -613,7 +654,7 @@ namespace Wall
 			if (!base || !player) {
 				spdlog::error("Frame form for {} {} not available (form id {:08X})", Frames::kShapes[pl->shape].name,
 					Frames::StyleName(pl->shape, pl->style), g_frameForms[Frames::Index(pl->shape, pl->style)]);
-				RE::DebugNotification("Folder Gallery: frame record missing - is FolderGallery.esp enabled?");
+				Notify(Note::Error, "Folder Gallery: frame record missing - is FolderGallery.esp enabled?");
 				return;
 			}
 			const RE::NiPoint3 angle{ 0.0f, 0.0f, AngleZ(*pose) };
@@ -624,7 +665,7 @@ namespace Wall
 				SetRefScale(ref.get(), pl->scale);
 			}
 			if (!ref) {
-				RE::DebugNotification("Folder Gallery: could not place the frame here");
+				Notify(Note::Error, "Folder Gallery: could not place the frame here");
 				spdlog::error("CreateReferenceAtLocation failed");
 				return;
 			}
@@ -651,7 +692,7 @@ namespace Wall
 			DeletePreview();
 			CancelPlacement(false);
 			CleanupUnusedTextures();  // e.g. the old texture of a moved frame, or other shapes tried while aiming
-			RE::DebugNotification("Picture hung");
+			Notify(Note::Confirm, "Picture hung");
 		}
 
 		// Hands a frame to the UI (frame menu). Any thread.
@@ -889,6 +930,76 @@ namespace Wall
 			g_activated.reset();
 		}
 
+		// ------------------------------------------------------------------ picture renames
+		// One "old<TAB>new" line (UTF-8 full paths) per rename, in the SKSE log folder (outside any virtual Data).
+		fs::path RenameLogPath()
+		{
+			auto dir = SKSE::log::log_directory();
+			return dir ? (*dir / L"FolderGallery_renames.txt") : fs::path(L"FolderGallery_renames.txt");
+		}
+
+		std::string Lower(std::string a_s)
+		{
+			std::transform(a_s.begin(), a_s.end(), a_s.begin(), [](char c) { return static_cast<char>(std::tolower(static_cast<unsigned char>(c))); });
+			return a_s;
+		}
+
+		void LogRename(const fs::path& a_old, const fs::path& a_new)
+		{
+			std::ofstream out(RenameLogPath(), std::ios::app | std::ios::binary);
+			out << ToUtf8(a_old) << '\t' << ToUtf8(a_new) << '\n';
+		}
+
+		// Where a picture that no longer exists went, following renames made since (empty if unknown).
+		std::string FollowRenames(const std::string& a_picture)
+		{
+			std::unordered_map<std::string, std::string> map;
+			std::ifstream                                 in(RenameLogPath(), std::ios::binary);
+			for (std::string line; std::getline(in, line);) {
+				if (!line.empty() && line.back() == '\r') {
+					line.pop_back();
+				}
+				const auto tab = line.find('\t');
+				if (tab != std::string::npos) {
+					map[Lower(line.substr(0, tab))] = line.substr(tab + 1);
+				}
+			}
+			std::string cur = a_picture;
+			for (int hops = 0; hops < 64; ++hops) {  // a chain of renames; the limit guards against loops
+				const auto it = map.find(Lower(cur));
+				if (it == map.end()) {
+					break;
+				}
+				cur = it->second;
+				std::error_code ec;
+				if (fs::exists(FromUtf8(cur), ec)) {
+					return cur;
+				}
+			}
+			return {};
+		}
+
+		// Moves a frame's converted texture to the name that goes with its (renamed) picture. Returns the new
+		// game path. The old file is renamed when possible, so nothing has to be converted again.
+		std::string FollowTexture(const std::string& a_oldDds, const fs::path& a_picture, int a_shape)
+		{
+			const auto newDds = DdsGamePath(a_picture, a_shape);
+			if (_stricmp(newDds.c_str(), a_oldDds.c_str()) == 0) {
+				return newDds;
+			}
+			std::error_code ec;
+			const auto      from = DataPath(a_oldDds), to = DataPath(newDds);
+			if (fs::exists(from, ec) && !fs::exists(to, ec)) {
+				fs::rename(from, to, ec);
+				if (ec) {  // e.g. still open somewhere: copy instead, the old one is cleaned up later
+					ec.clear();
+					fs::copy_file(from, to, ec);
+				}
+				spdlog::info("Texture {} -> {}{}", a_oldDds, newDds, ec ? fmt::format(" FAILED ({})", ec.message()) : "");
+			}
+			return newDds;
+		}
+
 		void OnLoad(SKSE::SerializationInterface* a_intfc)
 		{
 			std::uint32_t type = 0, version = 0, length = 0;
@@ -918,6 +1029,14 @@ namespace Wall
 					if (!a_intfc->ResolveFormID(oldID, newID)) {
 						spdlog::warn("Co-save: frame {:08X} no longer exists, dropped", oldID);
 						continue;
+					}
+					std::error_code ec;
+					if (!e.picture.empty() && !fs::exists(FromUtf8(e.picture), ec)) {
+						if (auto moved = FollowRenames(e.picture); !moved.empty()) {
+							spdlog::info("Co-save: {} was renamed to {}", e.picture, moved);
+							e.picture = moved;
+							e.dds = FollowTexture(e.dds, FromUtf8(moved), e.shape);
+						}
 					}
 					loaded.emplace_back(newID, std::move(e));
 				}
@@ -1036,12 +1155,25 @@ namespace Wall
 		// Start converting right away so the texture is usually ready by the time the frame is hung.
 		EnsureTexture(DdsGamePath(a_picture, shape), a_picture, shape);
 		g_placing = true;
-		Notify("Aim at a wall, left-click to hang. Wheel: size, Shift+wheel: frame, Up/Down: distance from wall. Right-click/Esc cancels.");
+		Notify(Note::Help, "Aim at a wall, left-click to hang. Wheel: size, Shift+wheel: frame, Up/Down: distance from wall. Right-click/Esc cancels.");
 	}
 
 	bool IsPlacing()
 	{
 		return g_placing;
+	}
+
+	bool GetPlacementStatus(PlacementStatus& a_out)
+	{
+		std::lock_guard lk(g_mtx);
+		if (!g_placement) {
+			return false;
+		}
+		a_out.frame = Frames::StyleName(g_placement->shape, g_placement->style);
+		a_out.shape = Frames::kShapes[Frames::ClampShape(g_placement->shape)].name;
+		a_out.scale = g_placement->scale;
+		a_out.distance = g_placement->offset - kDefaultOffset;
+		return true;
 	}
 
 	void Tick()
@@ -1074,7 +1206,7 @@ namespace Wall
 			sc = std::clamp(std::round((sc + 0.1f * a_steps) * 10.0f) / 10.0f, kMinScale, kMaxScale);
 			scale = sc;
 		}
-		Notify(fmt::format("Size: {:.0f}%", scale * 100.0f));
+		Notify(Note::Size, fmt::format("Size: {:.0f}%", scale * 100.0f));
 	}
 
 	void AdjustOffset(int a_steps)
@@ -1089,7 +1221,7 @@ namespace Wall
 			o = std::clamp(o + 0.25f * a_steps, kMinOffset, kMaxOffset);
 			offset = o;
 		}
-		Notify(fmt::format("Distance from wall: {:+.2f}", offset - kDefaultOffset));
+		Notify(Note::Distance, fmt::format("Distance from wall: {:+.2f}", offset - kDefaultOffset));
 	}
 
 	void NudgeFrame(RE::ObjectRefHandle a_ref, float a_distance)
@@ -1139,7 +1271,7 @@ namespace Wall
 			st = ((st + a_delta) % n + n) % n;
 			name = Frames::StyleName(g_placement->shape, st);
 		}
-		Notify(fmt::format("Frame: {}", name));
+		Notify(Note::FrameName, fmt::format("Frame: {}", name));
 	}
 
 	void RequestExamine(std::function<void()> a_otherwise)
@@ -1181,7 +1313,7 @@ namespace Wall
 			});
 		}
 		if (was && a_notify) {
-			Notify("Hanging cancelled");
+			Notify(Note::Confirm, "Hanging cancelled");
 		}
 	}
 
@@ -1208,7 +1340,58 @@ namespace Wall
 			ref->Disable();
 			ref->SetDelete(true);
 			CleanupUnusedTextures();
-			RE::DebugNotification("Picture taken down");
+			Notify(Note::Confirm, "Picture taken down");
+		});
+	}
+
+	void PictureRenamed(const fs::path& a_old, const fs::path& a_new)
+	{
+		LogRename(a_old, a_new);
+		SKSE::GetTaskInterface()->AddTask([a_old, a_new] {
+			const auto oldKey = Lower(ToUtf8(a_old));
+			std::vector<RE::FormID>            changed;
+			std::map<std::string, std::string> moved;  // old texture -> new (frames can share one)
+			{
+				std::lock_guard lk(g_mtx);
+				for (auto& [id, e] : g_frames) {
+					if (Lower(e.picture) != oldKey) {
+						continue;
+					}
+					auto it = moved.find(e.dds);
+					if (it == moved.end()) {
+						it = moved.emplace(e.dds, std::string{}).first;
+					}
+					e.picture = ToUtf8(a_new);
+					changed.push_back(id);
+				}
+			}
+			for (auto& [oldDds, newDds] : moved) {
+				int shape = 0;
+				{
+					std::lock_guard lk(g_mtx);
+					for (const auto& id : changed) {
+						if (g_frames[id].dds == oldDds) {
+							shape = g_frames[id].shape;
+							break;
+						}
+					}
+				}
+				newDds = FollowTexture(oldDds, a_new, shape);
+				EnsureTexture(newDds, a_new, shape);  // marks it ready, or converts again if the move failed
+			}
+			{
+				std::lock_guard lk(g_mtx);
+				for (const auto& id : changed) {
+					auto& e = g_frames[id];
+					if (const auto it = moved.find(e.dds); it != moved.end()) {
+						e.dds = it->second;
+					}
+				}
+			}
+			for (const auto& id : changed) {
+				QueueApply(id);  // the frame switches to the renamed texture
+			}
+			spdlog::info("Renamed {} -> {}: {} frame(s) updated", ToUtf8(a_old), ToUtf8(a_new), changed.size());
 		});
 	}
 
@@ -1231,7 +1414,7 @@ namespace Wall
 			}
 			auto* base = FrameForm(shape, style);
 			if (!base) {
-				RE::DebugNotification("Folder Gallery: frame record missing - is FolderGallery.esp enabled?");
+				Notify(Note::Error, "Folder Gallery: frame record missing - is FolderGallery.esp enabled?");
 				return;
 			}
 			// New frame in exactly the same spot: position, angle (incl. any tilt), scale, cell.
@@ -1244,7 +1427,7 @@ namespace Wall
 				base, pos, angle, cell, world, nullptr, nullptr, RE::ObjectRefHandle(), true, true);
 			auto ref = handle.get();
 			if (!ref) {
-				RE::DebugNotification("Folder Gallery: could not change the frame");
+				Notify(Note::Error, "Folder Gallery: could not change the frame");
 				spdlog::error("ChangeFrame: CreateReferenceAtLocation failed");
 				return;
 			}

@@ -41,6 +41,7 @@ namespace Gallery
 			float         fontSize = 18.0f;
 			float         mouseSpeed = 1.0f;
 			float         uiScale = 1.0f;  // extra UI scale on top of the automatic screen-height scale
+			bool          placementInfo = true;  // size / distance / frame line at the bottom while hanging
 		} cfg;
 
 		DebugSwitches dbg;
@@ -87,6 +88,7 @@ namespace Gallery
 			fs::path path;
 			int      maxDim = 0;
 			bool     full = false;
+			bool     preview = false;  // frame menu picture (not part of the list)
 		};
 
 		struct Result
@@ -94,6 +96,8 @@ namespace Gallery
 			int                       gen = 0;
 			int                       index = 0;
 			bool                      full = false;
+			bool                      preview = false;
+			fs::path                  path;
 			bool                      ok = false;
 			bool                      notFound = false;
 			int                       w = 0, h = 0, origW = 0, origH = 0;
@@ -121,7 +125,8 @@ namespace Gallery
 				MouseButton,
 				Wheel,
 				UiScale,  // Ctrl + wheel: x = steps
-				Key
+				Key,
+				Char      // typed character: button = UTF-16 code unit
 			} kind;
 			float    x = 0.0f, y = 0.0f;
 			int      button = 0;
@@ -132,7 +137,8 @@ namespace Gallery
 		std::vector<InputMsg> g_input;
 
 		std::vector<Item>         items;
-		int                       viewing = -1;
+		std::vector<int>          visible;  // indices into items that match the search, in order
+		int                       viewing = -1;  // index into items
 		ID3D11ShaderResourceView* fullSrv = nullptr;
 		int                       fullW = 0, fullH = 0;
 		bool                      fullFailed = false;
@@ -153,6 +159,15 @@ namespace Gallery
 		std::atomic<bool>                  g_ctrlDown{ false };
 		float                              g_pendingUiScale = -1.0f;  // applied between frames (fonts are rebuilt)
 		std::string                        g_iniPath;
+		char                               g_search[128]{};
+		char                               g_renameBuf[256]{};
+		std::string                        g_renameError;
+		bool                               g_renameDone = false;
+		ID3D11ShaderResourceView*          g_previewSrv = nullptr;  // frame menu picture
+		fs::path                           g_previewPath;
+		int                                g_previewW = 0, g_previewH = 0;
+		bool                               g_previewLoading = false, g_previewMissing = false;
+		std::atomic<bool>                  g_altDown{ false };
 
 		void RequestUiScale(float a_scale)
 		{
@@ -177,6 +192,11 @@ namespace Gallery
 		{
 			const auto s = p.u8string();
 			return std::string(s.begin(), s.end());
+		}
+
+		fs::path FromUtf8Path(const std::string& s)
+		{
+			return fs::path(std::u8string(s.begin(), s.end()));
 		}
 
 		// ---------------------------------------------------------------- image decoding (worker thread)
@@ -241,13 +261,15 @@ namespace Gallery
 					job = std::move(S.jobs.front());
 					S.jobs.pop_front();
 				}
-				if (job.gen != g_gen.load()) {
+				if (job.gen != g_gen.load() && !job.preview) {
 					continue;  // the list was refreshed while this was waiting
 				}
 				Result r;
 				r.gen = job.gen;
 				r.index = job.index;
 				r.full = job.full;
+				r.preview = job.preview;
+				r.path = job.path;
 				try {
 					r.ok = LoadPixels(job.path, job.maxDim, r);
 				} catch (const std::exception& e) {
@@ -320,6 +342,22 @@ namespace Gallery
 					}
 					r = std::move(S.results.front());
 					S.results.pop_front();
+				}
+				if (r.preview) {
+					if (r.path == g_previewPath) {
+						if (g_previewSrv) {
+							g_previewSrv->Release();
+							g_previewSrv = nullptr;
+						}
+						if (r.ok) {
+							g_previewSrv = MakeSRV(r.px.data(), r.w, r.h);
+							g_previewW = r.w;
+							g_previewH = r.h;
+						}
+						g_previewLoading = false;
+						g_previewMissing = !g_previewSrv;
+					}
+					continue;
 				}
 				if (r.gen != g_gen.load() || r.index < 0 || r.index >= static_cast<int>(items.size())) {
 					continue;
@@ -425,6 +463,12 @@ namespace Gallery
 			if (!open) {
 				g_uiMode = UiMode::Gallery;
 				g_replaceTarget.reset();
+				if (g_previewSrv) {
+					g_previewSrv->Release();
+					g_previewSrv = nullptr;
+				}
+				g_previewPath.clear();
+				g_previewLoading = g_previewMissing = false;
 			}
 
 			using UEFlag = RE::ControlMap::UEFlag;
@@ -460,6 +504,80 @@ namespace Gallery
 			}
 		}
 
+		// Character a key types with the current Windows keyboard layout (0 if none). Input thread.
+		wchar_t KeyToChar(std::uint32_t a_dik, bool a_shift, bool a_altGr)
+		{
+			const UINT sc = (a_dik & 0x7F) | ((a_dik & 0x80) ? 0xE000u : 0u);
+			HKL        layout = ::GetKeyboardLayout(::GetWindowThreadProcessId(::GetForegroundWindow(), nullptr));
+			const UINT vk = ::MapVirtualKeyExW(sc, MAPVK_VSC_TO_VK_EX, layout);
+			if (vk == 0) {
+				return 0;
+			}
+			BYTE state[256]{};
+			if (a_shift) {
+				state[VK_SHIFT] = state[VK_LSHIFT] = 0x80;
+			}
+			if (::GetKeyState(VK_CAPITAL) & 1) {
+				state[VK_CAPITAL] = 0x01;
+			}
+			if (::GetKeyState(VK_NUMLOCK) & 1) {
+				state[VK_NUMLOCK] = 0x01;
+			}
+			if (a_altGr) {
+				state[VK_CONTROL] = state[VK_LCONTROL] = state[VK_MENU] = state[VK_RMENU] = 0x80;
+			}
+			wchar_t buf[8]{};
+			const int n = ::ToUnicodeEx(vk, sc, state, buf, 8, 0x4 /* don't change the keyboard state */, layout);
+			return (n == 1 && buf[0] >= 0x20 && buf[0] != 0x7F) ? buf[0] : 0;
+		}
+
+		ImGuiKey KeyToImGui(std::uint32_t a_dik)
+		{
+			switch (a_dik) {
+			case kDIK_Escape:
+				return ImGuiKey_Escape;
+			case kDIK_Left:
+				return ImGuiKey_LeftArrow;
+			case kDIK_Right:
+				return ImGuiKey_RightArrow;
+			case kDIK_Up:
+				return ImGuiKey_UpArrow;
+			case kDIK_Down:
+				return ImGuiKey_DownArrow;
+			case 0x0E:
+				return ImGuiKey_Backspace;
+			case 0xD3:
+				return ImGuiKey_Delete;
+			case 0x1C:
+				return ImGuiKey_Enter;
+			case 0x9C:
+				return ImGuiKey_KeypadEnter;
+			case 0xC7:
+				return ImGuiKey_Home;
+			case 0xCF:
+				return ImGuiKey_End;
+			case 0x0F:
+				return ImGuiKey_Tab;
+			case 0x1E:
+				return ImGuiKey_A;
+			case 0x2E:
+				return ImGuiKey_C;
+			case 0x2F:
+				return ImGuiKey_V;
+			case 0x2D:
+				return ImGuiKey_X;
+			case 0x2C:
+				return ImGuiKey_Z;
+			case 0x15:
+				return ImGuiKey_Y;
+			default:
+				return ImGuiKey_None;
+			}
+		}
+
+		// Holding Up/Down while hanging keeps moving the frame (first repeat after a short pause).
+		float g_offsetRepeatAt = 0.0f;
+
 		void PushInput(const InputMsg& m)
 		{
 			std::lock_guard lk(g_inputMtx);
@@ -489,15 +607,40 @@ namespace Gallery
 					const auto code = btn->GetIDCode();
 					const bool down = btn->IsDown();
 					const bool up = btn->IsUp();
+					const bool keyboard = e->GetDevice() == RE::INPUT_DEVICE::kKeyboard;
 					if (!down && !up) {
-						continue;  // held / repeating
+						// held: Up/Down keep moving the frame while hanging a picture
+						if (keyboard && Wall::IsPlacing() && (code == kDIK_Up || code == kDIK_Down)) {
+							const float held = btn->HeldDuration();
+							if (held >= g_offsetRepeatAt) {
+								const int dir = code == kDIK_Up ? +1 : -1;
+								Wall::AdjustOffset(dir * (g_shiftDown ? 8 : 1));
+								g_offsetRepeatAt = held + (g_shiftDown ? 0.10f : 0.05f);
+							}
+						}
+						continue;
 					}
 
-					if (e->GetDevice() == RE::INPUT_DEVICE::kKeyboard && (code == 0x2A || code == 0x36)) {
+					if (keyboard && (code == 0x2A || code == 0x36)) {
 						g_shiftDown = down;  // left / right shift
+						if (g_open) {
+							InputMsg m{ InputMsg::Kind::Key };
+							m.key = ImGuiMod_Shift;
+							m.down = down;
+							PushInput(m);
+						}
 					}
-					if (e->GetDevice() == RE::INPUT_DEVICE::kKeyboard && (code == 0x1D || code == 0x9D)) {
+					if (keyboard && (code == 0x1D || code == 0x9D)) {
 						g_ctrlDown = down;  // left / right ctrl
+						if (g_open) {
+							InputMsg m{ InputMsg::Kind::Key };
+							m.key = ImGuiMod_Ctrl;
+							m.down = down;
+							PushInput(m);
+						}
+					}
+					if (keyboard && (code == 0x38 || code == 0xB8)) {
+						g_altDown = down;  // left / right alt (right alt = AltGr on many layouts)
 					}
 					// Activate on a hung picture: find it ourselves, so it works past the game's short
 					// activation range and when the frame sits in the wall (its collision can't be hit).
@@ -532,8 +675,10 @@ namespace Gallery
 								Wall::CancelPlacement();
 							} else if (code == kDIK_Up) {
 								Wall::AdjustOffset(g_shiftDown ? +8 : +1);  // away from the wall (Shift: 2 units)
+								g_offsetRepeatAt = 0.35f;
 							} else if (code == kDIK_Down) {
 								Wall::AdjustOffset(g_shiftDown ? -8 : -1);  // closer / into the wall (Shift: 2 units)
+								g_offsetRepeatAt = 0.35f;
 							}
 						}
 						continue;
@@ -558,25 +703,20 @@ namespace Gallery
 						if (!g_open) {
 							continue;
 						}
-						ImGuiKey key = ImGuiKey_None;
-						switch (code) {
-						case kDIK_Escape:
-							key = ImGuiKey_Escape;
-							break;
-						case kDIK_Left:
-							key = ImGuiKey_LeftArrow;
-							break;
-						case kDIK_Right:
-							key = ImGuiKey_RightArrow;
-							break;
-						default:
-							break;
-						}
-						if (key != ImGuiKey_None) {
+						if (const ImGuiKey key = KeyToImGui(code); key != ImGuiKey_None) {
 							InputMsg m{ InputMsg::Kind::Key };
 							m.key = key;
 							m.down = down;
 							PushInput(m);
+						}
+						// typed text (search box, rename box); AltGr = Ctrl+Alt on many layouts
+						const bool altGr = g_ctrlDown && g_altDown;
+						if (down && (!g_ctrlDown || altGr)) {
+							if (const wchar_t c = KeyToChar(code, g_shiftDown, altGr); c != 0) {
+								InputMsg m{ InputMsg::Kind::Char };
+								m.button = static_cast<int>(c);
+								PushInput(m);
+							}
 						}
 					} else if (e->GetDevice() == RE::INPUT_DEVICE::kMouse && g_open) {
 						using MouseKey = RE::BSWin32MouseDevice::Key;
@@ -645,6 +785,9 @@ namespace Gallery
 				case InputMsg::Kind::Key:
 					io.AddKeyEvent(m.key, m.down);
 					break;
+				case InputMsg::Kind::Char:
+					io.AddInputCharacterUTF16(static_cast<ImWchar16>(m.button));
+					break;
 				}
 			}
 		}
@@ -704,11 +847,111 @@ namespace Gallery
 			Submit({ g_gen.load(), i, items[i].path, kFullMaxDim, true }, true);
 		}
 
+		// Previous / Next walk through the pictures that match the search.
 		void Step(int delta)
 		{
-			const int n = static_cast<int>(items.size());
-			if (n > 0) {
-				OpenViewer(((viewing + delta) % n + n) % n);
+			const int n = static_cast<int>(visible.size());
+			if (n == 0) {
+				return;
+			}
+			const auto it = std::find(visible.begin(), visible.end(), viewing);
+			const int  pos = it == visible.end() ? 0 : static_cast<int>(it - visible.begin());
+			OpenViewer(visible[((pos + delta) % n + n) % n]);
+		}
+
+		std::string LowerUtf8(std::string a_s)
+		{
+			std::transform(a_s.begin(), a_s.end(), a_s.begin(), [](char c) { return static_cast<char>(std::tolower(static_cast<unsigned char>(c))); });
+			return a_s;
+		}
+
+		void UpdateVisible()
+		{
+			visible.clear();
+			const std::string needle = LowerUtf8(g_search);
+			for (int i = 0; i < static_cast<int>(items.size()); ++i) {
+				if (needle.empty() || LowerUtf8(items[i].name).find(needle) != std::string::npos) {
+					visible.push_back(i);
+				}
+			}
+		}
+
+		// Renames a picture file (keeps its extension). Returns "" on success, else the reason.
+		std::string RenamePicture(int a_item, std::string a_stem)
+		{
+			auto& it = items[a_item];
+			while (!a_stem.empty() && (a_stem.back() == ' ' || a_stem.back() == '.')) {
+				a_stem.pop_back();
+			}
+			while (!a_stem.empty() && a_stem.front() == ' ') {
+				a_stem.erase(a_stem.begin());
+			}
+			if (a_stem.empty()) {
+				return "Type a name.";
+			}
+			for (const char c : a_stem) {
+				if (std::strchr("\\/:*?\"<>|", c) || static_cast<unsigned char>(c) < 0x20) {
+					return "A name can't contain any of these: \\ / : * ? \" < > |";
+				}
+			}
+			std::string upper = a_stem;
+			std::transform(upper.begin(), upper.end(), upper.begin(), [](char c) { return static_cast<char>(std::toupper(static_cast<unsigned char>(c))); });
+			static const char* reserved[] = { "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "LPT1", "LPT2", "LPT3" };
+			for (const char* r : reserved) {
+				if (upper == r) {
+					return "Windows doesn't allow that name.";
+				}
+			}
+			const fs::path from = it.path;
+			const fs::path to = from.parent_path() / (FromUtf8Path(a_stem) += from.extension());
+			if (to == from) {
+				return {};  // unchanged
+			}
+			std::error_code ec;
+			const bool sameFileOtherCase = _wcsicmp(to.c_str(), from.c_str()) == 0;
+			if (!sameFileOtherCase && fs::exists(to, ec)) {
+				return "There's already a picture called " + ToUtf8(to.filename()) + ".";
+			}
+			if (!::MoveFileExW(from.c_str(), to.c_str(), 0)) {
+				const DWORD err = ::GetLastError();
+				wchar_t*    msg = nullptr;
+				::FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, err, 0,
+					reinterpret_cast<LPWSTR>(&msg), 0, nullptr);
+				std::string text = msg ? ToUtf8(fs::path(msg)) : fmt::format("error {}", err);
+				if (msg) {
+					::LocalFree(msg);
+				}
+				while (!text.empty() && (text.back() == '\n' || text.back() == '\r' || text.back() == ' ')) {
+					text.pop_back();
+				}
+				spdlog::warn("Rename {} -> {} failed: {}", ToUtf8(from), ToUtf8(to), text);
+				return "Couldn't rename it: " + text;
+			}
+			spdlog::info("Renamed picture {} -> {}", ToUtf8(from), ToUtf8(to));
+			it.path = to;
+			it.name = ToUtf8(to.filename());
+			Wall::PictureRenamed(from, to);
+			return {};
+		}
+
+		// Frame menu preview: (re)load when the frame's picture changes.
+		void UpdatePreview(const fs::path& a_picture)
+		{
+			if (a_picture == g_previewPath && (g_previewSrv || g_previewLoading || g_previewMissing)) {
+				return;
+			}
+			if (g_previewSrv) {
+				g_previewSrv->Release();
+				g_previewSrv = nullptr;
+			}
+			g_previewPath = a_picture;
+			g_previewW = g_previewH = 0;
+			g_previewMissing = false;
+			g_previewLoading = !a_picture.empty();
+			if (g_previewLoading) {
+				Job job{ g_gen.load(), -1, a_picture, kThumbMaxDim, false };
+				job.preview = true;
+				Submit(std::move(job), true);
 			}
 		}
 
@@ -722,6 +965,13 @@ namespace Gallery
 			fm.picture = f.picture.c_str();
 			fm.sizePct = &pct;
 			fm.canMove = !f.picture.empty();
+			UpdatePreview(f.picturePath);
+			fm.preview = g_previewSrv ? reinterpret_cast<ImTextureID>(g_previewSrv) : 0;
+			fm.previewW = g_previewW;
+			fm.previewH = g_previewH;
+			fm.previewLoading = g_previewLoading;
+			fm.previewMissing = g_previewMissing;
+			fm.canvasAspect = Frames::kShapes[Frames::ClampShape(f.shape)].canvasW / Frames::kShapes[Frames::ClampShape(f.shape)].canvasH;
 			fm.styles = Frames::StyleNames(f.shape);
 			fm.styleCount = Frames::StyleCount(f.shape);
 			fm.currentStyle = f.style;
@@ -745,10 +995,10 @@ namespace Gallery
 				Wall::SetFrameScale(f.ref, f.scale);
 				break;
 			case Ui::FrameAction::Closer:
-				Wall::NudgeFrame(f.ref, -0.5f);
+				Wall::NudgeFrame(f.ref, -0.25f);  // repeats while the button is held
 				break;
 			case Ui::FrameAction::Further:
-				Wall::NudgeFrame(f.ref, +0.5f);
+				Wall::NudgeFrame(f.ref, +0.25f);
 				break;
 			case Ui::FrameAction::ChangePicture:
 				g_replaceTarget = f.ref;
@@ -790,8 +1040,18 @@ namespace Gallery
 				uiPct = static_cast<int>(std::lround(cfg.uiScale * 100.0f));
 			}
 			gm.uiScalePct = &uiPct;
-			gm.pictures.reserve(items.size());
-			for (const auto& it : items) {
+			UpdateVisible();
+			gm.search = g_search;
+			gm.searchSize = static_cast<int>(sizeof g_search);
+			gm.totalPictures = static_cast<int>(items.size());
+			gm.renameBuf = g_renameBuf;
+			gm.renameSize = static_cast<int>(sizeof g_renameBuf);
+			gm.renameError = g_renameError.c_str();
+			gm.renameDone = g_renameDone;
+			g_renameDone = false;
+			gm.pictures.reserve(visible.size());
+			for (const int idx : visible) {
+				const auto& it = items[idx];
 				Ui::Picture p;
 				p.name = it.name.c_str();
 				p.thumb = it.srv ? reinterpret_cast<ImTextureID>(it.srv) : 0;
@@ -804,13 +1064,21 @@ namespace Gallery
 				gm.pictures.push_back(p);
 			}
 			gm.requestThumb = [](int i) {
-				Item& it = items[i];
+				const int idx = visible[i];
+				Item&     it = items[idx];
 				if (it.state == State::None) {
 					it.state = State::Queued;
-					Submit({ g_gen.load(), i, it.path, kThumbMaxDim, false });
+					Submit({ g_gen.load(), idx, it.path, kThumbMaxDim, false });
 				}
 			};
-			gm.viewing = viewing;
+			{
+				const auto vit = std::find(visible.begin(), visible.end(), viewing);
+				gm.viewing = (viewing >= 0 && vit != visible.end()) ? static_cast<int>(vit - visible.begin()) : -1;
+				if (viewing >= 0 && gm.viewing < 0) {  // the picture being viewed no longer matches: back to the grid
+					viewing = -1;
+					ReleaseFull();
+				}
+			}
 			gm.full = fullSrv ? reinterpret_cast<ImTextureID>(fullSrv) : 0;
 			gm.fullW = fullW;
 			gm.fullH = fullH;
@@ -831,7 +1099,17 @@ namespace Gallery
 			gm.textureSize = [](int shape) { return Wall::TextureSize(shape); };
 
 			const auto r = Ui::DrawGallery(gm);
+			const int  item = (r.index >= 0 && r.index < static_cast<int>(visible.size())) ? visible[r.index] : -1;
 			switch (r.action) {
+			case Ui::GalleryAction::RenameOpened:
+				g_renameError.clear();
+				break;
+			case Ui::GalleryAction::Rename:
+				if (item >= 0) {
+					g_renameError = RenamePicture(item, g_renameBuf);
+					g_renameDone = g_renameError.empty();
+				}
+				break;
 			case Ui::GalleryAction::Close:
 				ApplyOpen(false);
 				break;
@@ -839,7 +1117,9 @@ namespace Gallery
 				g_needScan = true;
 				break;
 			case Ui::GalleryAction::Open:
-				OpenViewer(r.index);
+				if (item >= 0) {
+					OpenViewer(item);
+				}
 				break;
 			case Ui::GalleryAction::Back:
 				viewing = -1;
@@ -852,15 +1132,19 @@ namespace Gallery
 				Step(+1);
 				break;
 			case Ui::GalleryAction::Hang:
-				Wall::BeginPlacement(items[r.index].path, g_hangShape, g_hangStyle);
-				ApplyOpen(false);
+				if (item >= 0) {
+					Wall::BeginPlacement(items[item].path, g_hangShape, g_hangStyle);
+					ApplyOpen(false);
+				}
 				break;
 			case Ui::GalleryAction::UiScale:
 				RequestUiScale(uiPct / 100.0f);
 				break;
 			case Ui::GalleryAction::UseForFrame:
-				Wall::ChangePicture(*g_replaceTarget, items[r.index].path);
-				ApplyOpen(false);
+				if (item >= 0 && g_replaceTarget) {
+					Wall::ChangePicture(*g_replaceTarget, items[item].path);
+					ApplyOpen(false);
+				}
 				break;
 			default:
 				break;
@@ -913,6 +1197,19 @@ namespace Gallery
 		wall.cleanUp = ::GetPrivateProfileIntA("Frames", "bCleanUpTextures", 1, ini.c_str()) != 0;
 		::GetPrivateProfileStringA("Frames", "fExamineReach", "600", buf, MAX_PATH, ini.c_str());
 		wall.examineReach = std::clamp(static_cast<float>(std::atof(buf)), 100.0f, 5000.0f);
+		auto note = [&](const char* a_key, bool a_default) { return ::GetPrivateProfileIntA("Notifications", a_key, a_default ? 1 : 0, ini.c_str()) != 0; };
+		wall.notifications = note("bNotifications", true);
+		wall.showSize = note("bShowSize", false);
+		wall.showDistance = note("bShowDistance", false);
+		wall.showFrameName = note("bShowFrameName", false);
+		wall.showPlacementHelp = note("bShowPlacementHelp", true);
+		wall.showConfirmations = note("bShowConfirmations", true);
+		wall.showPlacementWarnings = note("bShowPlacementWarnings", true);
+		wall.showErrors = note("bShowErrors", true);
+		cfg.placementInfo = note("bShowPlacementInfo", true);
+		spdlog::info("Notifications: on={} size={} distance={} frame={} help={} confirm={} warnings={} errors={} info line={}", wall.notifications,
+			wall.showSize, wall.showDistance, wall.showFrameName, wall.showPlacementHelp, wall.showConfirmations, wall.showPlacementWarnings,
+			wall.showErrors, cfg.placementInfo);
 		spdlog::info("Frames: resolution {}  default style {}  reach {}", wall.resolution, Frames::StyleName(0, wall.defaultStyle), wall.maxDistance);
 		dbg.hookPresent = ::GetPrivateProfileIntA("Debug", "bHookPresent", 1, ini.c_str()) != 0;
 		dbg.inputSink = ::GetPrivateProfileIntA("Debug", "bInputSink", 1, ini.c_str()) != 0;
@@ -1001,7 +1298,9 @@ namespace Gallery
 		if (g_wantOpen != g_open) {
 			ApplyOpen(g_wantOpen);
 		}
-		if (!g_open || g_imguiFailed) {
+		Wall::PlacementStatus placing;
+		const bool            infoLine = !g_open && cfg.placementInfo && Wall::GetPlacementStatus(placing);
+		if ((!g_open && !infoLine) || g_imguiFailed) {
 			if (!g_open) {
 				std::lock_guard lk(g_inputMtx);
 				g_input.clear();
@@ -1017,6 +1316,10 @@ namespace Gallery
 				return;
 			}
 			g_imguiReady = true;
+		}
+		if (infoLine) {
+			std::lock_guard lk(g_inputMtx);
+			g_input.clear();  // the game has the controls while hanging; nothing goes to ImGui
 		}
 
 		ID3D11Texture2D* back = nullptr;
@@ -1043,7 +1346,9 @@ namespace Gallery
 			g_needScan = false;
 			Scan();
 		}
-		DrainInput();
+		if (!infoLine) {
+			DrainInput();
+		}
 		UploadReady();
 
 		if (g_pendingUiScale > 0.0f) {
@@ -1057,7 +1362,15 @@ namespace Gallery
 		}
 		ImGui_ImplDX11_NewFrame();
 		ImGui::NewFrame();
-		DrawUI();
+		if (infoLine) {
+			io.MouseDrawCursor = false;
+			const auto values = fmt::format("{}  \xC2\xB7  {}  \xC2\xB7  Size {:.0f}%  \xC2\xB7  Distance {:+.2f}", placing.frame, placing.shape,
+				placing.scale * 100.0f, placing.distance);
+			Ui::DrawPlacementInfo(values.c_str(),
+				"Click: hang   \xC2\xB7   Wheel: size   \xC2\xB7   Shift+Wheel: frame   \xC2\xB7   Up/Down (hold): distance   \xC2\xB7   Right-click / Esc: cancel");
+		} else {
+			DrawUI();
+		}
 		ImGui::Render();
 
 		ID3D11RenderTargetView* rtv = nullptr;

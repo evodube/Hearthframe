@@ -45,6 +45,16 @@ namespace Ui
 			}
 		};
 
+		// Keys like Esc / arrows act on the window only when no text box or dialog has them.
+		bool KeysFree()
+		{
+			return !ImGui::GetIO().WantTextInput && !ImGui::IsAnyItemActive() && !ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId);
+		}
+
+		int  g_renameIndex = -1;
+		bool g_openRename = false;
+		bool g_renameFocus = false;
+
 		void Centered(ImFont* a_font, float a_size, ImU32 a_col, const ImVec2& a_min, const ImVec2& a_max, const char* a_text)
 		{
 			const ImVec2 ts = a_font->CalcTextSizeA(a_size, FLT_MAX, 0.0f, a_text);
@@ -57,6 +67,19 @@ namespace Ui
 			GalleryResult r;
 			if (Theme::Button("Refresh", ImVec2(S(150.0f), 0))) {
 				r.action = GalleryAction::Refresh;
+			}
+			if (m.search) {
+				ImGui::SameLine(0.0f, S(24.0f));
+				ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(S(12.0f), S(12.0f)));
+				ImGui::SetNextItemWidth(S(280.0f));
+				ImGui::InputTextWithHint("##search", "Search pictures...", m.search, static_cast<size_t>(m.searchSize), ImGuiInputTextFlags_EscapeClearsAll);
+				ImGui::PopStyleVar();
+				if (m.search[0]) {
+					ImGui::SameLine(0.0f, S(6.0f));
+					if (Theme::Button("Clear", ImVec2(0, 0))) {
+						m.search[0] = 0;
+					}
+				}
 			}
 			ImGui::SameLine(0.0f, S(24.0f));
 			ImGui::AlignTextToFramePadding();
@@ -83,7 +106,10 @@ namespace Ui
 					Theme::TextColoredWrapped(Theme::Warning(), m.notice);
 					ImGui::Dummy(ImVec2(0, S(8.0f)));
 				}
-				if (m.pictures.empty()) {
+				if (m.pictures.empty() && m.search && m.search[0] && m.totalPictures > 0) {
+					Theme::SectionLabel("No matches");
+					ImGui::TextWrapped("No picture name contains \"%s\".", m.search);
+				} else if (m.pictures.empty()) {
 					Theme::SectionLabel("No pictures yet");
 					std::string msg = "Put .png, .jpg, .bmp or .tga files in this folder, then press Refresh:\n";
 					msg += m.folder;
@@ -113,6 +139,16 @@ namespace Ui
 					}
 					const bool clicked = ImGui::InvisibleButton("##pic", cardSize);
 					const bool hovered = ImGui::IsItemHovered();
+					if (m.renameBuf && ImGui::BeginPopupContextItem("##card")) {
+						if (ImGui::Selectable("Open")) {
+							r = { GalleryAction::Open, i };
+						}
+						if (ImGui::Selectable("Rename...")) {
+							g_openRename = true;
+							g_renameIndex = i;
+						}
+						ImGui::EndPopup();
+					}
 					// picture well
 					const ImVec2 a = p, b = p + ImVec2(cell, cell);
 					Theme::CardBack(dl, a, b, hovered);
@@ -134,10 +170,11 @@ namespace Ui
 					}
 					dl->PopClipRect();
 					if (hovered) {
-						if (pic.failed && pic.error && *pic.error) {
+						if (ImGui::IsPopupOpen("##card")) {
+						} else if (pic.failed && pic.error && *pic.error) {
 							ImGui::SetTooltip("%s\nCan't read: %s\nPress Refresh to try again.", pic.name, pic.error);
 						} else {
-							ImGui::SetTooltip("%s\n%d %s %d", pic.name, pic.origW, kTimes, pic.origH);
+							ImGui::SetTooltip("%s\n%d %s %d\nRight-click to rename", pic.name, pic.origW, kTimes, pic.origH);
 						}
 					}
 					if (clicked) {
@@ -165,7 +202,7 @@ namespace Ui
 				return;
 			}
 			Theme::DrawChrome();
-			if (Theme::Header("Hang on Wall", pic.name)) {
+			if (Theme::Header("Hang on Wall", pic.name) || ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
 				ImGui::CloseCurrentPopup();
 			}
 			const int best = m.bestShape ? m.bestShape(pic.origW, pic.origH) : 0;
@@ -279,16 +316,24 @@ namespace Ui
 			GalleryResult r;
 			const auto&   pic = m.pictures[m.viewing];
 			const ImVec2  nav(S(130.0f), 0);
-			if (Theme::Button("Back", nav) || ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
+			const bool    keys = KeysFree();
+			if (Theme::Button("Back", nav) || (keys && ImGui::IsKeyPressed(ImGuiKey_Escape, false))) {
 				r.action = GalleryAction::Back;
 			}
 			ImGui::SameLine();
-			if (Theme::Button("Previous", nav) || ImGui::IsKeyPressed(ImGuiKey_LeftArrow)) {
+			if (Theme::Button("Previous", nav) || (keys && ImGui::IsKeyPressed(ImGuiKey_LeftArrow))) {
 				r.action = GalleryAction::Prev;
 			}
 			ImGui::SameLine();
-			if (Theme::Button("Next", nav) || ImGui::IsKeyPressed(ImGuiKey_RightArrow)) {
+			if (Theme::Button("Next", nav) || (keys && ImGui::IsKeyPressed(ImGuiKey_RightArrow))) {
 				r.action = GalleryAction::Next;
+			}
+			if (m.renameBuf) {
+				ImGui::SameLine(0.0f, S(24.0f));
+				if (Theme::Button("Rename", nav)) {
+					g_openRename = true;
+					g_renameIndex = m.viewing;
+				}
 			}
 			// primary action on the right
 			const char* primary = m.replaceMode ? "Use for this frame" : "Hang on wall";
@@ -325,6 +370,85 @@ namespace Ui
 			ImGui::EndChild();
 			return r;
 		}
+
+		// ------------------------------------------------------------------ rename
+		void DrawRenameDialog(GalleryModel& m, GalleryResult& r)
+		{
+			if (!m.renameBuf) {
+				return;
+			}
+			const int n = static_cast<int>(m.pictures.size());
+			if (g_openRename && g_renameIndex >= 0 && g_renameIndex < n) {
+				g_openRename = false;
+				const std::string name = m.pictures[g_renameIndex].name;
+				const auto        dot = name.find_last_of('.');
+				const std::string stem = dot == std::string::npos ? name : name.substr(0, dot);
+				std::snprintf(m.renameBuf, static_cast<size_t>(m.renameSize), "%s", stem.c_str());
+				g_renameFocus = true;
+				r = { GalleryAction::RenameOpened, g_renameIndex };
+				ImGui::OpenPopup("Rename picture");
+			}
+			g_openRename = false;
+			const ImVec2 center = ImGui::GetIO().DisplaySize * 0.5f;
+			ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+			ImGui::SetNextWindowSize(ImVec2(S(760.0f), 0));
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(S(30.0f), S(26.0f)));
+			const bool open = ImGui::BeginPopupModal("Rename picture", nullptr,
+				ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar);
+			ImGui::PopStyleVar();
+			if (!open) {
+				return;
+			}
+			if (g_renameIndex < 0 || g_renameIndex >= n || m.renameDone) {
+				ImGui::CloseCurrentPopup();
+				ImGui::EndPopup();
+				return;
+			}
+			const std::string name = m.pictures[g_renameIndex].name;
+			const auto        dot = name.find_last_of('.');
+			const std::string ext = dot == std::string::npos ? std::string() : name.substr(dot);
+			Theme::DrawChrome();
+			bool cancel = Theme::Header("Rename Picture", name.c_str());
+			bool submit = false;
+			if (Theme::BeginParchment("##rename", ImVec2(0, 0), false, true)) {
+				Theme::SectionLabel("New name");
+				const float extW = ImGui::CalcTextSize(ext.c_str()).x + S(12.0f);
+				ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(S(12.0f), S(12.0f)));
+				ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - extW);
+				if (g_renameFocus) {
+					ImGui::SetKeyboardFocusHere();
+					g_renameFocus = false;
+				}
+				submit = ImGui::InputText("##newname", m.renameBuf, static_cast<size_t>(m.renameSize), ImGuiInputTextFlags_EnterReturnsTrue);
+				ImGui::PopStyleVar();
+				ImGui::SameLine(0.0f, S(6.0f));
+				ImGui::AlignTextToFramePadding();
+				ImGui::TextUnformatted(ext.c_str());
+				ImGui::Dummy(ImVec2(0, S(4.0f)));
+				if (m.renameError && *m.renameError) {
+					Theme::TextColoredWrapped(Theme::Warning(), m.renameError);
+				} else {
+					Theme::TextItalic("Hung copies of this picture follow the new name.");
+				}
+			}
+			Theme::EndParchment();
+			ImGui::Dummy(ImVec2(0, S(6.0f)));
+			const float bw = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
+			if (Theme::Button("Rename", ImVec2(bw, S(52.0f)), true)) {
+				submit = true;
+			}
+			ImGui::SameLine();
+			if (Theme::Button("Cancel", ImVec2(bw, S(52.0f))) || (!ImGui::IsAnyItemActive() && ImGui::IsKeyPressed(ImGuiKey_Escape, false))) {
+				cancel = true;
+			}
+			if (submit) {
+				r = { GalleryAction::Rename, g_renameIndex };
+			}
+			if (cancel) {
+				ImGui::CloseCurrentPopup();
+			}
+			ImGui::EndPopup();
+		}
 	}
 
 	GalleryResult DrawGallery(GalleryModel& m)
@@ -354,7 +478,11 @@ namespace Ui
 		lastCenter = ImGui::GetWindowPos() + lastSize * 0.5f;
 		if (visible) {
 			char pics[16], walls[16];
-			std::snprintf(pics, sizeof pics, "%d", static_cast<int>(m.pictures.size()));
+			if (m.search && m.search[0]) {
+				std::snprintf(pics, sizeof pics, "%d / %d", static_cast<int>(m.pictures.size()), m.totalPictures);
+			} else {
+				std::snprintf(pics, sizeof pics, "%d", static_cast<int>(m.pictures.size()));
+			}
 			std::snprintf(walls, sizeof walls, "%d", m.framesOnWalls);
 			const Theme::Stat stats[] = { { "Pictures", pics }, { "On walls", walls } };
 			const char*       subtitle = m.replaceMode ? "Choose a new picture for the frame" : m.folder;
@@ -379,14 +507,19 @@ namespace Ui
 				}
 				DrawHangDialog(m, r);
 			} else {
-				if (ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
-					r.action = GalleryAction::Close;
+				if (KeysFree() && ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
+					if (m.search && m.search[0]) {
+						m.search[0] = 0;  // first Esc clears the search
+					} else {
+						r.action = GalleryAction::Close;
+					}
 				}
 				const auto g = DrawGrid(m);
 				if (g.action != GalleryAction::None) {
 					r = g;
 				}
 			}
+			DrawRenameDialog(m, r);
 		}
 		Theme::EndWindow();
 		return r;
@@ -413,6 +546,7 @@ namespace Ui
 		}
 		ImGui::SetNextWindowPos(io.DisplaySize * 0.5f, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
 		ImGui::SetNextWindowSize(ImVec2(S(640.0f), 0));
+		(void)io;
 		if (ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
 			act = FrameAction::Close;
 		}
@@ -423,6 +557,40 @@ namespace Ui
 			}
 			if (Theme::BeginParchment("##frame", ImVec2(0, 0), false, true)) {
 				Theme::SectionLabel("Picture");
+				if (*m.picture) {
+					// preview cropped to the frame's shape, like it looks on the wall
+					const float  maxH = S(220.0f), maxW = ImGui::GetContentRegionAvail().x;
+					float        h = maxH, w = maxH * m.canvasAspect;
+					if (w > maxW) {
+						w = maxW;
+						h = w / m.canvasAspect;
+					}
+					const ImVec2 pos = ImGui::GetCursorScreenPos() + ImVec2((maxW - w) * 0.5f, 0.0f);
+					const ImVec2 a = pos, b = pos + ImVec2(w, h);
+					auto*        dl = ImGui::GetWindowDrawList();
+					Theme::CardBack(dl, a, b, false);
+					const float in = Theme::CardInset();
+					if (m.preview && m.previewW > 0 && m.previewH > 0) {
+						const float ia = static_cast<float>(m.previewW) / m.previewH;
+						const float ta = (w - 2 * in) / (h - 2 * in);
+						ImVec2      uv0(0, 0), uv1(1, 1);
+						if (ia > ta) {
+							const float k = ta / ia;
+							uv0.x = (1.0f - k) * 0.5f;
+							uv1.x = 1.0f - uv0.x;
+						} else {
+							const float k = ia / ta;
+							uv0.y = (1.0f - k) * 0.5f;
+							uv1.y = 1.0f - uv0.y;
+						}
+						dl->AddImage(m.preview, a + ImVec2(in, in), b - ImVec2(in, in), uv0, uv1);
+					} else {
+						Centered(Theme::Italic(), Theme::Italic()->FontSize, Theme::Muted(), a, b,
+							m.previewMissing ? "picture file not found" : (m.previewLoading ? "loading..." : "no preview"));
+					}
+					Theme::CardFront(dl, a, b, false);
+					ImGui::Dummy(ImVec2(maxW, h + S(8.0f)));
+				}
 				ImGui::TextWrapped("%s", *m.picture ? m.picture : "(unknown - hung some other way)");
 				ImGui::Dummy(ImVec2(0, S(6.0f)));
 				Theme::SectionLabel("Size");
@@ -432,6 +600,7 @@ namespace Ui
 				ImGui::Dummy(ImVec2(0, S(6.0f)));
 				Theme::SectionLabel("Distance from wall");
 				const float half = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
+				ImGui::PushButtonRepeat(true);  // hold to keep moving
 				if (Theme::Button("Closer", ImVec2(half, 0))) {
 					act = FrameAction::Closer;
 				}
@@ -439,6 +608,7 @@ namespace Ui
 				if (Theme::Button("Further", ImVec2(half, 0))) {
 					act = FrameAction::Further;
 				}
+				ImGui::PopButtonRepeat();
 			}
 			Theme::EndParchment();
 			ImGui::Dummy(ImVec2(0, S(6.0f)));
@@ -465,5 +635,25 @@ namespace Ui
 		}
 		Theme::EndWindow();
 		return act;
+	}
+
+	void DrawPlacementInfo(const char* a_values, const char* a_keys)
+	{
+		auto*        dl = ImGui::GetForegroundDrawList();
+		const auto&  io = ImGui::GetIO();
+		ImFont*      body = Theme::Body();
+		ImFont*      ital = Theme::Italic();
+		const float  s1 = body->FontSize, s2 = ital->FontSize * 0.9f;
+		const ImVec2 t1 = body->CalcTextSizeA(s1, FLT_MAX, 0.0f, a_values);
+		const ImVec2 t2 = ital->CalcTextSizeA(s2, FLT_MAX, 0.0f, a_keys);
+		const float  padX = S(22.0f), padY = S(10.0f), gap = S(4.0f);
+		const float  w = (std::max)(t1.x, t2.x) + padX * 2, h = t1.y + t2.y + gap + padY * 2;
+		const ImVec2 a(std::round((io.DisplaySize.x - w) * 0.5f), std::round(io.DisplaySize.y - h - S(70.0f)));
+		const ImVec2 b = a + ImVec2(w, h);
+		dl->AddRectFilled(a + ImVec2(S(2), S(3)), b + ImVec2(S(2), S(3)), IM_COL32(0, 0, 0, 90), S(4.0f));
+		dl->AddRectFilled(a, b, IM_COL32(24, 22, 20, 210), S(4.0f));
+		dl->AddRect(a, b, Theme::GoldDim(), S(4.0f), 0, S(1.2f));
+		dl->AddText(body, s1, ImVec2(a.x + (w - t1.x) * 0.5f, a.y + padY), Theme::Cream(), a_values);
+		dl->AddText(ital, s2, ImVec2(a.x + (w - t2.x) * 0.5f, a.y + padY + t1.y + gap), Theme::Muted(), a_keys);
 	}
 }

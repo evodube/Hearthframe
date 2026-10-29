@@ -9,6 +9,15 @@ namespace Wall
 		float maxDistance = 2000.0f;   // how far you can hang a picture
 		float examineReach = 600.0f;   // how far a hung picture can be examined with Activate
 		bool  cleanUp = true;          // delete converted textures no picture in the current save uses
+		// top-left game notifications ([Notifications] in the INI); everything is also written to the log
+		bool notifications = true;     // master switch
+		bool showSize = false;         // "Size: 110%" while placing
+		bool showDistance = false;     // "Distance from wall: +0.50" while placing
+		bool showFrameName = false;    // "Frame: Rustic Dark Oak" while placing
+		bool showPlacementHelp = true; // how-to line when placing starts
+		bool showConfirmations = true; // picture hung / taken down / hanging cancelled
+		bool showPlacementWarnings = true;  // can't hang it here (floor, too far...)
+		bool showErrors = true;        // something went wrong
 	};
 	Settings& GetSettings();
 
@@ -27,6 +36,15 @@ namespace Wall
 	// ---- placement mode (aim at a wall, left click to hang)
 	void BeginPlacement(const std::filesystem::path& a_picture, int a_shape, int a_style, RE::ObjectRefHandle a_moving = {}, float a_scale = 1.0f);
 	bool IsPlacing();
+	// Current placement values for the on-screen info line (any thread). False when not placing.
+	struct PlacementStatus
+	{
+		std::string frame;   // frame (style) name
+		std::string shape;
+		float       scale = 1.0f;
+		float       distance = 0.0f;  // relative to the default distance from the wall
+	};
+	bool GetPlacementStatus(PlacementStatus& a_out);
 	void Tick();                    // every frame: moves the preview frame, puts pictures on new frames (SKSE task)
 	void CycleStyle(int a_delta);   // Shift + mouse wheel while placing
 	void AdjustScale(int a_steps);  // mouse wheel while placing (10% per step)
@@ -54,6 +72,9 @@ namespace Wall
 	void                     SetFrameScale(RE::ObjectRefHandle a_ref, float a_scale);
 	void                     NudgeFrame(RE::ObjectRefHandle a_ref, float a_distance);  // + = away from the wall
 	void                     ChangePicture(RE::ObjectRefHandle a_ref, const std::filesystem::path& a_picture);
+	// A picture file was renamed on disk: frames showing it switch to the new name (their converted texture
+	// is renamed to match), and the rename is remembered so frames in other saves find the file too.
+	void                     PictureRenamed(const std::filesystem::path& a_old, const std::filesystem::path& a_new);
 	// Swaps a hung frame for another frame of the same shape (style = index in that shape's list), keeping its
 	// spot, size and picture. The frame menu then shows the new frame (via TakeActivatedFrame).
 	void                     ChangeFrame(RE::ObjectRefHandle a_ref, int a_style);

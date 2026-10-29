@@ -32,6 +32,17 @@ namespace Ui
 		int*                        uiScalePct = nullptr; // in/out, 60..200 (applied on release -> UiScale)
 		std::function<void(int)>    requestThumb;          // called for visible pictures without a thumbnail
 
+		// search (pictures holds only the matches; totalPictures counts all)
+		char* search = nullptr;
+		int   searchSize = 0;
+		int   totalPictures = 0;
+
+		// rename (the box edits the name without its extension)
+		char*       renameBuf = nullptr;
+		int         renameSize = 0;
+		const char* renameError = nullptr;  // why the last rename failed, shown in the box
+		bool        renameDone = false;     // the last rename worked: close the box
+
 		// viewer
 		int         viewing = -1;
 		ImTextureID full = 0;
@@ -62,6 +73,8 @@ namespace Ui
 		Hang,         // index, *hangShape, *hangStyle
 		UseForFrame,  // index
 		UiScale,      // *uiScalePct changed
+		Rename,       // index, new name (without extension) in renameBuf
+		RenameOpened, // index: the rename box opened (clear the old error)
 	};
 
 	struct GalleryResult
@@ -85,6 +98,12 @@ namespace Ui
 		int                currentStyle = 0;
 		int*               chosenStyle = nullptr;  // out, with FrameAction::ChangeFrame
 		bool               changing = false;       // a swap is in progress (frame list disabled)
+		// preview of the picture, cropped to the frame's shape
+		ImTextureID preview = 0;
+		int         previewW = 0, previewH = 0;
+		bool        previewLoading = false;
+		bool        previewMissing = false;
+		float       canvasAspect = 1.0f;  // width / height of the frame's picture area
 	};
 
 	enum class FrameAction
@@ -102,4 +121,7 @@ namespace Ui
 
 	FrameAction DrawFrameMenu(FrameModel& a_model);
 	void        ResetFrameMenu();  // back to the main frame menu (call when the menu opens)
+
+	// Small line at the bottom of the screen while hanging a picture (no window, no input).
+	void DrawPlacementInfo(const char* a_values, const char* a_keys);
 }
