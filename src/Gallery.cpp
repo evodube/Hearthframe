@@ -660,6 +660,19 @@ namespace Gallery
 			if (g_imguiReady) {
 				ImGui_ImplDX11_InvalidateDeviceObjects();  // font texture is recreated by the next NewFrame
 			}
+			static bool lookChosen = false;
+			if (!lookChosen) {
+				lookChosen = true;
+				for (int i = 0; i < Theme::StyleCount(); ++i) {
+					if (std::strcmp(Theme::StyleName(i), "Ledger: Guild Card") == 0) {
+						Theme::SetStyle(i);
+					}
+				}
+				// parchment / leather textures for the look (the DX11 backend samples with WRAP, so they tile)
+				Theme::SetTextureFactory([](int a_w, int a_h, const unsigned char* a_px) -> ImTextureID {
+					return reinterpret_cast<ImTextureID>(MakeSRV(a_px, a_w, a_h));
+				});
+			}
 			Theme::Setup(scale, cfg.fontSize, { regular.c_str(), bold.c_str(), italic.c_str() });
 			ImGui::GetIO().MouseDrawCursor = g_open;
 			spdlog::info("UI: scale {:.2f}, font {} ({})", scale, cfg.fontSize, Theme::Body() && Theme::Body()->ConfigData ? "Georgia" : "default");

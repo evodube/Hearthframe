@@ -80,7 +80,7 @@ namespace Ui
 
 			if (Theme::BeginParchment("##grid", ImVec2(0, 0), true)) {
 				if (m.notice) {
-					Theme::TextColoredWrapped(IM_COL32(140, 40, 30, 255), m.notice);
+					Theme::TextColoredWrapped(Theme::Warning(), m.notice);
 					ImGui::Dummy(ImVec2(0, S(8.0f)));
 				}
 				if (m.pictures.empty()) {
@@ -115,16 +115,15 @@ namespace Ui
 					const bool hovered = ImGui::IsItemHovered();
 					// picture well
 					const ImVec2 a = p, b = p + ImVec2(cell, cell);
-					dl->AddRectFilled(a + ImVec2(S(3), S(4)), b + ImVec2(S(3), S(4)), IM_COL32(90, 66, 36, 70), S(2.0f));  // shadow
-					dl->AddRectFilled(a, b, IM_COL32(34, 28, 22, 255), S(2.0f));
+					Theme::CardBack(dl, a, b, hovered);
 					if (pic.thumb) {
-						const ImVec2 sz = Fit(static_cast<float>(pic.thumbW), static_cast<float>(pic.thumbH), cell - S(8), cell - S(8));
+						const ImVec2 sz = Fit(static_cast<float>(pic.thumbW), static_cast<float>(pic.thumbH), cell - 2 * Theme::CardInset(), cell - 2 * Theme::CardInset());
 						const ImVec2 ia = a + (ImVec2(cell, cell) - sz) * 0.5f;
 						dl->AddImage(pic.thumb, ia, ia + sz);
 					} else {
-						Centered(Theme::Italic(), Theme::Italic()->FontSize, IM_COL32(170, 150, 120, 255), a, b, pic.failed ? "can't read" : "loading...");
+						Centered(Theme::Italic(), Theme::Italic()->FontSize, Theme::Muted(), a, b, pic.failed ? "can't read" : "loading...");
 					}
-					dl->AddRect(a, b, hovered ? Theme::Gold() : IM_COL32(112, 88, 60, 255), S(2.0f), 0, hovered ? S(3.0f) : S(1.2f));
+					Theme::CardFront(dl, a, b, hovered);
 					// caption
 					dl->PushClipRect(ImVec2(a.x, b.y), ImVec2(b.x, b.y + labelH), true);
 					dl->AddText(ImVec2(a.x + S(2), b.y + S(6)), Theme::Ink(), pic.name);
@@ -250,7 +249,7 @@ namespace Ui
 			Theme::TextItalic("  %d %s %d   %s   %d of %d", pic.origW, kTimes, pic.origH, kDot, m.viewing + 1, static_cast<int>(m.pictures.size()));
 
 			// picture on a dark inset
-			ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(16, 15, 14, 255));
+			ImGui::PushStyleColor(ImGuiCol_ChildBg, Theme::ViewerBg());
 			ImGui::BeginChild("##view", ImVec2(0, 0), ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 			ImGui::PopStyleColor();
 			{
@@ -265,7 +264,7 @@ namespace Ui
 					const ImVec2 ia = (a + b - sz) * 0.5f;
 					dl->AddImage(tex, ia, ia + sz);
 				} else {
-					Centered(Theme::Italic(), Theme::Italic()->FontSize, IM_COL32(170, 150, 120, 255), a, b,
+					Centered(Theme::Italic(), Theme::Italic()->FontSize, Theme::Muted(), a, b,
 						m.fullFailed ? "This picture could not be read." : "Loading...");
 				}
 			}
