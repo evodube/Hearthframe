@@ -186,8 +186,8 @@ namespace Ui
 						ImGui::PopID();
 						continue;
 					}
-					if (!pic.thumb && !pic.failed && m.requestThumb) {
-						m.requestThumb(i);
+					if (m.requestThumb && !pic.failed) {
+						m.requestThumb(i);  // also tells the gallery the card is on screen
 					}
 					const bool clicked = ImGui::InvisibleButton("##pic", cardSize);
 					const bool hovered = ImGui::IsItemHovered();
@@ -456,10 +456,32 @@ namespace Ui
 				return;
 			}
 			Theme::DrawChrome();
-			char sub[96];
-			std::snprintf(sub, sizeof sub, "%d picture%s on walls in this save", static_cast<int>(m.placed.size()), m.placed.size() == 1 ? "" : "s");
+			int strays = 0;
+			for (const auto& pp : m.placed) {
+				strays += pp.stray ? 1 : 0;
+			}
+			const int pictures = static_cast<int>(m.placed.size()) - strays;
+			char      sub[96];
+			std::snprintf(sub, sizeof sub, "%d picture%s on walls in this save", pictures, pictures == 1 ? "" : "s");
 			if (Theme::Header("Placed Pictures", sub) || ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
 				ImGui::CloseCurrentPopup();
+			}
+			static bool confirmStrays = false;
+			if (strays > 0) {
+				ImGui::AlignTextToFramePadding();
+				Theme::TextItalic("%d stray frame%s without a picture (left over from an earlier session)", strays, strays == 1 ? "" : "s");
+				const char* label = confirmStrays ? "Click again to remove them" : "Remove stray frames";
+				const float bw = ImGui::CalcTextSize(label).x + S(48.0f);
+				ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - bw);
+				if (Theme::Button(label, ImVec2(bw, S(40.0f)), confirmStrays)) {
+					if (confirmStrays) {
+						r = { GalleryAction::RemoveStrays, -1 };
+					}
+					confirmStrays = !confirmStrays;
+				}
+				ImGui::Dummy(ImVec2(0, S(4.0f)));
+			} else {
+				confirmStrays = false;
 			}
 			const float listH = (std::min)(S(640.0f), ImGui::GetIO().DisplaySize.y * 0.66f);
 			if (Theme::BeginParchment("##placed", ImVec2(0, listH), true)) {
@@ -506,14 +528,14 @@ namespace Ui
 						}
 						dl->AddImage(pp.thumb, a + ImVec2(in, in), b - ImVec2(in, in), uv0, uv1);
 					} else {
-						Centered(Theme::Italic(), ih, Theme::Muted(), a, b, pp.missing ? "picture file not found" : "loading...");
+						Centered(Theme::Italic(), ih, Theme::Muted(), a, b, pp.stray ? "no picture" : (pp.missing ? "picture file not found" : "loading..."));
 					}
 					Theme::CardFront(dl, a, b, false);
 					ImGui::Dummy(ImVec2(cell, cell));
 					// name + where
 					const ImVec2 t = ImGui::GetCursorScreenPos();
 					dl->PushClipRect(t, t + ImVec2(cell, textH), true);
-					dl->AddText(ImVec2(t.x + S(2.0f), t.y + S(6.0f)), Theme::Ink(), pp.name);
+					dl->AddText(ImVec2(t.x + S(2.0f), t.y + S(6.0f)), pp.stray ? Theme::InkSoft() : Theme::Ink(), pp.stray ? "Stray frame (no picture)" : pp.name);
 					const std::string where = std::string(pp.place) + (*pp.region && std::strcmp(pp.region, pp.place) != 0 ? std::string(", ") + pp.region : std::string()) +
 					                          (pp.interior ? "  (interior)" : "  (exterior)");
 					MapPin(dl, ImVec2(t.x + S(2.0f), t.y + S(8.0f) + lh + S(2.0f)), ih, Theme::InkSoft());

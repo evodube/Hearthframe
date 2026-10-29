@@ -78,7 +78,11 @@ namespace Gallery
 			int                       w = 0, h = 0;          // thumbnail texture size
 			int                       origW = 0, origH = 0;  // size of the file on disk
 			std::string               error;                 // why it couldn't be read
+			int                       loadedDim = 0;         // long side the thumbnail was made at
+			std::uint64_t             lastSeen = 0;          // frame the card was last on screen
 		};
+		std::uint64_t g_frame = 0;            // UI frames drawn
+		constexpr int kMaxThumbs = 240;       // thumbnails kept in video memory; older off-screen ones are freed
 		bool g_virtualFileHint = false;  // a listed picture couldn't be opened by name (MO2 virtual Data folder)
 
 		struct Job
@@ -90,6 +94,7 @@ namespace Gallery
 			bool     full = false;
 			bool     preview = false;  // frame menu picture (not part of the list)
 			bool     placed = false;   // Placed pictures window thumbnail
+			bool     info = false;     // only read the picture's size (for the folder tabs)
 		};
 
 		struct Result
@@ -99,6 +104,7 @@ namespace Gallery
 			bool                      full = false;
 			bool                      preview = false;
 			bool                      placed = false;
+			bool                      info = false;
 			fs::path                  path;
 			bool                      ok = false;
 			bool                      notFound = false;
@@ -284,6 +290,16 @@ namespace Gallery
 				r.full = job.full;
 				r.preview = job.preview;
 				r.placed = job.placed;
+				r.info = job.info;
+				if (job.info) {
+					int w = 0, h = 0, comp = 0;
+					r.ok = stbi_info(ToUtf8(job.path).c_str(), &w, &h, &comp) != 0;
+					r.origW = w;
+					r.origH = h;
+					std::lock_guard lk(S.mtx);
+					S.results.push_back(std::move(r));
+					continue;
+				}
 				r.path = job.path;
 				try {
 					r.ok = LoadPixels(job.path, job.maxDim, r);
@@ -348,7 +364,7 @@ namespace Gallery
 
 		void UploadReady()
 		{
-			for (int n = 0; n < kTexturesPerFrame; ++n) {
+			for (int n = 0; n < kTexturesPerFrame;) {
 				Result r;
 				{
 					std::lock_guard lk(S.mtx);
@@ -358,6 +374,14 @@ namespace Gallery
 					r = std::move(S.results.front());
 					S.results.pop_front();
 				}
+				if (r.info) {
+					if (r.gen == g_gen.load() && r.index >= 0 && r.index < static_cast<int>(items.size()) && r.ok && items[r.index].origW == 0) {
+						items[r.index].origW = r.origW;
+						items[r.index].origH = r.origH;
+					}
+					continue;  // no texture made: doesn't count
+				}
+				++n;
 				if (r.placed) {
 					if (auto it = g_placedThumbs.find(r.path); it != g_placedThumbs.end()) {
 						if (r.ok && !it->second.srv) {
@@ -409,9 +433,13 @@ namespace Gallery
 						g_virtualFileHint = true;
 					}
 					if (r.ok) {
+						if (it.srv) {
+							it.srv->Release();  // replaced by a sharper one
+						}
 						it.srv = MakeSRV(r.px.data(), r.w, r.h);
 						it.w = r.w;
 						it.h = r.h;
+						it.loadedDim = (std::max)(r.w, r.h);
 					}
 					it.state = it.srv ? State::Ready : State::Failed;
 				}
@@ -471,11 +499,9 @@ namespace Gallery
 				Item it;
 				it.path = path;
 				it.name = ToUtf8(path.filename());
-				int w = 0, h = 0, comp = 0;  // header only: sorts the picture into its folder right away
-				if (stbi_info(ToUtf8(path).c_str(), &w, &h, &comp)) {
-					it.origW = w;
-					it.origH = h;
-				}
+				Job info{ g_gen.load(), static_cast<int>(items.size()), path, 0, false };  // size only, for the folder tabs
+				info.info = true;
+				Submit(std::move(info));
 				items.push_back(std::move(it));
 			}
 			spdlog::info("Scanned {} -> {} picture(s)", ToUtf8(cfg.folder), items.size());
@@ -883,7 +909,9 @@ namespace Gallery
 		{
 			viewing = i;
 			ReleaseFull();
-			Submit({ g_gen.load(), i, items[i].path, kFullMaxDim, true }, true);
+			const auto& io = ImGui::GetIO();  // no need for more pixels than the screen has
+			const int   cap = std::clamp(static_cast<int>((std::max)(io.DisplaySize.x, io.DisplaySize.y)), 1024, kFullMaxDim);
+			Submit({ g_gen.load(), i, items[i].path, cap, true }, true);
 		}
 
 		// Previous / Next walk through the pictures that match the search.
@@ -1130,9 +1158,13 @@ namespace Gallery
 			frameNames.reserve(g_placed.size());
 			for (const auto& pi : g_placed) {
 				ExtraThumb        tmp;
-				const ExtraThumb* th = PlacedThumb(pi.picture, tmp);
+				const ExtraThumb* th = pi.stray ? &tmp : PlacedThumb(pi.picture, tmp);
 				Ui::PlacedPicture pp;
 				pp.name = pi.name.c_str();
+				if (pi.stray) {
+					tmp = {};
+					th = &tmp;
+				}
 				pp.thumb = th->srv ? reinterpret_cast<ImTextureID>(th->srv) : 0;
 				pp.thumbW = th->w;
 				pp.thumbH = th->h;
@@ -1144,6 +1176,7 @@ namespace Gallery
 				pp.place = pi.place.c_str();
 				pp.region = pi.region.c_str();
 				pp.interior = pi.interior;
+				pp.stray = pi.stray;
 				gm.placed.push_back(pp);
 			}
 			gm.search = g_search;
@@ -1168,12 +1201,16 @@ namespace Gallery
 				p.error = it.error.c_str();
 				gm.pictures.push_back(p);
 			}
-			gm.requestThumb = [](int i) {
+			gm.requestThumb = [](int i) {  // called for every card on screen
 				const int idx = visible[i];
 				Item&     it = items[idx];
-				if (it.state == State::None) {
+				it.lastSeen = g_frame;
+				const int want = std::clamp((static_cast<int>(cfg.thumbSize * Theme::Scale()) + 63) / 64 * 64, 128, kThumbMaxDim);
+				const bool tooSoft = it.state == State::Ready && it.loadedDim > 0 && it.loadedDim < want * 3 / 4 &&
+				                     (std::max)(it.origW, it.origH) > it.loadedDim;
+				if (it.state == State::None || tooSoft) {
 					it.state = State::Queued;
-					Submit({ g_gen.load(), idx, it.path, kThumbMaxDim, false });
+					Submit({ g_gen.load(), idx, it.path, want, false });
 				}
 			};
 			{
@@ -1205,6 +1242,28 @@ namespace Gallery
 
 			const int  folderBefore = g_shapeFolder;
 			const auto r = Ui::DrawGallery(gm);
+			++g_frame;
+			{  // free thumbnails that have been off screen the longest, beyond the budget
+				std::vector<int> loaded;
+				for (int i = 0; i < static_cast<int>(items.size()); ++i) {
+					if (items[i].srv) {
+						loaded.push_back(i);
+					}
+				}
+				if (static_cast<int>(loaded.size()) > kMaxThumbs) {
+					std::sort(loaded.begin(), loaded.end(), [](int a, int b) { return items[a].lastSeen < items[b].lastSeen; });
+					for (int k = 0; k < static_cast<int>(loaded.size()) - kMaxThumbs; ++k) {
+						Item& it = items[loaded[k]];
+						if (it.lastSeen + 2 >= g_frame || loaded[k] == viewing) {
+							break;  // still on screen
+						}
+						it.srv->Release();
+						it.srv = nullptr;
+						it.state = State::None;  // loaded again when scrolled back into view
+						it.loadedDim = 0;
+					}
+				}
+			}
 			if (g_shapeFolder != folderBefore) {
 				::WritePrivateProfileStringA("General", "iGalleryFolder", std::to_string(g_shapeFolder).c_str(), g_iniPath.c_str());
 				viewing = -1;
@@ -1214,6 +1273,11 @@ namespace Gallery
 			switch (r.action) {
 			case Ui::GalleryAction::OpenPlaced:
 				g_placedLoading = true;
+				Wall::RequestPlacedList();
+				break;
+			case Ui::GalleryAction::RemoveStrays:
+				Wall::RemoveStrayFrames();
+				g_placed.erase(std::remove_if(g_placed.begin(), g_placed.end(), [](const Wall::PlacedInfo& a_p) { return a_p.stray; }), g_placed.end());
 				Wall::RequestPlacedList();
 				break;
 			case Ui::GalleryAction::DeletePlaced:

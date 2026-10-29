@@ -310,13 +310,14 @@ namespace Wall
 		std::unordered_set<RE::FormID> g_removals;  // guarded by g_mtx
 
 		// Takes a frame out of the world. Main thread.
-		void DeleteFrameRef(RE::TESObjectREFR* a_ref)
+		void DeleteFrameRef(RE::TESObjectREFR* a_ref, const char* a_why = "removed")
 		{
 			if (!a_ref) {
 				return;
 			}
 			const auto id = a_ref->GetFormID();
 			const bool loaded = a_ref->Get3D() != nullptr;
+			spdlog::info("Frame {:08X} {} ({})", id, a_why, loaded ? "loaded" : "cell not loaded");
 			a_ref->Disable();
 			if (!loaded) {
 				// keep it from showing when its cell loads, and remember to finish the job then
@@ -342,13 +343,8 @@ namespace Wall
 			}
 			for (const auto id : ids) {
 				auto* ref = RE::TESForm::LookupByID<RE::TESObjectREFR>(id);
-				if (!ref) {
-					std::lock_guard lk(g_mtx);
-					g_removals.erase(id);  // already gone
-					continue;
-				}
-				if (!ref->Get3D()) {
-					continue;  // still unloaded
+				if (!ref || !ref->Get3D()) {
+					continue;  // not loaded (a temporary frame isn't even in memory while its cell is unloaded)
 				}
 				ref->Disable();
 				ref->SetDelete(true);
@@ -559,15 +555,54 @@ namespace Wall
 		std::string         g_previewTexture;          // dds already applied to the preview
 		bool                g_previewVisible = false;
 		std::atomic<bool>   g_previewQueued{ false };
+		// Where the current placement started: going through a door cancels it (main thread only).
+		RE::TESObjectCELL*  g_placeCell = nullptr;
+		RE::TESWorldSpace*  g_placeWorld = nullptr;
+		std::atomic<bool>   g_placeCellReset{ true };
 		int                 g_previewTicks = 0;         // ticks since the preview was created (diagnostics)
 		bool                g_previewMoved = false;
 		RE::FormID          g_stalePreview = 0;         // from a save made while aiming; deleted after load
 
+		// Frames in the game that Folder Gallery has no record of: a frame record as base, not disabled /
+		// deleted, not the current preview, not in g_frames. Only frames in memory are found (all hung
+		// frames are persistent; a temporary leftover preview is only in memory while its cell is loaded).
+		// Main thread.
+		std::vector<RE::TESObjectREFR*> FindStrayFrames()
+		{
+			std::unordered_set<RE::FormID> known;
+			{
+				std::lock_guard lk(g_mtx);
+				for (const auto& [id, e] : g_frames) {
+					known.insert(id);
+				}
+			}
+			const auto previewID = [] {
+				auto p = g_preview.get();
+				return p ? p->GetFormID() : 0u;
+			}();
+			std::vector<RE::TESObjectREFR*> out;
+			const auto& [map, lock] = RE::TESForm::GetAllForms();
+			RE::BSReadLockGuard guard{ lock };
+			if (!map) {
+				return out;
+			}
+			for (auto& [id, form] : *map) {
+				if ((id >> 24) != 0xFF || !form || form->GetFormType() != RE::FormType::Reference) {
+					continue;  // frames are always created at runtime (FF......)
+				}
+				auto* ref = static_cast<RE::TESObjectREFR*>(form);
+				if (id == previewID || known.contains(id) || ref->IsDisabled() || ref->IsMarkedForDeletion() || FrameIndex(ref->GetBaseObject()) < 0) {
+					continue;
+				}
+				out.push_back(ref);
+			}
+			return out;
+		}
+
 		void DeletePreview()
 		{
 			if (auto ref = g_preview.get()) {
-				ref->Disable();
-				ref->SetDelete(true);
+				DeleteFrameRef(ref.get(), "preview removed");
 			}
 			g_preview = {};
 			g_previewReady = false;
@@ -626,6 +661,23 @@ namespace Wall
 			if (!pl) {
 				DeletePreview();
 				return;
+			}
+			// Left through a door (interior <-> exterior, or another worldspace): stop hanging here, so the
+			// preview isn't left behind in a cell that is no longer loaded.
+			if (auto* player = RE::PlayerCharacter::GetSingleton()) {
+				auto* cell = player->GetParentCell();
+				auto* world = player->GetWorldspace();
+				if (g_placeCellReset.exchange(false) || !g_placeCell) {
+					g_placeCell = cell;
+					g_placeWorld = world;
+				} else if (cell && cell != g_placeCell &&
+						   (cell->IsInteriorCell() || g_placeCell->IsInteriorCell() || world != g_placeWorld)) {
+					spdlog::info("Placement cancelled: the player changed cells");
+					DeletePreview();
+					CancelPlacement(false);
+					Notify(Note::Confirm, "Hanging cancelled - you left the area");
+					return;
+				}
 			}
 			auto ref = g_preview.get();
 			if (!ref || ref->GetBaseObject() != FrameForm(pl->shape, pl->style)) {
@@ -740,8 +792,7 @@ namespace Wall
 					std::lock_guard lk(g_mtx);
 					g_frames.erase(old->GetFormID());
 				}
-				old->Disable();
-				old->SetDelete(true);
+				DeleteFrameRef(old.get(), "moved away");
 			}
 			DeletePreview();
 			CancelPlacement(false);
@@ -802,6 +853,24 @@ namespace Wall
 				for (const auto& [id, e] : g_frames) {
 					frames.emplace_back(id, e.shape);
 				}
+			}
+			// frames without a record (lost record, leftover preview) can be examined and taken down too
+			if (auto* tes = RE::TES::GetSingleton(); tes && RE::PlayerCharacter::GetSingleton()) {
+				std::unordered_set<RE::FormID> known;
+				for (const auto& f : frames) {
+					known.insert(f.first);
+				}
+				const auto previewID = [] {
+					auto p = g_preview.get();
+					return p ? p->GetFormID() : 0u;
+				}();
+				tes->ForEachReferenceInRange(RE::PlayerCharacter::GetSingleton(), g_settings.examineReach + 300.0f, [&](RE::TESObjectREFR& a_ref) {
+					const int idx = FrameIndex(a_ref.GetBaseObject());
+					if (idx >= 0 && a_ref.GetFormID() != previewID && !known.contains(a_ref.GetFormID())) {
+						frames.emplace_back(a_ref.GetFormID(), Frames::ShapeOf(idx));
+					}
+					return RE::BSContainer::ForEachResult::kContinue;
+				});
 			}
 			RE::TESObjectREFR* best = nullptr;
 			float              bestT = 1e30f;
@@ -864,17 +933,32 @@ namespace Wall
 
 		// The game rebuilds a frame's 3D from the mesh when it is moved or reloaded, which drops the
 		// picture without telling anyone. Every so often, put it back where it went missing. Main thread.
+		// Checks a slice of the hung frames each call (round robin), so the cost stays flat however many
+		// pictures are hung; frames that just loaded are handled right away by the attach event anyway.
 		void Watchdog()
 		{
+			constexpr std::size_t                           kPerCall = 48;
+			static std::size_t                              cursor = 0;
 			std::vector<std::pair<RE::FormID, std::string>> frames;
 			{
 				std::lock_guard lk(g_mtx);
-				for (const auto& [id, e] : g_frames) {
-					const auto c = g_conversions.find(e.dds);
+				const std::size_t n = g_frames.size();
+				if (n == 0) {
+					return;
+				}
+				cursor %= n;
+				auto it = g_frames.begin();
+				std::advance(it, cursor);
+				for (std::size_t k = 0; k < (std::min)(kPerCall, n); ++k) {
+					const auto c = g_conversions.find(it->second.dds);
 					if (c != g_conversions.end() && c->second == Conv::Ready) {
-						frames.emplace_back(id, e.dds);
+						frames.emplace_back(it->first, it->second.dds);
+					}
+					if (++it == g_frames.end()) {
+						it = g_frames.begin();
 					}
 				}
+				cursor = (cursor + (std::min)(kPerCall, n)) % n;
 			}
 			for (const auto& [id, dds] : frames) {
 				auto* ref = RE::TESForm::LookupByID<RE::TESObjectREFR>(id);
@@ -1203,9 +1287,7 @@ namespace Wall
 		ProcessRemovals();
 		if (g_stalePreview) {
 			if (auto* stale = RE::TESForm::LookupByID<RE::TESObjectREFR>(g_stalePreview)) {
-				spdlog::info("Removing preview frame {:08X} left in the save", g_stalePreview);
-				stale->Disable();
-				stale->SetDelete(true);
+				DeleteFrameRef(stale, "preview left in the save");  // finished when its 3D loads if it isn't yet
 			}
 			g_stalePreview = 0;
 		}
@@ -1226,6 +1308,7 @@ namespace Wall
 	{
 		const int shape = std::clamp(a_shape, 0, Frames::kShapeCount - 1);
 		const int style = Frames::ClampStyle(shape, a_style);
+		g_placeCellReset = true;
 		{
 			std::lock_guard lk(g_mtx);
 			g_placement = Placement{ a_picture, shape, style, a_moving, std::clamp(a_scale, kMinScale, kMaxScale) };
@@ -1378,11 +1461,40 @@ namespace Wall
 				}
 				out.push_back(std::move(info));
 			}
+			for (auto* ref : FindStrayFrames()) {
+				PlacedInfo info;
+				info.ref = ref->GetHandle();
+				const int idx = FrameIndex(ref->GetBaseObject());
+				info.shape = Frames::ShapeOf(idx);
+				info.style = Frames::StyleOf(idx);
+				info.scale = ref->GetReferenceRuntimeData().refScale / 100.0f;
+				info.stray = true;
+				auto* cell = ref->GetParentCell();
+				auto* loc = cell ? cell->GetLocation() : nullptr;
+				info.interior = cell ? cell->IsInteriorCell() : false;
+				info.place = !NameOf(cell).empty() ? NameOf(cell) : (!NameOf(loc).empty() ? NameOf(loc) : (!NameOf(ref->GetWorldspace()).empty() ? NameOf(ref->GetWorldspace()) : "Unknown place"));
+				info.region = loc && NameOf(loc) != info.place ? NameOf(loc) : (loc ? NameOf(loc->parentLoc) : std::string());
+				spdlog::info("Placed list: stray frame {:08X} ({} {}) in {}", ref->GetFormID(), Frames::kShapes[info.shape].name,
+					Frames::StyleName(info.shape, info.style), info.place);
+				out.push_back(std::move(info));
+			}
 			std::sort(out.begin(), out.end(), [](const PlacedInfo& a, const PlacedInfo& b) {
-				return std::tie(a.region, a.place, a.name) < std::tie(b.region, b.place, b.name);
+				return std::tie(a.stray, a.region, a.place, a.name) < std::tie(b.stray, b.region, b.place, b.name);
 			});
 			std::lock_guard lk(g_placedMtx);
 			g_placedList = std::move(out);
+		});
+	}
+
+	void RemoveStrayFrames()
+	{
+		SKSE::GetTaskInterface()->AddTask([] {
+			const auto strays = FindStrayFrames();
+			for (auto* ref : strays) {
+				DeleteFrameRef(ref, "stray frame removed");
+			}
+			spdlog::info("Removed {} stray frame(s)", strays.size());
+			Notify(Note::Confirm, fmt::format("Removed {} stray frame{}", strays.size(), strays.size() == 1 ? "" : "s"));
 		});
 	}
 
@@ -1600,8 +1712,7 @@ namespace Wall
 				EnsureTexture(entry->dds, FromUtf8(entry->picture), shape);  // file exists -> just marked ready
 				QueueApply(ref->GetFormID());
 			}
-			old->Disable();
-			old->SetDelete(true);
+			DeleteFrameRef(old.get(), "replaced by Change frame");
 			spdlog::info("Frame {:08X} -> {:08X}: changed to {} ({})", old->GetFormID(), ref->GetFormID(), Frames::StyleName(shape, style),
 				entry ? entry->picture : std::string("no picture"));
 			OpenFrameMenu(ref.get());  // the open frame menu switches to the new frame

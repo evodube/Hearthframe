@@ -9,6 +9,14 @@ namespace
 		if (!path) {
 			return;
 		}
+		// keep the last runs: FolderGallery.log (this run), FolderGallery.1.log, FolderGallery.2.log
+		{
+			const auto      dir = *path;
+			std::error_code ec;
+			std::filesystem::remove(dir / "FolderGallery.2.log", ec);
+			std::filesystem::rename(dir / "FolderGallery.1.log", dir / "FolderGallery.2.log", ec);
+			std::filesystem::rename(dir / "FolderGallery.log", dir / "FolderGallery.1.log", ec);
+		}
 		*path /= "FolderGallery.log";
 		auto sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(path->string(), true);
 		auto log = std::make_shared<spdlog::logger>("global log", std::move(sink));

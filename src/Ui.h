@@ -35,6 +35,7 @@ namespace Ui
 		const char* place = "";      // cell, e.g. "Breezehome"
 		const char* region = "";     // location / hold, e.g. "Whiterun" ("" if none)
 		bool        interior = true;  // interior cell (else an exterior worldspace cell)
+		bool        stray = false;    // a frame with no record / picture
 	};
 
 	struct GalleryModel
@@ -100,6 +101,7 @@ namespace Ui
 		ThumbSize,    // *thumbSize changed (slider let go)
 		OpenPlaced,   // the On walls box was clicked: fill placed
 		DeletePlaced, // index into placed: take that picture down
+		RemoveStrays, // remove every stray frame
 	};
 
 	struct GalleryResult

@@ -78,10 +78,13 @@ namespace Wall
 		std::string           place;     // cell / location name
 		std::string           region;    // parent location, hold or worldspace ("" if none)
 		bool                  interior = true;
+		bool                  stray = false;  // a frame Folder Gallery has no record of (no picture)
 	};
 	// Gathers the list on the main thread; TakePlacedList returns it once ready (any thread).
 	void                                   RequestPlacedList();
 	std::optional<std::vector<PlacedInfo>> TakePlacedList();
+	// Removes every frame Folder Gallery has no record of (leftover previews, frames whose record was lost).
+	void                                   RemoveStrayFrames();
 	// Opens the menu of the hung picture being looked at. Activate: no fallback (and the game's crosshair
 	// target wins). Gallery key: a_otherwise runs when no picture is being looked at.
 	void                     RequestExamine(std::function<void()> a_otherwise = {});
