@@ -45,6 +45,7 @@ namespace Ui
 		int                         framesOnWalls = 0;
 		bool                        replaceMode = false;  // choosing a new picture for an existing frame
 		const char*                 notice = nullptr;     // shown above the grid when set
+		int                         openFolderStyle = 1;  // 0 off, 1 the path is a link, 2 an Open folder button (OpenFolder)
 		int*                        thumbSize = nullptr;  // in/out, 100..320 (ThumbSize when let go)
 		int*                        uiScalePct = nullptr; // in/out, 60..200 (applied on release -> UiScale)
 		std::vector<PlacedPicture>  placed;                // filled after OpenPlaced
@@ -102,6 +103,8 @@ namespace Ui
 		OpenPlaced,   // the On walls box was clicked: fill placed
 		DeletePlaced, // index into placed: take that picture down
 		RemoveStrays, // remove every stray frame
+		OpenFolder,   // open the picture folder in Explorer
+		OpenSettings, // the Settings button
 	};
 
 	struct GalleryResult
@@ -148,6 +151,57 @@ namespace Ui
 
 	FrameAction DrawFrameMenu(FrameModel& a_model);
 	void        ResetFrameMenu();  // back to the main frame menu (call when the menu opens)
+
+	// ---- Settings window (edits a copy; Save writes it)
+	struct SettingsModel
+	{
+		// gallery
+		char  folder[520] = {};
+		bool  recursive = false;
+		char  placedFolder[520] = {};  // where hung pictures' textures go (inside Data\textures)
+		const char* keyName = "F8";
+		bool  waitingForKey = false;  // "press a key" mode
+		int   thumbSize = 200;
+		int   uiScalePct = 100;
+		int   fontSize = 18;
+		float mouseSpeed = 1.0f;
+		// frames & hanging
+		int   defaultStyle = 7;
+		const char* const* landscapeStyles = nullptr;
+		int   landscapeCount = 0;
+		const char* defaultStyleOthers = "";  // what the same position means for Square / Portrait
+		int   resolution = 1024;
+		int   placeReach = 2000;
+		int   examineReach = 600;
+		bool  cleanUp = true;
+		// notifications
+		bool notifications = true, showSize = false, showDistance = false, showFrameName = false, showPlacementHelp = true,
+			 showConfirmations = true, showPlacementWarnings = true, showErrors = true, placementInfo = true;
+		const char* iniPath = "";
+		const char* error = nullptr;  // shown above the buttons; Save is disabled while set
+	};
+
+	enum class SettingsAction
+	{
+		None,
+		Save,
+		Cancel,
+		Browse,         // pick a folder
+		DefaultFolder,  // back to Documents\...\Pictures
+		BrowsePlaced,   // pick the Placed folder (inside Data\textures)
+		ChangeKey,      // start waiting for a key
+		ResetTab,       // index = tab
+	};
+
+	struct SettingsResult
+	{
+		SettingsAction action = SettingsAction::None;
+		int            index = -1;
+	};
+
+	// Opens with OpenSettings(); call DrawSettings every frame while the gallery is open.
+	void           OpenSettings(int a_tab = -1);  // a_tab >= 0 opens on that tab
+	SettingsResult DrawSettings(SettingsModel& a_model);
 
 	// Small line at the bottom of the screen while hanging a picture (no window, no input).
 	void DrawPlacementInfo(const char* a_values, const char* a_keys);

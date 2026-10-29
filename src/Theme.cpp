@@ -882,8 +882,36 @@ namespace Theme
 		ImGui::End();
 	}
 
+	namespace
+	{
+		int         g_subMode = 0;
+		bool*       g_subClicked = nullptr;
+		const char* g_subTooltip = nullptr;
+
+		void FolderIcon(ImDrawList* a_dl, const ImVec2& a_pos, float a_size, ImU32 a_back, ImU32 a_front)
+		{
+			const ImVec2 f0 = a_pos, f1 = a_pos + ImVec2(a_size, a_size * 0.78f);
+			a_dl->AddRectFilled(f0, ImVec2(f0.x + a_size * 0.45f, f0.y + a_size * 0.22f), a_back, a_size * 0.08f, ImDrawFlags_RoundCornersTop);
+			a_dl->AddRectFilled(ImVec2(f0.x, f0.y + a_size * 0.14f), f1, a_back, a_size * 0.1f);
+			a_dl->AddRectFilled(ImVec2(f0.x + a_size * 0.08f, f0.y + a_size * 0.32f), f1 - ImVec2(a_size * 0.08f, a_size * 0.08f), a_front, a_size * 0.08f);
+		}
+	}
+
+	void SetSubtitleAction(int a_mode, bool* a_clicked, const char* a_tooltip)
+	{
+		g_subMode = a_mode;
+		g_subClicked = a_clicked;
+		g_subTooltip = a_tooltip;
+	}
+
 	bool Header(const char* a_title, const char* a_subtitle, const Stat* a_stats, int a_statCount, bool a_closeBox, int* a_clickedStat)
 	{
+		const int   subMode = g_subMode;
+		bool*       subClicked = g_subClicked;
+		const char* subTip = g_subTooltip;
+		g_subMode = 0;
+		g_subClicked = nullptr;
+		g_subTooltip = nullptr;
 		auto*        dl = ImGui::GetWindowDrawList();
 		const ImVec2 p = ImGui::GetCursorScreenPos();
 		const float  w = ImGui::GetContentRegionAvail().x;
@@ -903,7 +931,50 @@ namespace Theme
 			Heading(dl, g_bold, S(34.0f), p + ImVec2(tx + S(4.0f), S(2.0f)), L->accent, a_title);
 		}
 		if (a_subtitle && *a_subtitle) {
-			dl->AddText(g_italic, S(18.0f), p + ImVec2(tx + S(6.0f), S(46.0f)), L->textDim, a_subtitle);
+			const float  ss = S(18.0f);
+			const ImVec2 sp = p + ImVec2(tx + S(6.0f), S(46.0f));
+			const ImVec2 sz = g_italic->CalcTextSizeA(ss, FLT_MAX, 0.0f, a_subtitle);
+			if (subMode == 1) {  // the path is a link
+				ImGui::SetCursorScreenPos(sp - ImVec2(S(2.0f), S(2.0f)));
+				const bool clicked = ImGui::InvisibleButton("##sublink", sz + ImVec2(S(4.0f), S(6.0f)));
+				const bool hov = ImGui::IsItemHovered();
+				const ImU32 col = hov ? L->accent : L->textDim;
+				dl->AddText(g_italic, ss, sp, col, a_subtitle);
+				dl->AddLine(ImVec2(sp.x, sp.y + sz.y + S(1.0f)), ImVec2(sp.x + sz.x, sp.y + sz.y + S(1.0f)), hov ? L->accent : WithAlpha(L->textDim, 90), S(1.0f));
+				if (hov && subTip) {
+					ImGui::SetTooltip("%s", subTip);
+				}
+				if (clicked && subClicked) {
+					*subClicked = true;
+				}
+			} else {
+				dl->AddText(g_italic, ss, sp, L->textDim, a_subtitle);
+			}
+			if (subMode == 2) {  // small "Open folder" button after the path
+				const char*  label = "Open folder";
+				const float  ls = S(15.0f);
+				const ImVec2 lsz = g_body->CalcTextSizeA(ls, FLT_MAX, 0.0f, label);
+				const float  icon = S(16.0f), padX = S(10.0f), bh = S(28.0f);
+				const ImVec2 ba(sp.x + sz.x + S(14.0f), sp.y + (sz.y - bh) * 0.5f);
+				const ImVec2 bsz(padX * 2 + icon + S(7.0f) + lsz.x, bh);
+				ImGui::SetCursorScreenPos(ba);
+				const bool clicked = ImGui::InvisibleButton("##subbtn", bsz);
+				const bool hov = ImGui::IsItemHovered();
+				const ImVec2 bb = ba + bsz;
+				dl->AddRectFilled(ba, bb, hov ? L->closeHov : L->boxBg, S(4.0f));
+				if (L->fx.bevel) {
+					Bevel(dl, ba, bb, S(1.0f), false, 40, 110);
+				}
+				dl->AddRect(ba, bb, hov ? L->accent : L->accentDim, S(4.0f), 0, S(1.0f));
+				FolderIcon(dl, ImVec2(ba.x + padX, ba.y + (bh - icon * 0.78f) * 0.5f), icon, hov ? L->accent : L->accentDim, L->boxBg);
+				dl->AddText(g_body, ls, ImVec2(ba.x + padX + icon + S(7.0f), ba.y + (bh - lsz.y) * 0.5f), hov ? L->text : L->textDim, label);
+				if (hov && subTip) {
+					ImGui::SetTooltip("%s", subTip);
+				}
+				if (clicked && subClicked) {
+					*subClicked = true;
+				}
+			}
 		}
 		if (L->fx.bevel) {  // gold rule under the header
 			FadingRule(dl, p.x, p.x + w, p.y + h - S(4.0f), L->accentDim, S(1.2f), true);

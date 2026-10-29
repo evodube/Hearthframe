@@ -98,6 +98,10 @@ namespace Ui
 			if (Theme::Button("Refresh", ImVec2(S(150.0f), 0))) {
 				r.action = GalleryAction::Refresh;
 			}
+			ImGui::SameLine(0.0f, S(8.0f));
+			if (Theme::Button("Settings", ImVec2(S(150.0f), 0))) {
+				r.action = GalleryAction::OpenSettings;
+			}
 			if (m.search) {
 				ImGui::SameLine(0.0f, S(24.0f));
 				ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(S(12.0f), S(12.0f)));
@@ -683,12 +687,19 @@ namespace Ui
 			const Theme::Stat stats[] = { { "Pictures", pics }, { "On walls", walls, "Show the pictures hanging in this save, and where" } };
 			const char*       subtitle = m.replaceMode ? "Choose a new picture for the frame" : m.folder;
 			int               clicked = -1;
+			bool              openFolder = false;
+			if (!m.replaceMode && m.openFolderStyle > 0) {
+				Theme::SetSubtitleAction(m.openFolderStyle, &openFolder, "Open this folder in Windows Explorer");
+			}
 			if (Theme::Header("Folder Gallery", subtitle, stats, 2, true, &clicked)) {
 				r.action = GalleryAction::Close;
 			}
 			if (clicked == 1) {
 				r.action = GalleryAction::OpenPlaced;
 				ImGui::OpenPopup("Placed pictures");
+			}
+			if (openFolder) {
+				r.action = GalleryAction::OpenFolder;
 			}
 			if (m.viewing >= 0 && m.viewing < static_cast<int>(m.pictures.size())) {
 				const auto v = DrawViewer(m);
@@ -857,5 +868,227 @@ namespace Ui
 		dl->AddRect(a, b, Theme::GoldDim(), S(4.0f), 0, S(1.2f));
 		dl->AddText(body, s1, ImVec2(a.x + (w - t1.x) * 0.5f, a.y + padY), Theme::Cream(), a_values);
 		dl->AddText(ital, s2, ImVec2(a.x + (w - t2.x) * 0.5f, a.y + padY + t1.y + gap), Theme::Muted(), a_keys);
+	}
+
+	// ------------------------------------------------------------------ settings
+	namespace
+	{
+		bool g_openSettings = false;
+		int  g_settingsTab = 0;
+
+		// label column + control column
+		void Row(const char* a_label, const char* a_help = nullptr)
+		{
+			ImGui::AlignTextToFramePadding();
+			ImGui::TextUnformatted(a_label);
+			if (a_help && ImGui::IsItemHovered()) {
+				ImGui::SetTooltip("%s", a_help);
+			}
+			ImGui::SameLine(S(300.0f));
+		}
+
+		bool Toggle(const char* a_id, bool* a_v)
+		{
+			ImGui::PushID(a_id);
+			bool changed = false;
+			if (Theme::Chip("On", *a_v) && !*a_v) {
+				*a_v = true;
+				changed = true;
+			}
+			ImGui::SameLine(0.0f, S(6.0f));
+			if (Theme::Chip("Off", !*a_v) && *a_v) {
+				*a_v = false;
+				changed = true;
+			}
+			ImGui::PopID();
+			return changed;
+		}
+
+		void Gap() { ImGui::Dummy(ImVec2(0, S(8.0f))); }
+	}
+
+	void OpenSettings(int a_tab)
+	{
+		g_openSettings = true;
+		if (a_tab >= 0 && a_tab < 3) {
+			g_settingsTab = a_tab;
+		}
+	}
+
+	SettingsResult DrawSettings(SettingsModel& m)
+	{
+		SettingsResult r;
+		if (g_openSettings) {
+			g_openSettings = false;
+			ImGui::OpenPopup("Folder Gallery settings");
+		}
+		const ImVec2 center = ImGui::GetIO().DisplaySize * 0.5f;
+		ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+		ImGui::SetNextWindowSize(ImVec2((std::min)(S(1000.0f), ImGui::GetIO().DisplaySize.x * 0.95f), 0));
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(S(30.0f), S(26.0f)));
+		const bool open = ImGui::BeginPopupModal("Folder Gallery settings", nullptr,
+			ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar);
+		ImGui::PopStyleVar();
+		if (!open) {
+			return r;
+		}
+		Theme::DrawChrome();
+		if (Theme::Header("Settings", "Saved to FolderGallery.ini") || (!m.waitingForKey && ImGui::IsKeyPressed(ImGuiKey_Escape, false))) {
+			r.action = SettingsAction::Cancel;
+		}
+		// tabs
+		const char* tabs[] = { "Gallery", "Frames & hanging", "Notifications" };
+		for (int t = 0; t < 3; ++t) {
+			if (t > 0) {
+				ImGui::SameLine(0.0f, S(8.0f));
+			}
+			ImGui::PushID(700 + t);
+			if (FolderTab(tabs[t], g_settingsTab == t, S(46.0f))) {
+				g_settingsTab = t;
+			}
+			ImGui::PopID();
+		}
+		if (Theme::BeginParchment("##settings", ImVec2(0, (std::min)(S(600.0f), ImGui::GetIO().DisplaySize.y * 0.6f)), true)) {
+			const float ctl = ImGui::GetContentRegionAvail().x - S(300.0f);
+			if (g_settingsTab == 0) {
+				Theme::SectionLabel("Pictures");
+				Row("Picture folder", "Where the gallery looks for pictures");
+				ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(S(10.0f), S(10.0f)));
+				ImGui::SetNextItemWidth(ctl - S(250.0f));
+				ImGui::InputText("##folder", m.folder, sizeof m.folder);
+				ImGui::PopStyleVar();
+				ImGui::SameLine(0.0f, S(6.0f));
+				if (Theme::Button("Browse...", ImVec2(S(120.0f), S(40.0f)))) {
+					r.action = SettingsAction::Browse;
+				}
+				ImGui::SameLine(0.0f, S(6.0f));
+				if (Theme::Button("Default", ImVec2(S(110.0f), S(40.0f)))) {
+					r.action = SettingsAction::DefaultFolder;
+				}
+				Row("Include subfolders", "Also show pictures in folders inside the picture folder");
+				Toggle("recursive", &m.recursive);
+				Gap();
+				Theme::SectionLabel("Controls");
+				Row("Gallery key", "Opens the gallery (or the menu of the picture you look at)");
+				{
+					char label[64];
+					std::snprintf(label, sizeof label, "%s", m.waitingForKey ? "Press a key...  (Esc cancels)" : m.keyName);
+					if (Theme::Button(label, ImVec2(S(m.waitingForKey ? 300.0f : 140.0f), S(40.0f)), m.waitingForKey) && !m.waitingForKey) {
+						r.action = SettingsAction::ChangeKey;
+					}
+				}
+				Row("Mouse speed");
+				ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(S(12.0f), S(10.0f)));
+				ImGui::SetNextItemWidth(ctl);
+				ImGui::SliderFloat("##mouse", &m.mouseSpeed, 0.2f, 5.0f, "%.1f x");
+				ImGui::PopStyleVar();
+				Gap();
+				Theme::SectionLabel("Look");
+				Row("Thumbnail size");
+				Theme::SliderInt("##thumb", &m.thumbSize, 100, 320, "%d px", ctl);
+				Row("Interface size", "Size of all Folder Gallery windows (Ctrl + wheel also works)");
+				Theme::SliderInt("##ui", &m.uiScalePct, 60, 200, "%d%%", ctl);
+				Row("Text size");
+				Theme::SliderInt("##font", &m.fontSize, 12, 32, "%d px", ctl);
+			} else if (g_settingsTab == 1) {
+				Theme::SectionLabel("Hanging");
+				Row("Default frame", "Preselected in the Hang on Wall window (same position in each shape's list)");
+				{
+					const char* name = (m.landscapeStyles && m.defaultStyle < m.landscapeCount) ? m.landscapeStyles[m.defaultStyle] : "?";
+					Theme::SliderInt("##style", &m.defaultStyle, 0, (std::max)(0, m.landscapeCount - 1), name, ctl);
+					ImGui::SetCursorPosX(ImGui::GetCursorPosX() + S(300.0f));
+					Theme::TextItalic("%s", m.defaultStyleOthers);
+				}
+				Row("Hang reach", "How far away the preview follows your aim");
+				Theme::SliderInt("##reach", &m.placeReach, 500, 10000, "%d units", ctl);
+				Row("Examine reach", "How far away F8 / Activate can open a hung picture's menu");
+				Theme::SliderInt("##examine", &m.examineReach, 100, 5000, "%d units", ctl);
+				Gap();
+				Theme::SectionLabel("Pictures on walls");
+				Row("Picture resolution", "Long side of the texture made for a hung picture. Applies to pictures you hang from now on.");
+				{
+					const int vals[] = { 512, 1024, 2048, 4096 };
+					for (int k = 0; k < 4; ++k) {
+						char l[16];
+						std::snprintf(l, sizeof l, "%d", vals[k]);
+						if (k) {
+							ImGui::SameLine(0.0f, S(6.0f));
+						}
+						ImGui::PushID(800 + k);
+						if (Theme::Chip(l, m.resolution == vals[k])) {
+							m.resolution = vals[k];
+						}
+						ImGui::PopID();
+					}
+				}
+				ImGui::SetCursorPosX(ImGui::GetCursorPosX() + S(300.0f));
+				Theme::TextItalic("Higher is sharper up close; each step uses 4x the video memory per picture.");
+				Row("Clean up unused textures", "Deletes converted pictures nothing in the current save uses");
+				Toggle("cleanup", &m.cleanUp);
+				Gap();
+				Theme::SectionLabel("Placed Frames");
+				Row("Placed Frames folder", "Where the textures made for hung pictures are stored.\nIt has to be inside the game's Data\\textures folder - the game only loads textures from there.");
+				ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(S(10.0f), S(10.0f)));
+				ImGui::SetNextItemWidth(ctl - S(126.0f));
+				ImGui::InputText("##placed", m.placedFolder, sizeof m.placedFolder);
+				ImGui::PopStyleVar();
+				ImGui::SameLine(0.0f, S(6.0f));
+				ImGui::PushID("placed");
+				if (Theme::Button("Browse...", ImVec2(S(120.0f), S(40.0f)))) {
+					r.action = SettingsAction::BrowsePlaced;
+				}
+				ImGui::PopID();
+			} else {
+				Theme::SectionLabel("Messages in the top-left corner");
+				Row("All notifications", "Master switch");
+				Toggle("all", &m.notifications);
+				ImGui::BeginDisabled(!m.notifications);
+				Row("Size while hanging", "\"Size: 110%\"");
+				Toggle("size", &m.showSize);
+				Row("Distance while hanging", "\"Distance from wall: +0.50\"");
+				Toggle("dist", &m.showDistance);
+				Row("Frame name while hanging", "\"Frame: Rustic Dark Oak\"");
+				Toggle("frame", &m.showFrameName);
+				Row("How-to when hanging starts");
+				Toggle("help", &m.showPlacementHelp);
+				Row("Confirmations", "Picture hung / taken down / hanging cancelled");
+				Toggle("confirm", &m.showConfirmations);
+				Row("Placement warnings", "Can't hang it here (floor, too far...)");
+				Toggle("warn", &m.showPlacementWarnings);
+				Row("Errors", "Something went wrong - best left on");
+				Toggle("errors", &m.showErrors);
+				ImGui::EndDisabled();
+				Gap();
+				Theme::SectionLabel("While hanging");
+				Row("Info line at the bottom", "Frame, shape, size and distance, plus the keys");
+				Toggle("info", &m.placementInfo);
+			}
+		}
+		Theme::EndParchment();
+		ImGui::Dummy(ImVec2(0, S(6.0f)));
+		if (Theme::Button("Reset this tab", ImVec2(S(200.0f), S(52.0f)))) {
+			r = { SettingsAction::ResetTab, g_settingsTab };
+		}
+		const float bw = S(180.0f);
+		ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - bw * 2 - ImGui::GetStyle().ItemSpacing.x);
+		if (Theme::Button("Cancel", ImVec2(bw, S(52.0f)))) {
+			r.action = SettingsAction::Cancel;
+		}
+		ImGui::SameLine();
+		ImGui::BeginDisabled(m.error != nullptr);
+		if (Theme::Button("Save", ImVec2(bw, S(52.0f)), true)) {
+			r.action = SettingsAction::Save;
+		}
+		ImGui::EndDisabled();
+		if (m.error) {
+			Theme::TextColoredWrapped(Theme::Warning(), m.error);
+		} else {
+			Theme::TextItalic("%s", m.iniPath);
+		}
+		if (r.action == SettingsAction::Save || r.action == SettingsAction::Cancel) {
+			ImGui::CloseCurrentPopup();
+		}
+		ImGui::EndPopup();
+		return r;
 	}
 }

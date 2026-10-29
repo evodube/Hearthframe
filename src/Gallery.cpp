@@ -12,6 +12,13 @@
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_WINDOWS_UTF8
 #include <stb_image.h>
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#define STBIW_WINDOWS_UTF8
+#include <stb_image_write.h>
+
+#include <shellapi.h>
+#include <shobjidl.h>
+#include <wincodec.h>
 
 namespace fs = std::filesystem;
 
@@ -21,7 +28,7 @@ namespace Gallery
 	{
 		constexpr int kThumbMaxDim = 480;  // sharp enough for 320 px thumbnails on a 4K screen
 		constexpr int kFullMaxDim = 4096;
-		constexpr int kTexturesPerFrame = 6;
+		constexpr int kTexturesPerFrame = 12;  // small thumbnails: a dozen uploads per frame cost next to nothing
 
 		// DirectInput scan codes (what Skyrim's ButtonEvent::idCode holds for the keyboard)
 		constexpr std::uint32_t kDIK_Escape = 0x01;
@@ -188,6 +195,16 @@ namespace Gallery
 		int                                g_previewW = 0, g_previewH = 0;
 		bool                               g_previewLoading = false, g_previewMissing = false;
 		std::atomic<bool>                  g_altDown{ false };
+		// Settings window
+		Ui::SettingsModel                  g_sm;
+		std::string                        g_smKeyName, g_smOthers, g_smError;
+		int                                g_smKeyVk = 0;          // new gallery key chosen in the window (0 = unchanged)
+		std::atomic<bool>                  g_captureKey{ false };  // waiting for the "press a key" key
+		std::atomic<std::uint32_t>         g_capturedDik{ 0 };     // set by the input sink (0xFFFFFFFF = cancelled)
+		std::mutex                         g_browseMtx;
+		std::optional<std::pair<int, std::wstring>> g_browseResult;  // (0 picture folder / 1 Placed Frames folder, path)
+		std::atomic<bool>                  g_browsing{ false };
+		bool                               g_pendingTheme = false;  // rebuild fonts before the next frame
 
 		void RequestUiScale(float a_scale)
 		{
@@ -250,8 +267,178 @@ namespace Gallery
 			return out;
 		}
 
+		// ---------------------------------------------------------------- fast decode (Windows Imaging Component)
+		// Scales while decoding: JPEGs are decoded straight at 1/2, 1/4 or 1/8 size, so a thumbnail of a big
+		// photo costs a fraction of a full decode. Worker threads only; returns false to fall back to stb.
+		bool LoadWithWic(const fs::path& a_path, int a_maxDim, Result& r)
+		{
+			thread_local IWICImagingFactory* factory = [] {
+				::CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+				IWICImagingFactory* f = nullptr;
+				::CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&f));
+				return f;
+			}();
+			if (!factory) {
+				return false;
+			}
+			IWICBitmapDecoder*     decoder = nullptr;
+			IWICBitmapFrameDecode* frame = nullptr;
+			IWICBitmapScaler*      scaler = nullptr;
+			IWICFormatConverter*   conv = nullptr;
+			bool                   ok = false;
+			do {
+				if (FAILED(factory->CreateDecoderFromFilename(a_path.c_str(), nullptr, GENERIC_READ, WICDecodeMetadataCacheOnDemand, &decoder)) ||
+					FAILED(decoder->GetFrame(0, &frame))) {
+					break;
+				}
+				UINT w = 0, h = 0;
+				if (FAILED(frame->GetSize(&w, &h)) || w == 0 || h == 0) {
+					break;
+				}
+				r.origW = static_cast<int>(w);
+				r.origH = static_cast<int>(h);
+				UINT tw = w, th = h;
+				const UINT longest = (std::max)(w, h);
+				if (a_maxDim > 0 && longest > static_cast<UINT>(a_maxDim)) {
+					const double s = static_cast<double>(a_maxDim) / longest;
+					tw = (std::max)(1u, static_cast<UINT>(w * s));
+					th = (std::max)(1u, static_cast<UINT>(h * s));
+				}
+				IWICBitmapSource* src = frame;
+				if (tw != w || th != h) {
+					if (FAILED(factory->CreateBitmapScaler(&scaler)) || FAILED(scaler->Initialize(frame, tw, th, WICBitmapInterpolationModeFant))) {
+						break;
+					}
+					src = scaler;
+				}
+				if (FAILED(factory->CreateFormatConverter(&conv)) ||
+					FAILED(conv->Initialize(src, GUID_WICPixelFormat32bppRGBA, WICBitmapDitherTypeNone, nullptr, 0.0, WICBitmapPaletteTypeCustom))) {
+					break;
+				}
+				r.w = static_cast<int>(tw);
+				r.h = static_cast<int>(th);
+				r.px.resize(static_cast<std::size_t>(tw) * th * 4);
+				ok = SUCCEEDED(conv->CopyPixels(nullptr, tw * 4, static_cast<UINT>(r.px.size()), r.px.data()));
+			} while (false);
+			for (IUnknown* u : { static_cast<IUnknown*>(conv), static_cast<IUnknown*>(scaler), static_cast<IUnknown*>(frame), static_cast<IUnknown*>(decoder) }) {
+				if (u) {
+					u->Release();
+				}
+			}
+			if (!ok) {
+				r.px.clear();
+			}
+			return ok;
+		}
+
+		// ---------------------------------------------------------------- thumbnail cache on disk
+		// Documents\My Games\Skyrim Special Edition\FolderGallery\ThumbCache\<picture key>_<size>.jpg/.png
+		// The key covers the picture's path, size and time, so an edited or renamed picture gets a new one.
+		fs::path g_cacheDir;
+
+		std::uint64_t Hash64(std::string_view a_s)
+		{
+			std::uint64_t h = 1469598103934665603ull;
+			for (const unsigned char c : a_s) {
+				h = (h ^ c) * 1099511628211ull;
+			}
+			return h;
+		}
+
+		std::string CacheKey(const fs::path& a_path)
+		{
+			std::error_code ec;
+			const auto      size = fs::file_size(a_path, ec);
+			const auto      time = fs::last_write_time(a_path, ec).time_since_epoch().count();
+			return fmt::format("{:016x}", Hash64(fmt::format("{}|{}|{}", ToUtf8(a_path), size, time)));
+		}
+
+		fs::path CacheFile(const std::string& a_key, int a_dim, bool a_png)
+		{
+			return g_cacheDir / fmt::format("{}_{}.{}", a_key, a_dim, a_png ? "png" : "jpg");
+		}
+
+		bool LoadFromCache(const std::string& a_key, int a_dim, Result& r)
+		{
+			if (g_cacheDir.empty()) {
+				return false;
+			}
+			for (const bool png : { false, true }) {
+				const auto f = CacheFile(a_key, a_dim, png);
+				std::error_code ec;
+				if (!fs::exists(f, ec)) {
+					continue;
+				}
+				int   w = 0, h = 0, n = 0;
+				auto* px = stbi_load(ToUtf8(f).c_str(), &w, &h, &n, 4);
+				if (!px) {
+					continue;
+				}
+				r.w = w;
+				r.h = h;
+				r.px.assign(px, px + static_cast<std::size_t>(w) * h * 4);
+				stbi_image_free(px);
+				// original size: stored in the file name of a tiny sidecar would be overkill; read the header
+				return true;
+			}
+			return false;
+		}
+
+		void SaveToCache(const std::string& a_key, int a_dim, const Result& r)
+		{
+			if (g_cacheDir.empty() || r.px.empty()) {
+				return;
+			}
+			bool alpha = false;
+			for (std::size_t i = 3; i < r.px.size(); i += 4) {
+				if (r.px[i] != 255) {
+					alpha = true;
+					break;
+				}
+			}
+			const auto      f = CacheFile(a_key, a_dim, alpha);
+			const auto      tmp = fs::path(f).concat(L".tmp");
+			std::error_code ec;
+			fs::create_directories(g_cacheDir, ec);
+			const bool ok = alpha ? stbi_write_png(ToUtf8(tmp).c_str(), r.w, r.h, 4, r.px.data(), r.w * 4) != 0 :
+			                        stbi_write_jpg(ToUtf8(tmp).c_str(), r.w, r.h, 4, r.px.data(), 90) != 0;
+			if (ok) {
+				fs::rename(tmp, f, ec);
+			}
+			if (!ok || ec) {
+				fs::remove(tmp, ec);
+			}
+		}
+
+		// Removes cached thumbnails of pictures that are no longer in the list (deleted, edited, renamed). Background.
+		void CleanCache(std::unordered_set<std::string> a_keep)
+		{
+			if (g_cacheDir.empty()) {
+				return;
+			}
+			std::thread([keep = std::move(a_keep)] {
+				std::error_code ec;
+				int             removed = 0;
+				for (fs::directory_iterator it(g_cacheDir, ec), end; !ec && it != end; it.increment(ec)) {
+					const auto name = ToUtf8(it->path().filename());
+					if (name.size() < 16 || keep.contains(name.substr(0, 16))) {
+						continue;
+					}
+					std::error_code e2;
+					fs::remove(it->path(), e2);
+					removed += e2 ? 0 : 1;
+				}
+				if (removed) {
+					spdlog::info("Thumbnail cache: removed {} old file(s)", removed);
+				}
+			}).detach();
+		}
+
 		bool LoadPixels(const fs::path& path, int maxDim, Result& r)
 		{
+			if (LoadWithWic(path, maxDim, r)) {
+				return true;
+			}
 			stbi_uc* px = Dds::DecodePicture(path, r.origW, r.origH, r.error, r.notFound);
 			if (!px) {
 				return false;
@@ -273,6 +460,7 @@ namespace Gallery
 
 		void WorkerMain()
 		{
+			::SetThreadPriority(::GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
 			for (;;) {
 				Job job;
 				{
@@ -302,7 +490,26 @@ namespace Gallery
 				}
 				r.path = job.path;
 				try {
+					const bool  cacheable = !job.full;
+					std::string key;
+					if (cacheable) {
+						key = CacheKey(job.path);
+						if (LoadFromCache(key, job.maxDim, r)) {
+							int w = 0, h = 0, comp = 0;  // the card shows the original size
+							if (stbi_info(ToUtf8(job.path).c_str(), &w, &h, &comp)) {
+								r.origW = w;
+								r.origH = h;
+							}
+							r.ok = true;
+							std::lock_guard lk(S.mtx);
+							S.results.push_back(std::move(r));
+							continue;
+						}
+					}
 					r.ok = LoadPixels(job.path, job.maxDim, r);
+					if (r.ok && cacheable) {
+						SaveToCache(key, job.maxDim, r);
+					}
 				} catch (const std::exception& e) {
 					r.ok = false;
 					r.error = e.what();
@@ -505,6 +712,13 @@ namespace Gallery
 				items.push_back(std::move(it));
 			}
 			spdlog::info("Scanned {} -> {} picture(s)", ToUtf8(cfg.folder), items.size());
+			{
+				std::unordered_set<std::string> keep;
+				for (const auto& it : items) {
+					keep.insert(CacheKey(it.path));
+				}
+				CleanCache(std::move(keep));
+			}
 		}
 
 		// ---------------------------------------------------------------- opening / closing (render thread)
@@ -567,6 +781,102 @@ namespace Gallery
 			if (auto* cm = RE::ControlMap::GetSingleton()) {
 				cm->ToggleControls(blocked, !a_on);
 			}
+		}
+
+		fs::path DefaultPictureFolder()
+		{
+			PWSTR    docs = nullptr;
+			fs::path out;
+			if (SUCCEEDED(::SHGetKnownFolderPath(FOLDERID_Documents, 0, nullptr, &docs)) && docs) {
+				out = fs::path(docs) / L"My Games" / L"Skyrim Special Edition" / L"FolderGallery" / L"Pictures";
+				::CoTaskMemFree(docs);
+			} else {
+				std::error_code ec;
+				out = fs::absolute(fs::path(L"Data\\SKSE\\Plugins\\FolderGallery\\Pictures"), ec);
+			}
+			return out;
+		}
+
+		std::string KeyName(std::uint32_t a_dik)
+		{
+			wchar_t   name[64]{};
+			const LONG lparam = static_cast<LONG>(((a_dik & 0x7F) << 16) | ((a_dik & 0x80) ? (1 << 24) : 0));
+			if (::GetKeyNameTextW(lparam, name, 64) > 0) {
+				return ToUtf8(fs::path(name));
+			}
+			return fmt::format("Key 0x{:02X}", a_dik);
+		}
+
+		// Windows folder picker on its own thread, so the game keeps drawing while it is open.
+		void BrowseForFolder(int a_target, const fs::path& a_start, const wchar_t* a_title)
+		{
+			if (g_browsing.exchange(true)) {
+				return;
+			}
+			std::thread([a_target, a_start, title = std::wstring(a_title)] {
+				::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+				IFileOpenDialog* dlg = nullptr;
+				if (SUCCEEDED(::CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&dlg))) && dlg) {
+					FILEOPENDIALOGOPTIONS opts = 0;
+					dlg->GetOptions(&opts);
+					dlg->SetOptions(opts | FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST);
+					dlg->SetTitle(title.c_str());
+					IShellItem* start = nullptr;
+					std::error_code ec;
+					if (fs::exists(a_start, ec) && SUCCEEDED(::SHCreateItemFromParsingName(a_start.c_str(), nullptr, IID_PPV_ARGS(&start))) && start) {
+						dlg->SetFolder(start);
+						start->Release();
+					}
+					if (SUCCEEDED(dlg->Show(nullptr))) {
+						IShellItem* item = nullptr;
+						if (SUCCEEDED(dlg->GetResult(&item)) && item) {
+							PWSTR path = nullptr;
+							if (SUCCEEDED(item->GetDisplayName(SIGDN_FILESYSPATH, &path)) && path) {
+								std::lock_guard lk(g_browseMtx);
+								g_browseResult = std::make_pair(a_target, std::wstring(path));
+								::CoTaskMemFree(path);
+							}
+							item->Release();
+						}
+					}
+					dlg->Release();
+				}
+				::CoUninitialize();
+				g_browsing = false;
+			}).detach();
+		}
+
+		fs::path DataTexturesFolder()
+		{
+			std::error_code ec;
+			return fs::absolute(fs::path(L"Data") / L"textures", ec).lexically_normal();
+		}
+
+		// "G:\...\Data\textures\A\B" -> "A\B"; empty + error text when it isn't inside Data\textures.
+		std::string PlacedRelative(const std::string& a_full, std::string& a_error)
+		{
+			std::string s = a_full;
+			while (!s.empty() && (s.back() == ' ' || s.back() == '\\' || s.back() == '/')) {
+				s.pop_back();
+			}
+			if (s.empty()) {
+				a_error = "Choose a folder inside the game's Data\\textures folder.";
+				return {};
+			}
+			std::error_code ec;
+			const auto      full = fs::absolute(FromUtf8Path(s), ec).lexically_normal();
+			const auto      root = DataTexturesFolder();
+			auto            lower = [](std::wstring w) {
+                std::transform(w.begin(), w.end(), w.begin(), [](wchar_t c) { return static_cast<wchar_t>(std::towlower(c)); });
+                return w;
+			};
+			const auto f = lower(full.wstring()), r = lower(root.wstring());
+			if (f.size() <= r.size() + 1 || f.compare(0, r.size(), r) != 0 || (f[r.size()] != L'\\' && f[r.size()] != L'/')) {
+				a_error = "The Placed Frames folder has to be inside the game's Data\\textures folder - the game only loads textures from there.";
+				return {};
+			}
+			a_error.clear();
+			return ToUtf8(full.lexically_relative(root));
 		}
 
 		// Character a key types with the current Windows keyboard layout (0 if none). Input thread.
@@ -686,6 +996,11 @@ namespace Gallery
 						continue;
 					}
 
+					if (g_captureKey && keyboard && down) {  // Settings: "press a key" for the gallery key
+						g_capturedDik = code == kDIK_Escape ? 0xFFFFFFFFu : code;
+						g_captureKey = false;
+						continue;
+					}
 					if (keyboard && (code == 0x2A || code == 0x36)) {
 						g_shiftDown = down;  // left / right shift
 						if (g_open) {
@@ -1123,6 +1438,225 @@ namespace Gallery
 			}
 		}
 
+		// ---------------------------------------------------------------- settings window
+		void FillSettingsModel()
+		{
+			auto& w = Wall::GetSettings();
+			auto& m = g_sm;
+			std::snprintf(m.folder, sizeof m.folder, "%s", ToUtf8(cfg.folder).c_str());
+			m.recursive = cfg.recursive;
+			std::error_code ec;
+			std::snprintf(m.placedFolder, sizeof m.placedFolder, "%s", ToUtf8((DataTexturesFolder() / FromUtf8Path(w.placedFolder)).lexically_normal()).c_str());
+			g_smKeyVk = 0;
+			g_smKeyName = KeyName(cfg.toggleScan);
+			m.thumbSize = cfg.thumbSize;
+			m.uiScalePct = static_cast<int>(std::lround(cfg.uiScale * 100.0f));
+			m.fontSize = static_cast<int>(std::lround(cfg.fontSize));
+			m.mouseSpeed = cfg.mouseSpeed;
+			m.defaultStyle = std::clamp(w.defaultStyle, 0, Frames::StyleCount(0) - 1);
+			m.resolution = w.resolution;
+			m.placeReach = static_cast<int>(w.maxDistance);
+			m.examineReach = static_cast<int>(w.examineReach);
+			m.cleanUp = w.cleanUp;
+			m.notifications = w.notifications;
+			m.showSize = w.showSize;
+			m.showDistance = w.showDistance;
+			m.showFrameName = w.showFrameName;
+			m.showPlacementHelp = w.showPlacementHelp;
+			m.showConfirmations = w.showConfirmations;
+			m.showPlacementWarnings = w.showPlacementWarnings;
+			m.showErrors = w.showErrors;
+			m.placementInfo = cfg.placementInfo;
+			g_captureKey = false;
+			g_capturedDik = 0;
+		}
+
+		void ResetSettingsTab(int a_tab)
+		{
+			auto& m = g_sm;
+			if (a_tab == 0) {
+				std::snprintf(m.folder, sizeof m.folder, "%s", ToUtf8(DefaultPictureFolder()).c_str());
+				m.recursive = false;
+				g_smKeyVk = VK_F8;
+				g_smKeyName = KeyName(VirtualKeyToDIK(VK_F8));
+				m.thumbSize = 200;
+				m.uiScalePct = 100;
+				m.fontSize = 18;
+				m.mouseSpeed = 1.0f;
+			} else if (a_tab == 1) {
+				m.defaultStyle = 7;
+				m.resolution = 1024;
+				m.placeReach = 2000;
+				m.examineReach = 600;
+				m.cleanUp = true;
+				std::snprintf(m.placedFolder, sizeof m.placedFolder, "%s", ToUtf8((DataTexturesFolder() / L"FolderGallery" / L"Placed").lexically_normal()).c_str());
+			} else {
+				m.notifications = true;
+				m.showSize = m.showDistance = m.showFrameName = false;
+				m.showPlacementHelp = m.showConfirmations = m.showPlacementWarnings = m.showErrors = true;
+				m.placementInfo = true;
+			}
+		}
+
+		void WriteIni(const char* a_section, const char* a_key, const std::string& a_value)
+		{
+			::WritePrivateProfileStringA(a_section, a_key, a_value.c_str(), g_iniPath.c_str());
+		}
+
+		void ApplySettings()
+		{
+			auto& m = g_sm;
+			auto& w = Wall::GetSettings();
+			// picture folder (empty / the default -> written as empty, so the default follows Documents)
+			std::string folderText = m.folder;
+			while (!folderText.empty() && folderText.back() == ' ') {
+				folderText.pop_back();
+			}
+			std::error_code ec;
+			const fs::path newFolder = folderText.empty() ? DefaultPictureFolder() : fs::absolute(FromUtf8Path(folderText), ec);
+			const bool     isDefault = newFolder.lexically_normal() == DefaultPictureFolder().lexically_normal();
+			const bool     rescan = newFolder != cfg.folder || m.recursive != cfg.recursive;
+			cfg.folder = newFolder;
+			cfg.recursive = m.recursive;
+			::WritePrivateProfileStringW(L"General", L"sFolder", isDefault ? L"" : newFolder.c_str(), fs::path(g_iniPath).c_str());
+			WriteIni("General", "bRecursive", m.recursive ? "1" : "0");
+			if (g_smKeyVk > 0) {
+				cfg.toggleKey = g_smKeyVk;
+				cfg.toggleScan = VirtualKeyToDIK(g_smKeyVk);
+				WriteIni("General", "iToggleKey", std::to_string(g_smKeyVk));
+			}
+			cfg.thumbSize = m.thumbSize;
+			WriteIni("General", "iThumbnailSize", std::to_string(m.thumbSize));
+			cfg.mouseSpeed = m.mouseSpeed;
+			WriteIni("General", "fMouseSpeed", fmt::format("{:.2f}", m.mouseSpeed));
+			if (std::lround(cfg.fontSize) != m.fontSize) {
+				cfg.fontSize = static_cast<float>(m.fontSize);
+				g_pendingTheme = true;  // fonts are rebuilt before the next frame
+			}
+			WriteIni("General", "fFontSize", std::to_string(m.fontSize));
+			RequestUiScale(m.uiScalePct / 100.0f);  // applied (and saved) before the next frame
+			// frames & hanging
+			w.defaultStyle = m.defaultStyle;
+			g_hangStyle = m.defaultStyle;
+			w.resolution = m.resolution;
+			w.maxDistance = static_cast<float>(m.placeReach);
+			w.examineReach = static_cast<float>(m.examineReach);
+			w.cleanUp = m.cleanUp;
+			WriteIni("Frames", "iDefaultFrameStyle", std::to_string(m.defaultStyle));
+			WriteIni("Frames", "iPictureResolution", std::to_string(m.resolution));
+			WriteIni("Frames", "fPlaceReach", std::to_string(m.placeReach));
+			WriteIni("Frames", "fExamineReach", std::to_string(m.examineReach));
+			WriteIni("Frames", "bCleanUpTextures", m.cleanUp ? "1" : "0");
+			std::string err;
+			const auto  rel = PlacedRelative(m.placedFolder, err);
+			if (!rel.empty()) {
+				Wall::SetPlacedFolder(rel);
+				WriteIni("Frames", "sPlacedFolder", rel);
+			}
+			// notifications
+			w.notifications = m.notifications;
+			w.showSize = m.showSize;
+			w.showDistance = m.showDistance;
+			w.showFrameName = m.showFrameName;
+			w.showPlacementHelp = m.showPlacementHelp;
+			w.showConfirmations = m.showConfirmations;
+			w.showPlacementWarnings = m.showPlacementWarnings;
+			w.showErrors = m.showErrors;
+			cfg.placementInfo = m.placementInfo;
+			auto b = [](bool v) { return std::string(v ? "1" : "0"); };
+			WriteIni("Notifications", "bNotifications", b(m.notifications));
+			WriteIni("Notifications", "bShowSize", b(m.showSize));
+			WriteIni("Notifications", "bShowDistance", b(m.showDistance));
+			WriteIni("Notifications", "bShowFrameName", b(m.showFrameName));
+			WriteIni("Notifications", "bShowPlacementHelp", b(m.showPlacementHelp));
+			WriteIni("Notifications", "bShowConfirmations", b(m.showConfirmations));
+			WriteIni("Notifications", "bShowPlacementWarnings", b(m.showPlacementWarnings));
+			WriteIni("Notifications", "bShowErrors", b(m.showErrors));
+			WriteIni("Notifications", "bShowPlacementInfo", b(m.placementInfo));
+			spdlog::info("Settings saved: folder {} (recursive {}), key {}, Placed Frames folder {}", ToUtf8(cfg.folder), cfg.recursive,
+				cfg.toggleKey, w.placedFolder);
+			if (rescan) {
+				g_needScan = true;
+			}
+		}
+
+		// Called every gallery frame: the Settings window (when open) and what it asks for.
+		void DrawSettingsWindow()
+		{
+			auto& m = g_sm;
+			// results from the input sink / folder picker
+			if (const auto dik = g_capturedDik.exchange(0); dik != 0) {
+				if (dik != 0xFFFFFFFFu) {
+					const UINT vk = ::MapVirtualKeyW((dik & 0x7F) | ((dik & 0x80) ? 0xE000u : 0u), MAPVK_VSC_TO_VK_EX);
+					if (vk != 0 && VirtualKeyToDIK(static_cast<int>(vk)) == dik) {
+						g_smKeyVk = static_cast<int>(vk);
+						g_smKeyName = KeyName(dik);
+					} else {
+						g_smKeyName = KeyName(dik) + " (can't be used)";
+					}
+				}
+			}
+			{
+				std::lock_guard lk(g_browseMtx);
+				if (g_browseResult) {
+					auto& [target, path] = *g_browseResult;
+					const auto u = ToUtf8(fs::path(path));
+					std::snprintf(target == 0 ? m.folder : m.placedFolder, target == 0 ? sizeof m.folder : sizeof m.placedFolder, "%s", u.c_str());
+					g_browseResult.reset();
+				}
+			}
+			m.waitingForKey = g_captureKey;
+			m.keyName = g_smKeyName.c_str();
+			m.landscapeStyles = Frames::StyleNames(0);
+			m.landscapeCount = Frames::StyleCount(0);
+			g_smOthers = fmt::format("Square: {}  \xC2\xB7  Portrait: {}", Frames::StyleName(1, m.defaultStyle), Frames::StyleName(2, m.defaultStyle));
+			m.defaultStyleOthers = g_smOthers.c_str();
+			m.iniPath = g_iniPath.c_str();
+			PlacedRelative(m.placedFolder, g_smError);
+			m.error = g_smError.empty() ? nullptr : g_smError.c_str();
+
+			const auto r = Ui::DrawSettings(m);
+			switch (r.action) {
+			case Ui::SettingsAction::Save:
+				ApplySettings();
+				g_captureKey = false;
+				break;
+			case Ui::SettingsAction::Cancel:
+				g_captureKey = false;
+				break;
+			case Ui::SettingsAction::Browse:
+				BrowseForFolder(0, FromUtf8Path(m.folder), L"Choose the picture folder");
+				break;
+			case Ui::SettingsAction::BrowsePlaced:
+				BrowseForFolder(1, FromUtf8Path(m.placedFolder), L"Choose the Placed Frames folder (inside Data\\textures)");
+				break;
+			case Ui::SettingsAction::DefaultFolder:
+				std::snprintf(m.folder, sizeof m.folder, "%s", ToUtf8(DefaultPictureFolder()).c_str());
+				break;
+			case Ui::SettingsAction::ChangeKey:
+				g_capturedDik = 0;
+				g_captureKey = true;
+				break;
+			case Ui::SettingsAction::ResetTab:
+				ResetSettingsTab(r.index);
+				break;
+			default:
+				break;
+			}
+		}
+
+		void OpenFolderInExplorer(const fs::path& a_folder)
+		{
+			std::error_code ec;
+			fs::create_directories(a_folder, ec);
+			std::thread([a_folder] {
+				::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+				::ShellExecuteW(nullptr, L"open", a_folder.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+				::CoUninitialize();
+			}).detach();
+			spdlog::info("Opened {} in Explorer", ToUtf8(a_folder));
+		}
+
 		void DrawUI()
 		{
 			if (g_uiMode == UiMode::FrameMenu) {
@@ -1145,6 +1679,7 @@ namespace Gallery
 			}
 			gm.uiScalePct = &uiPct;
 			UpdateVisible();
+			gm.openFolderStyle = 2;  // "Open folder" button after the path
 			gm.shapeFolder = &g_shapeFolder;
 			for (int i = 0; i < 4; ++i) {
 				gm.folderCounts[i] = g_folderCounts[i];
@@ -1210,7 +1745,7 @@ namespace Gallery
 				                     (std::max)(it.origW, it.origH) > it.loadedDim;
 				if (it.state == State::None || tooSoft) {
 					it.state = State::Queued;
-					Submit({ g_gen.load(), idx, it.path, want, false });
+					Submit({ g_gen.load(), idx, it.path, want, false }, true);  // newest on screen first
 				}
 			};
 			{
@@ -1242,7 +1777,21 @@ namespace Gallery
 
 			const int  folderBefore = g_shapeFolder;
 			const auto r = Ui::DrawGallery(gm);
+			DrawSettingsWindow();
 			++g_frame;
+			if (g_frame % 15 == 0) {  // drop queued thumbnails for cards scrolled away / in another folder tab
+				std::lock_guard lk(S.mtx);
+				for (auto j = S.jobs.begin(); j != S.jobs.end();) {
+					const bool thumb = !j->full && !j->info && !j->preview && !j->placed && j->gen == g_gen.load() && j->index >= 0 &&
+					                   j->index < static_cast<int>(items.size());
+					if (thumb && items[j->index].lastSeen + 30 < g_frame && items[j->index].state == State::Queued) {
+						items[j->index].state = State::None;
+						j = S.jobs.erase(j);
+					} else {
+						++j;
+					}
+				}
+			}
 			{  // free thumbnails that have been off screen the longest, beyond the budget
 				std::vector<int> loaded;
 				for (int i = 0; i < static_cast<int>(items.size()); ++i) {
@@ -1271,6 +1820,13 @@ namespace Gallery
 			}
 			const int  item = (r.index >= 0 && r.index < static_cast<int>(visible.size())) ? visible[r.index] : -1;
 			switch (r.action) {
+			case Ui::GalleryAction::OpenSettings:
+				FillSettingsModel();
+				Ui::OpenSettings();
+				break;
+			case Ui::GalleryAction::OpenFolder:
+				OpenFolderInExplorer(cfg.folder);
+				break;
 			case Ui::GalleryAction::OpenPlaced:
 				g_placedLoading = true;
 				Wall::RequestPlacedList();
@@ -1349,19 +1905,14 @@ namespace Gallery
 		g_iniPath = ini;
 
 		char buf[MAX_PATH]{};
-		::GetPrivateProfileStringA("General", "sFolder", "", buf, MAX_PATH, ini.c_str());
-		if (buf[0]) {
-			cfg.folder = fs::absolute(fs::path(buf), ec);
-		} else {
-			// Outside Data on purpose: Mod Organizer's virtual Data folder can't open files added while the game runs.
-			PWSTR docs = nullptr;
-			if (SUCCEEDED(::SHGetKnownFolderPath(FOLDERID_Documents, 0, nullptr, &docs)) && docs) {
-				cfg.folder = fs::path(docs) / L"My Games" / L"Skyrim Special Edition" / L"FolderGallery" / L"Pictures";
-				::CoTaskMemFree(docs);
-			} else {
-				cfg.folder = fs::absolute(fs::path(L"Data\\SKSE\\Plugins\\FolderGallery\\Pictures"), ec);
-			}
+		{
+			wchar_t wbuf[1024]{};
+			::GetPrivateProfileStringW(L"General", L"sFolder", L"", wbuf, 1024, fs::path(ini).c_str());
+			// empty = Documents\...\FolderGallery\Pictures: outside Data on purpose, Mod Organizer's virtual Data
+			// folder can't open files added while the game runs
+			cfg.folder = wbuf[0] ? fs::absolute(fs::path(wbuf), ec) : DefaultPictureFolder();
 		}
+		g_cacheDir = DefaultPictureFolder().parent_path() / L"ThumbCache";
 		cfg.toggleKey = static_cast<int>(::GetPrivateProfileIntA("General", "iToggleKey", VK_F8, ini.c_str()));
 		cfg.toggleScan = VirtualKeyToDIK(cfg.toggleKey);
 		if (cfg.toggleScan == 0) {
@@ -1386,6 +1937,8 @@ namespace Gallery
 		::GetPrivateProfileStringA("Frames", "fPlaceReach", "2000", buf, MAX_PATH, ini.c_str());
 		wall.maxDistance = std::clamp(static_cast<float>(std::atof(buf)), 100.0f, 10000.0f);
 		wall.cleanUp = ::GetPrivateProfileIntA("Frames", "bCleanUpTextures", 1, ini.c_str()) != 0;
+		::GetPrivateProfileStringA("Frames", "sPlacedFolder", "FolderGallery\\Placed", buf, MAX_PATH, ini.c_str());
+		wall.placedFolder = buf[0] ? buf : "FolderGallery\\Placed";
 		::GetPrivateProfileStringA("Frames", "fExamineReach", "600", buf, MAX_PATH, ini.c_str());
 		wall.examineReach = std::clamp(static_cast<float>(std::atof(buf)), 100.0f, 5000.0f);
 		auto note = [&](const char* a_key, bool a_default) { return ::GetPrivateProfileIntA("Notifications", a_key, a_default ? 1 : 0, ini.c_str()) != 0; };
@@ -1464,7 +2017,13 @@ namespace Gallery
 			g_sc = sc;
 			if (!g_workerStarted) {
 				g_workerStarted = true;
-				std::thread(WorkerMain).detach();
+				// 2-3 decode threads below normal priority: the game's own threads always come first
+				const unsigned cores = (std::max)(1u, std::thread::hardware_concurrency());
+				const int      workers = std::clamp(static_cast<int>(cores / 4), 2, 3);
+				for (int w = 0; w < workers; ++w) {
+					std::thread(WorkerMain).detach();
+				}
+				spdlog::info("Picture loading: {} background thread(s), thumbnail cache {}", workers, ToUtf8(g_cacheDir));
 			}
 			g_displayH = static_cast<float>(desc.BufferDesc.Height);
 			spdlog::info("Attached to the game's swap chain ({}x{})", desc.BufferDesc.Width, desc.BufferDesc.Height);
@@ -1542,6 +2101,10 @@ namespace Gallery
 		}
 		UploadReady();
 
+		if (g_pendingTheme) {
+			g_pendingTheme = false;
+			ApplyTheme();
+		}
 		if (g_pendingUiScale > 0.0f) {
 			if (std::fabs(g_pendingUiScale - cfg.uiScale) > 0.001f) {
 				cfg.uiScale = g_pendingUiScale;

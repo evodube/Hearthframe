@@ -15,7 +15,25 @@ namespace Wall
 		constexpr std::uint32_t    kRecordVersion = 1;
 		constexpr std::uint32_t    kRecordPreview = 'PREV';
 		constexpr std::uint32_t    kRecordRemovals = 'DELS';
-		constexpr const char*      kPlacedDir = "textures\\FolderGallery\\Placed\\";
+		// Game path of the folder for hung pictures' textures ("textures\\...\\"), from Settings::placedFolder.
+		std::mutex  g_dirMtx;
+		std::string g_placedDir = "textures\\FolderGallery\\Placed\\";
+		std::string PlacedDir()
+		{
+			std::lock_guard lk(g_dirMtx);
+			return g_placedDir;
+		}
+		std::string GamePathFor(std::string a_relative)
+		{
+			while (!a_relative.empty() && (a_relative.back() == '\\' || a_relative.back() == '/')) {
+				a_relative.pop_back();
+			}
+			while (!a_relative.empty() && (a_relative.front() == '\\' || a_relative.front() == '/')) {
+				a_relative.erase(a_relative.begin());
+			}
+			std::replace(a_relative.begin(), a_relative.end(), '/', '\\');
+			return "textures\\" + (a_relative.empty() ? std::string("FolderGallery\\Placed") : a_relative) + "\\";
+		}
 		constexpr float            kDefaultOffset = 0.3f;
 		constexpr float            kMinOffset = -40.0f;  // wall collision often sits well in front of the visible wall
 		constexpr float            kMaxOffset = 12.0f;
@@ -163,7 +181,7 @@ namespace Wall
 			if (stem.empty()) {
 				stem = "picture";
 			}
-			return fmt::format("{}{}_{}_{:016x}.dds", kPlacedDir, stem, Frames::kShapes[a_shape].name, Fnv1a(key));
+			return fmt::format("{}{}_{}_{:016x}.dds", PlacedDir(), stem, Frames::kShapes[a_shape].name, Fnv1a(key));
 		}
 
 		// Deletes converted pictures in Placed\ that nothing in this save uses any more. Other saves are
@@ -190,7 +208,7 @@ namespace Wall
 			}
 			std::thread([keep = std::move(keep)] {
 				std::error_code ec;
-				const auto      dir = DataPath(kPlacedDir);
+				const auto      dir = DataPath(PlacedDir());
 				int             removed = 0;
 				for (fs::directory_iterator it(dir, ec), end; !ec && it != end; it.increment(ec)) {
 					const auto& p = it->path();
@@ -1149,6 +1167,29 @@ namespace Wall
 			return newDds;
 		}
 
+		// A frame's texture that lives outside the current Placed Frames folder: move it in (same file name).
+		// Returns the new game path (the old one if nothing had to change).
+		std::string RelocateTexture(const std::string& a_dds)
+		{
+			const auto dir = PlacedDir();
+			if (_strnicmp(a_dds.c_str(), dir.c_str(), dir.size()) == 0) {
+				return a_dds;
+			}
+			const auto      slash = a_dds.find_last_of('\\');
+			const auto      newDds = dir + (slash == std::string::npos ? a_dds : a_dds.substr(slash + 1));
+			std::error_code ec;
+			const auto      from = DataPath(a_dds), to = DataPath(newDds);
+			fs::create_directories(to.parent_path(), ec);
+			if (fs::exists(from, ec) && !fs::exists(to, ec)) {
+				fs::rename(from, to, ec);
+				if (ec) {
+					ec.clear();
+					fs::copy_file(from, to, ec);
+				}
+			}
+			return newDds;
+		}
+
 		void OnLoad(SKSE::SerializationInterface* a_intfc)
 		{
 			std::uint32_t type = 0, version = 0, length = 0;
@@ -1199,6 +1240,7 @@ namespace Wall
 							e.dds = FollowTexture(e.dds, FromUtf8(moved), e.shape);
 						}
 					}
+					e.dds = RelocateTexture(e.dds);  // made while another Placed Frames folder was set
 					loaded.emplace_back(newID, std::move(e));
 				}
 			}
@@ -1259,6 +1301,10 @@ namespace Wall
 
 	bool Init()
 	{
+		{
+			std::lock_guard lk(g_dirMtx);
+			g_placedDir = GamePathFor(g_settings.placedFolder);
+		}
 		auto* dh = RE::TESDataHandler::GetSingleton();
 		int   found = 0;
 		for (int idx = 0; idx < Frames::kFrameCount; ++idx) {
@@ -1483,6 +1529,49 @@ namespace Wall
 			});
 			std::lock_guard lk(g_placedMtx);
 			g_placedList = std::move(out);
+		});
+	}
+
+	void SetPlacedFolder(const std::string& a_relative)
+	{
+		const auto dir = GamePathFor(a_relative);
+		{
+			std::lock_guard lk(g_dirMtx);
+			if (_stricmp(dir.c_str(), g_placedDir.c_str()) == 0) {
+				return;
+			}
+			g_placedDir = dir;
+		}
+		g_settings.placedFolder = a_relative;
+		spdlog::info("Placed Frames folder: {}", dir);
+		SKSE::GetTaskInterface()->AddTask([] {
+			std::vector<RE::FormID> moved;
+			std::vector<std::pair<RE::FormID, std::string>> entries;
+			{
+				std::lock_guard lk(g_mtx);
+				for (const auto& [id, e] : g_frames) {
+					entries.emplace_back(id, e.dds);
+				}
+			}
+			std::map<std::string, std::string> done;  // frames can share a texture
+			for (const auto& [id, dds] : entries) {
+				auto it = done.find(dds);
+				if (it == done.end()) {
+					it = done.emplace(dds, RelocateTexture(dds)).first;
+				}
+				if (it->second != dds) {
+					std::lock_guard lk(g_mtx);
+					if (auto f = g_frames.find(id); f != g_frames.end()) {
+						f->second.dds = it->second;
+					}
+					g_conversions[it->second] = Conv::Ready;
+					moved.push_back(id);
+				}
+			}
+			for (const auto id : moved) {
+				QueueApply(id);  // frames switch to the moved texture
+			}
+			spdlog::info("Placed Frames folder changed: {} frame(s) moved", moved.size());
 		});
 	}
 

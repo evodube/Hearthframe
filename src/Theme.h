@@ -76,6 +76,9 @@ namespace Theme
 	};
 	// Gold small-caps title + italic subtitle on the left, stat boxes and a close box on the right.
 	// Returns true when the close box was clicked.
+	// Makes the next Header's subtitle open something: 1 = the subtitle is a link, 2 = an "Open folder" button
+	// after it. *a_clicked is set when used. One-shot (applies to the next Header call only).
+	void SetSubtitleAction(int a_mode, bool* a_clicked, const char* a_tooltip = nullptr);
 	bool Header(const char* a_title, const char* a_subtitle, const Stat* a_stats = nullptr, int a_statCount = 0, bool a_closeBox = true, int* a_clickedStat = nullptr);
 
 	// ---- parchment panel (child window); text inside is dark ink
