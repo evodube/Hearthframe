@@ -5,7 +5,7 @@ namespace Wall
 	struct Settings
 	{
 		int   resolution = 1024;   // long side of the generated DDS
-		int   defaultStyle = 2;    // index into Frames::kStyles (Dark Oak)
+		int   defaultStyle = 7;    // position in each shape's frame list (7 = Rustic Dark Oak / Smoked Oak)
 		float maxDistance = 2000.0f;   // how far you can hang a picture
 		float examineReach = 600.0f;   // how far a hung picture can be examined with Activate
 		bool  cleanUp = true;          // delete converted textures no picture in the current save uses

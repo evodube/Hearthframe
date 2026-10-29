@@ -39,8 +39,7 @@ namespace Ui
 		bool        fullFailed = false;
 
 		// hang dialog
-		const char* const*                   styles = nullptr;
-		int                                  styleCount = 0;
+		std::function<std::pair<const char* const*, int>(int)> stylesFor;  // shape -> frame names, count
 		const char* const*                   shapes = nullptr;
 		int                                  shapeCount = 0;
 		int*                                 hangStyle = nullptr;  // in/out

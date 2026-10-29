@@ -1,32 +1,19 @@
 #!/usr/bin/env python3
-"""Generates FolderGallery.esp (ESL-flagged) and src/Frames.h from one frame table.
+"""Generates FolderGallery.esp (ESL-flagged) and src/Frames.h from tools/catalog.py.
 
-One ACTI (activator) per frame mesh: 5 shapes x 10 styles. Form IDs 0x800 + shape*10 + style,
-so the plugin can find them with TESDataHandler::LookupForm(0x800 + i, "FolderGallery.esp").
-Meshes: meshes\\FolderGallery\\Frame_<Shape>_<Style>.nif (made by tools/rebase_meshes.py).
+One ACTI (activator) per frame mesh, form IDs 0x800 + frame index in catalog order, so the plugin can
+find them with TESDataHandler::LookupForm(0x800 + i, "FolderGallery.esp").
+Meshes: meshes\\FolderGallery\\<Shape>_<Style>.nif. Textures stay where the meshes point
+(textures\\ax\\paintings\\...).
 
-Usage: python3 tools/make_esp.py [frames.json]
-frames.json (optional) holds measured bounds per mesh; without it, bounds come from BOUNDS below.
+Usage: python3 tools/make_esp.py [frames.json]   (frames.json = measured mesh bounds, keyed by mesh stem)
 """
-import json, os, struct, sys
+import json, math, os, struct, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from catalog import SHAPES, FRAMES, file_stem
 
-# (name, canvas width, canvas height) in game units - measured from the SGPicture quad in the NIFs
-SHAPES = [("Landscape", 56, 42), ("Portrait", 42, 56), ("Square", 48, 48), ("Tall", 36, 64), ("Wide", 64, 36)]
-# (mesh suffix, display name, frame border in game units, frame depth)
-STYLES = [
-    ("Canvas", "Canvas", 0.0, 2.4),
-    ("LightPine", "Light Pine", 5.0, 3.0),
-    ("DarkOak", "Dark Oak", 5.5, 3.2),
-    ("Gilded", "Gilded", 6.5, 3.6),
-    ("BlackIron", "Black Iron", 4.0, 2.6),
-    ("Dwemer", "Dwemer", 5.5, 3.2),
-    ("Whiterun", "Whiterun", 7.0, 3.6),
-    ("Windhelm", "Windhelm", 6.5, 3.4),
-    ("Thirsk", "Thirsk", 7.0, 3.6),
-    ("Dragonsreach", "Dragonsreach", 7.0, 3.6),
-]
 FIRST_ID = 0x800
 MASTER_PREFIX = 0x01000000  # one master (Skyrim.esm) -> our own records are 01xxxxxx in the file
 
@@ -48,33 +35,25 @@ def group(label, payload):
 
 
 def main():
-    measured = {}
-    if len(sys.argv) > 1:
-        measured = json.load(open(sys.argv[1]))
-
-    frames = []
-    for si, (shape, cw, ch) in enumerate(SHAPES):
-        for ti, (style, disp, border, depth) in enumerate(STYLES):
-            mesh = f"Frame_{shape}_{style}"
-            if mesh in measured:
-                mn, mx = measured[mesh]["min"], measured[mesh]["max"]
-            else:
-                mn = [-(cw / 2 + border), 0.0, -(ch / 2 + border)]
-                mx = [cw / 2 + border, depth, ch / 2 + border]
-            frames.append(dict(index=si * len(STYLES) + ti, shape=si, style=ti, mesh=mesh,
-                               edid=f"FG_Frame_{shape}_{style}", name=f"Framed Picture ({disp}, {shape})",
-                               mn=mn, mx=mx, cw=cw, ch=ch))
-
+    measured = json.load(open(sys.argv[1])) if len(sys.argv) > 1 else {}
+    shape_names = [s for s, _, _ in SHAPES]
+    # catalog order grouped by shape (Frames.h relies on each shape's frames being contiguous)
+    frames = sorted(FRAMES, key=lambda f: shape_names.index(f[1]))
     acti = b""
-    for f in frames:
-        import math
-        obnd = struct.pack("<6h", *[int(math.floor(v)) for v in f["mn"]], *[int(math.ceil(v)) for v in f["mx"]])
-        payload = (sub("EDID", zstr(f["edid"])) + sub("OBND", obnd) + sub("FULL", zstr(f["name"])) +
-                   sub("MODL", zstr(f"FolderGallery\\{f['mesh']}.nif")) + sub("RNAM", zstr("Examine")))
-        acti += record("ACTI", MASTER_PREFIX | (FIRST_ID + f["index"]), payload)
+    for i, (src, shape, style) in enumerate(frames):
+        stem = file_stem(shape, style)
+        if stem in measured:
+            mn, mx = measured[stem]["min"], measured[stem]["max"]
+        else:
+            _, cw, ch = SHAPES[shape_names.index(shape)]
+            mn, mx = [-cw / 2 - 8, 0, -ch / 2 - 8], [cw / 2 + 8, 3, ch / 2 + 8]
+        obnd = struct.pack("<6h", *[int(math.floor(v)) for v in mn], *[int(math.ceil(v)) for v in mx])
+        payload = (sub("EDID", zstr("FG_" + stem)) + sub("OBND", obnd) +
+                   sub("FULL", zstr(f"Framed Picture ({style})")) +
+                   sub("MODL", zstr(f"FolderGallery\\{stem}.nif")) + sub("RNAM", zstr("Examine")))
+        acti += record("ACTI", MASTER_PREFIX | (FIRST_ID + i), payload)
 
-    n_records = len(frames) + 1  # records + groups (TES4 excluded)
-    hedr = struct.pack("<fiI", 1.71, n_records, FIRST_ID + len(frames))
+    hedr = struct.pack("<fiI", 1.71, len(frames) + 1, FIRST_ID + len(frames))
     tes4 = (sub("HEDR", hedr) + sub("CNAM", zstr("FolderGallery")) +
             sub("SNAM", zstr("Folder Gallery - picture viewer and wall frames (needs FolderGallery.dll and its Meshes/Textures folders)")) +
             sub("MAST", zstr("Skyrim.esm")) + sub("DATA", b"\0" * 8))
@@ -82,20 +61,33 @@ def main():
     open(os.path.join(ROOT, "FolderGallery.esp"), "wb").write(esp)
 
     # ---- C++ table
-    lines = ["#pragma once", "// Generated by tools/make_esp.py - keep in sync with FolderGallery.esp.", "",
-             "namespace Frames", "{",
-             f"\tinline constexpr std::uint32_t kFirstFormID = 0x{FIRST_ID:X};",
-             f"\tinline constexpr int kShapeCount = {len(SHAPES)};",
-             f"\tinline constexpr int kStyleCount = {len(STYLES)};", "",
-             "\tstruct Shape { const char* name; float canvasW; float canvasH; };",
-             "\tinline constexpr Shape kShapes[kShapeCount] = {"]
-    lines += [f'\t\t{{ "{s}", {w}.0f, {h}.0f }},' for s, w, h in SHAPES]
-    lines += ["\t};", "", "\tinline constexpr const char* kStyles[kStyleCount] = {"]
-    lines += [f'\t\t"{d}",' for _, d, _, _ in STYLES]
-    lines += ["\t};", "",
-              "\tconstexpr std::uint32_t LocalFormID(int a_shape, int a_style) { return kFirstFormID + static_cast<std::uint32_t>(a_shape * kStyleCount + a_style); }",
-              "}", ""]
-    open(os.path.join(ROOT, "src", "Frames.h"), "w").write("\n".join(lines))
+    L = ["#pragma once", "// Generated by tools/make_esp.py from tools/catalog.py - keep in sync with FolderGallery.esp.", "",
+         "namespace Frames", "{",
+         f"\tinline constexpr std::uint32_t kFirstFormID = 0x{FIRST_ID:X};",
+         f"\tinline constexpr int kShapeCount = {len(SHAPES)};",
+         f"\tinline constexpr int kFrameCount = {len(frames)};", "",
+         "\t// Frames of one shape are contiguous: index = first + style.",
+         "\tstruct Shape { const char* name; float canvasW; float canvasH; int first; int count; };",
+         "\tinline constexpr Shape kShapes[kShapeCount] = {"]
+    first = 0
+    for s, w, h in SHAPES:
+        n = sum(1 for f in frames if f[1] == s)
+        L.append(f'\t\t{{ "{s}", {w}f, {h}f, {first}, {n} }},')
+        first += n
+    L += ["\t};", "", "\t// Style (frame) names in frame-index order.", "\tinline constexpr const char* kStyleNames[kFrameCount] = {"]
+    L += [f'\t\t"{style}",  // {file_stem(shape, style)} (from painting{src})' for src, shape, style in frames]
+    L += ["\t};", "",
+          "\tconstexpr int ClampShape(int a_shape) { return a_shape < 0 ? 0 : (a_shape >= kShapeCount ? kShapeCount - 1 : a_shape); }",
+          "\tconstexpr int StyleCount(int a_shape) { return kShapes[ClampShape(a_shape)].count; }",
+          "\tconstexpr int ClampStyle(int a_shape, int a_style) { const int n = StyleCount(a_shape); return a_style < 0 ? 0 : (a_style >= n ? n - 1 : a_style); }",
+          "\tconstexpr int Index(int a_shape, int a_style) { return kShapes[ClampShape(a_shape)].first + ClampStyle(a_shape, a_style); }",
+          "\tconstexpr const char* const* StyleNames(int a_shape) { return kStyleNames + kShapes[ClampShape(a_shape)].first; }",
+          "\tconstexpr const char* StyleName(int a_shape, int a_style) { return kStyleNames[Index(a_shape, a_style)]; }",
+          "\tconstexpr int ShapeOf(int a_index) { for (int s = 0; s < kShapeCount; ++s) { if (a_index < kShapes[s].first + kShapes[s].count) { return s; } } return kShapeCount - 1; }",
+          "\tconstexpr int StyleOf(int a_index) { return a_index - kShapes[ShapeOf(a_index)].first; }",
+          "\tconstexpr std::uint32_t LocalFormID(int a_index) { return kFirstFormID + static_cast<std::uint32_t>(a_index); }",
+          "}", ""]
+    open(os.path.join(ROOT, "src", "Frames.h"), "w").write("\n".join(L))
     print(f"wrote FolderGallery.esp ({len(esp)} bytes, {len(frames)} ACTI) and src/Frames.h")
 
 

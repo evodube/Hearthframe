@@ -155,8 +155,8 @@ namespace Ui
 		{
 			const auto& pic = m.pictures[m.viewing];
 			const ImVec2 center = ImGui::GetIO().DisplaySize * 0.5f;
-			ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-			ImGui::SetNextWindowSize(ImVec2(S(760.0f), 0));
+			ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));  // stays centred as its height changes
+			ImGui::SetNextWindowSize(ImVec2(S(980.0f), 0));
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(S(30.0f), S(26.0f)));
 			const bool open = ImGui::BeginPopupModal("Hang on wall", nullptr,
 				ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar);
@@ -170,19 +170,6 @@ namespace Ui
 			}
 			const int best = m.bestShape ? m.bestShape(pic.origW, pic.origH) : 0;
 			if (Theme::BeginParchment("##hang", ImVec2(0, 0), false, true)) {
-				Theme::SectionLabel("Frame");
-				{
-					Flow flow;
-					for (int i = 0; i < m.styleCount; ++i) {
-						flow.Next(m.styles[i]);
-						ImGui::PushID(i);
-						if (Theme::Chip(m.styles[i], *m.hangStyle == i)) {
-							*m.hangStyle = i;
-						}
-						ImGui::PopID();
-					}
-				}
-				ImGui::Dummy(ImVec2(0, S(6.0f)));
 				Theme::SectionLabel("Shape");
 				{
 					Flow flow;
@@ -197,6 +184,31 @@ namespace Ui
 							*m.hangShape = i;
 						}
 						ImGui::PopID();
+					}
+				}
+				ImGui::Dummy(ImVec2(0, S(6.0f)));
+				Theme::SectionLabel("Frame");
+				if (m.stylesFor) {
+					const auto [names, count] = m.stylesFor(*m.hangShape);
+					*m.hangStyle = std::clamp(*m.hangStyle, 0, (std::max)(0, count - 1));
+					// long lists scroll so the dialog stays on screen
+					const bool scroll = count > 12;
+					if (scroll) {
+						ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(0, 0, 0, 0));
+						ImGui::BeginChild("##frames", ImVec2(0, S(260.0f)), ImGuiChildFlags_None, 0);
+					}
+					Flow flow;
+					for (int i = 0; i < count; ++i) {
+						flow.Next(names[i]);
+						ImGui::PushID(i);
+						if (Theme::Chip(names[i], *m.hangStyle == i)) {
+							*m.hangStyle = i;
+						}
+						ImGui::PopID();
+					}
+					if (scroll) {
+						ImGui::EndChild();
+						ImGui::PopStyleColor();
 					}
 				}
 				ImGui::Dummy(ImVec2(0, S(4.0f)));

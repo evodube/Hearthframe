@@ -146,7 +146,7 @@ namespace Gallery
 		Wall::FrameInfo                    g_frameMenu;           // frame the player activated
 		std::optional<RE::ObjectRefHandle> g_replaceTarget;       // set while choosing a new picture for a frame
 		int                                g_hangShape = 0;
-		int                                g_hangStyle = 2;
+		int                                g_hangStyle = 7;
 		bool                               g_placementControls = false;
 		std::atomic<bool>                  g_shiftDown{ false };
 		std::atomic<bool>                  g_ctrlDown{ false };
@@ -716,7 +716,7 @@ namespace Gallery
 			auto&          f = g_frameMenu;
 			int            pct = static_cast<int>(std::lround(f.scale * 100.0f));
 			Ui::FrameModel fm;
-			fm.style = Frames::kStyles[f.style];
+			fm.style = Frames::StyleName(f.shape, f.style);
 			fm.shape = Frames::kShapes[f.shape].name;
 			fm.picture = f.picture.c_str();
 			fm.sizePct = &pct;
@@ -807,8 +807,7 @@ namespace Gallery
 				}
 				return v;
 			}();
-			gm.styles = Frames::kStyles;
-			gm.styleCount = Frames::kStyleCount;
+			gm.stylesFor = [](int shape) { return std::pair<const char* const*, int>(Frames::StyleNames(shape), Frames::StyleCount(shape)); };
 			gm.shapes = shapeNames.data();
 			gm.shapeCount = Frames::kShapeCount;
 			gm.hangStyle = &g_hangStyle;
@@ -891,7 +890,7 @@ namespace Gallery
 		cfg.mouseSpeed = std::clamp(static_cast<float>(std::atof(buf)), 0.1f, 10.0f);
 		auto& wall = Wall::GetSettings();
 		wall.resolution = std::clamp(static_cast<int>(::GetPrivateProfileIntA("Frames", "iPictureResolution", 1024, ini.c_str())), 256, 4096);
-		wall.defaultStyle = std::clamp(static_cast<int>(::GetPrivateProfileIntA("Frames", "iDefaultFrameStyle", 2, ini.c_str())), 0, Frames::kStyleCount - 1);
+		wall.defaultStyle = (std::max)(0, static_cast<int>(::GetPrivateProfileIntA("Frames", "iDefaultFrameStyle", 7, ini.c_str())));
 		g_hangStyle = wall.defaultStyle;
 		// fPlaceReach replaces the old fMaxPlaceDistance (default went from 400 to 2000)
 		::GetPrivateProfileStringA("Frames", "fPlaceReach", "2000", buf, MAX_PATH, ini.c_str());
@@ -899,7 +898,7 @@ namespace Gallery
 		wall.cleanUp = ::GetPrivateProfileIntA("Frames", "bCleanUpTextures", 1, ini.c_str()) != 0;
 		::GetPrivateProfileStringA("Frames", "fExamineReach", "600", buf, MAX_PATH, ini.c_str());
 		wall.examineReach = std::clamp(static_cast<float>(std::atof(buf)), 100.0f, 5000.0f);
-		spdlog::info("Frames: resolution {}  default style {}  reach {}", wall.resolution, Frames::kStyles[wall.defaultStyle], wall.maxDistance);
+		spdlog::info("Frames: resolution {}  default style {}  reach {}", wall.resolution, Frames::StyleName(0, wall.defaultStyle), wall.maxDistance);
 		dbg.hookPresent = ::GetPrivateProfileIntA("Debug", "bHookPresent", 1, ini.c_str()) != 0;
 		dbg.inputSink = ::GetPrivateProfileIntA("Debug", "bInputSink", 1, ini.c_str()) != 0;
 		std::error_code ec2;

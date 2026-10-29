@@ -4,3 +4,4 @@ vcpkg_installed/
 vcpkg-bincache/
 package/
 .vs/
+__pycache__/

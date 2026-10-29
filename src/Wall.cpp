@@ -42,7 +42,7 @@ namespace Wall
 		std::mutex                               g_mtx;  // guards everything below
 		std::unordered_map<RE::FormID, Entry>    g_frames;
 		std::unordered_map<std::string, Conv>    g_conversions;
-		std::array<RE::FormID, Frames::kShapeCount * Frames::kStyleCount> g_frameForms{};
+		std::array<RE::FormID, Frames::kFrameCount> g_frameForms{};
 
 		struct Placement
 		{
@@ -408,7 +408,7 @@ namespace Wall
 		// Activator form for a frame index, from the IDs resolved in Init().
 		RE::TESObjectACTI* FrameForm(int a_shape, int a_style)
 		{
-			const int idx = std::clamp(a_shape, 0, Frames::kShapeCount - 1) * Frames::kStyleCount + std::clamp(a_style, 0, Frames::kStyleCount - 1);
+			const int idx = Frames::Index(a_shape, a_style);
 			const auto id = g_frameForms[idx];
 			return id ? RE::TESForm::LookupByID<RE::TESObjectACTI>(id) : nullptr;
 		}
@@ -516,7 +516,7 @@ namespace Wall
 			if (auto ref = handle.get()) {
 				ref->SetCollision(false);
 				g_preview = handle;
-				spdlog::info("Preview frame {:08X} ({} {})", ref->GetFormID(), Frames::kShapes[pl->shape].name, Frames::kStyles[pl->style]);
+				spdlog::info("Preview frame {:08X} ({} {})", ref->GetFormID(), Frames::kShapes[pl->shape].name, Frames::StyleName(pl->shape, pl->style));
 			}
 		}
 
@@ -612,7 +612,7 @@ namespace Wall
 			auto* player = RE::PlayerCharacter::GetSingleton();
 			if (!base || !player) {
 				spdlog::error("Frame form for {} {} not available (form id {:08X})", Frames::kShapes[pl->shape].name,
-					Frames::kStyles[pl->style], g_frameForms[pl->shape * Frames::kStyleCount + pl->style]);
+					Frames::StyleName(pl->shape, pl->style), g_frameForms[Frames::Index(pl->shape, pl->style)]);
 				RE::DebugNotification("Folder Gallery: frame record missing - is FolderGallery.esp enabled?");
 				return;
 			}
@@ -635,7 +635,7 @@ namespace Wall
 				g_frames[ref->GetFormID()] = Entry{ dds, ToUtf8(pl->picture), static_cast<std::uint8_t>(pl->shape), static_cast<std::uint8_t>(pl->style) };
 			}
 			spdlog::info("Placed frame {:08X} ({} {}, {:.0f}%) at ({:.0f}, {:.0f}, {:.0f}) facing {:.0f} deg, picture {}",
-				ref->GetFormID(), Frames::kShapes[pl->shape].name, Frames::kStyles[pl->style], pl->scale * 100.0f, pose->pos.x, pose->pos.y, pose->pos.z,
+				ref->GetFormID(), Frames::kShapes[pl->shape].name, Frames::StyleName(pl->shape, pl->style), pl->scale * 100.0f, pose->pos.x, pose->pos.y, pose->pos.z,
 				angle.z * 57.2958f, ToUtf8(pl->picture));
 			EnsureTexture(dds, pl->picture, pl->shape);
 			QueueApply(ref->GetFormID());  // applied as soon as the new frame's 3D exists
@@ -664,8 +664,8 @@ namespace Wall
 			FrameInfo info;
 			info.ref = a_ref->GetHandle();
 			info.scale = a_ref->GetReferenceRuntimeData().refScale / 100.0f;
-			info.shape = idx / Frames::kStyleCount;
-			info.style = idx % Frames::kStyleCount;
+			info.shape = Frames::ShapeOf(idx);
+			info.style = Frames::StyleOf(idx);
 			std::lock_guard lk(g_mtx);
 			if (const auto it = g_frames.find(a_ref->GetFormID()); it != g_frames.end()) {
 				info.picturePath = FromUtf8(it->second.picture);
@@ -981,13 +981,10 @@ namespace Wall
 	{
 		auto* dh = RE::TESDataHandler::GetSingleton();
 		int   found = 0;
-		for (int s = 0; s < Frames::kShapeCount; ++s) {
-			for (int t = 0; t < Frames::kStyleCount; ++t) {
-				const int idx = s * Frames::kStyleCount + t;
-				auto*     form = dh ? dh->LookupForm(Frames::LocalFormID(s, t), kPluginFile) : nullptr;
-				g_frameForms[idx] = form ? form->GetFormID() : 0;
-				found += form ? 1 : 0;
-			}
+		for (int idx = 0; idx < Frames::kFrameCount; ++idx) {
+			auto* form = dh ? dh->LookupForm(Frames::LocalFormID(idx), kPluginFile) : nullptr;
+			g_frameForms[idx] = form ? form->GetFormID() : 0;
+			found += form ? 1 : 0;
 		}
 		spdlog::info("Wall frames: found {}/{} frame forms in {}", found, g_frameForms.size(), kPluginFile);
 
@@ -1031,7 +1028,7 @@ namespace Wall
 	void BeginPlacement(const fs::path& a_picture, int a_shape, int a_style, RE::ObjectRefHandle a_moving, float a_scale)
 	{
 		const int shape = std::clamp(a_shape, 0, Frames::kShapeCount - 1);
-		const int style = std::clamp(a_style, 0, Frames::kStyleCount - 1);
+		const int style = Frames::ClampStyle(shape, a_style);
 		{
 			std::lock_guard lk(g_mtx);
 			g_placement = Placement{ a_picture, shape, style, a_moving, std::clamp(a_scale, kMinScale, kMaxScale) };
@@ -1138,8 +1135,9 @@ namespace Wall
 				return;
 			}
 			auto& st = g_placement->style;
-			st = ((st + a_delta) % Frames::kStyleCount + Frames::kStyleCount) % Frames::kStyleCount;
-			name = Frames::kStyles[st];
+			const int n = Frames::StyleCount(g_placement->shape);
+			st = ((st + a_delta) % n + n) % n;
+			name = Frames::StyleName(g_placement->shape, st);
 		}
 		Notify(fmt::format("Frame: {}", name));
 	}
@@ -1225,11 +1223,11 @@ namespace Wall
 			if (idx < 0) {
 				return;
 			}
-			const int  shape = idx / Frames::kStyleCount;
+			const int  shape = Frames::ShapeOf(idx);
 			const auto dds = DdsGamePath(a_picture, shape);
 			{
 				std::lock_guard lk(g_mtx);
-				g_frames[ref->GetFormID()] = Entry{ dds, ToUtf8(a_picture), static_cast<std::uint8_t>(shape), static_cast<std::uint8_t>(idx % Frames::kStyleCount) };
+				g_frames[ref->GetFormID()] = Entry{ dds, ToUtf8(a_picture), static_cast<std::uint8_t>(shape), static_cast<std::uint8_t>(Frames::StyleOf(idx)) };
 			}
 			spdlog::info("Frame {:08X}: picture changed to {}", ref->GetFormID(), ToUtf8(a_picture));
 			EnsureTexture(dds, a_picture, shape);
