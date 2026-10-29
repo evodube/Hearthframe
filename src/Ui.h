@@ -179,6 +179,7 @@ namespace Ui
 			 showConfirmations = true, showPlacementWarnings = true, showErrors = true, placementInfo = true;
 		const char* iniPath = "";
 		const char* error = nullptr;  // shown above the buttons; Save is disabled while set
+		const char* keyWarning = nullptr;  // e.g. the chosen key is also a game control
 	};
 
 	enum class SettingsAction
@@ -186,9 +187,8 @@ namespace Ui
 		None,
 		Save,
 		Cancel,
-		Browse,         // pick a folder
-		DefaultFolder,  // back to Documents\...\Pictures
-		BrowsePlaced,   // pick the Placed folder (inside Data\textures)
+		OpenPictures,   // open the (saved) picture folder in Explorer
+		OpenPlaced,     // open the (saved) Placed Frames folder in Explorer
 		ChangeKey,      // start waiting for a key
 		ResetTab,       // index = tab
 	};

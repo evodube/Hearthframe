@@ -201,9 +201,9 @@ namespace Gallery
 		int                                g_smKeyVk = 0;          // new gallery key chosen in the window (0 = unchanged)
 		std::atomic<bool>                  g_captureKey{ false };  // waiting for the "press a key" key
 		std::atomic<std::uint32_t>         g_capturedDik{ 0 };     // set by the input sink (0xFFFFFFFF = cancelled)
-		std::mutex                         g_browseMtx;
-		std::optional<std::pair<int, std::wstring>> g_browseResult;  // (0 picture folder / 1 Placed Frames folder, path)
-		std::atomic<bool>                  g_browsing{ false };
+		std::string                        g_smKeyWarning;
+		HWND                               g_gameWindow = nullptr;
+		std::chrono::steady_clock::time_point g_lastExplorer{};
 		bool                               g_pendingTheme = false;  // rebuild fonts before the next frame
 
 		void RequestUiScale(float a_scale)
@@ -807,45 +807,6 @@ namespace Gallery
 			return fmt::format("Key 0x{:02X}", a_dik);
 		}
 
-		// Windows folder picker on its own thread, so the game keeps drawing while it is open.
-		void BrowseForFolder(int a_target, const fs::path& a_start, const wchar_t* a_title)
-		{
-			if (g_browsing.exchange(true)) {
-				return;
-			}
-			std::thread([a_target, a_start, title = std::wstring(a_title)] {
-				::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
-				IFileOpenDialog* dlg = nullptr;
-				if (SUCCEEDED(::CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&dlg))) && dlg) {
-					FILEOPENDIALOGOPTIONS opts = 0;
-					dlg->GetOptions(&opts);
-					dlg->SetOptions(opts | FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST);
-					dlg->SetTitle(title.c_str());
-					IShellItem* start = nullptr;
-					std::error_code ec;
-					if (fs::exists(a_start, ec) && SUCCEEDED(::SHCreateItemFromParsingName(a_start.c_str(), nullptr, IID_PPV_ARGS(&start))) && start) {
-						dlg->SetFolder(start);
-						start->Release();
-					}
-					if (SUCCEEDED(dlg->Show(nullptr))) {
-						IShellItem* item = nullptr;
-						if (SUCCEEDED(dlg->GetResult(&item)) && item) {
-							PWSTR path = nullptr;
-							if (SUCCEEDED(item->GetDisplayName(SIGDN_FILESYSPATH, &path)) && path) {
-								std::lock_guard lk(g_browseMtx);
-								g_browseResult = std::make_pair(a_target, std::wstring(path));
-								::CoTaskMemFree(path);
-							}
-							item->Release();
-						}
-					}
-					dlg->Release();
-				}
-				::CoUninitialize();
-				g_browsing = false;
-			}).detach();
-		}
-
 		fs::path DataTexturesFolder()
 		{
 			std::error_code ec;
@@ -997,8 +958,21 @@ namespace Gallery
 					}
 
 					if (g_captureKey && keyboard && down) {  // Settings: "press a key" for the gallery key
-						g_capturedDik = code == kDIK_Escape ? 0xFFFFFFFFu : code;
-						g_captureKey = false;
+						// never Tab / Alt / Ctrl / Shift / Windows / Enter (Alt+Tab, shortcuts...); Esc cancels
+						constexpr std::uint32_t unsafe[] = { 0x0F, 0x38, 0xB8, 0x1D, 0x9D, 0x2A, 0x36, 0xDB, 0xDC, 0x1C, 0x9C };
+						if (code == kDIK_Escape) {
+							g_capturedDik = 0xFFFFFFFFu;
+							g_captureKey = false;
+						} else if (std::find(std::begin(unsafe), std::end(unsafe), code) == std::end(unsafe) && !g_altDown && !g_ctrlDown) {
+							g_capturedDik = code;
+							g_captureKey = false;
+						}
+						if (code == 0x38 || code == 0xB8) {
+							g_altDown = true;
+						}
+						if (code == 0x1D || code == 0x9D) {
+							g_ctrlDown = true;
+						}
 						continue;
 					}
 					if (keyboard && (code == 0x2A || code == 0x36)) {
@@ -1449,6 +1423,7 @@ namespace Gallery
 			std::snprintf(m.placedFolder, sizeof m.placedFolder, "%s", ToUtf8((DataTexturesFolder() / FromUtf8Path(w.placedFolder)).lexically_normal()).c_str());
 			g_smKeyVk = 0;
 			g_smKeyName = KeyName(cfg.toggleScan);
+			g_smKeyWarning.clear();
 			m.thumbSize = cfg.thumbSize;
 			m.uiScalePct = static_cast<int>(std::lround(cfg.uiScale * 100.0f));
 			m.fontSize = static_cast<int>(std::lround(cfg.fontSize));
@@ -1581,6 +1556,8 @@ namespace Gallery
 		}
 
 		// Called every gallery frame: the Settings window (when open) and what it asks for.
+		void OpenFolderInExplorer(const fs::path& a_folder);
+
 		void DrawSettingsWindow()
 		{
 			auto& m = g_sm;
@@ -1591,22 +1568,25 @@ namespace Gallery
 					if (vk != 0 && VirtualKeyToDIK(static_cast<int>(vk)) == dik) {
 						g_smKeyVk = static_cast<int>(vk);
 						g_smKeyName = KeyName(dik);
+						g_smKeyWarning.clear();
+						if (auto* cm = RE::ControlMap::GetSingleton()) {  // also a game control? (allowed, but say so)
+							const auto ev = cm->GetUserEventName(dik, RE::INPUT_DEVICE::kKeyboard);
+							if (!ev.empty()) {
+								g_smKeyWarning = fmt::format("Also the game's \"{}\" key - it will do both.", ev);
+							}
+						}
 					} else {
-						g_smKeyName = KeyName(dik) + " (can't be used)";
+						g_smKeyWarning = KeyName(dik) + " can't be used as the gallery key.";
 					}
 				}
 			}
-			{
-				std::lock_guard lk(g_browseMtx);
-				if (g_browseResult) {
-					auto& [target, path] = *g_browseResult;
-					const auto u = ToUtf8(fs::path(path));
-					std::snprintf(target == 0 ? m.folder : m.placedFolder, target == 0 ? sizeof m.folder : sizeof m.placedFolder, "%s", u.c_str());
-					g_browseResult.reset();
-				}
+			if (g_captureKey && g_gameWindow && ::GetForegroundWindow() != g_gameWindow) {
+				g_captureKey = false;  // the game lost focus (Alt+Tab...): stop waiting, so nothing gets caught by accident
 			}
+
 			m.waitingForKey = g_captureKey;
 			m.keyName = g_smKeyName.c_str();
+			m.keyWarning = g_smKeyWarning.empty() ? nullptr : g_smKeyWarning.c_str();
 			m.landscapeStyles = Frames::StyleNames(0);
 			m.landscapeCount = Frames::StyleCount(0);
 			g_smOthers = fmt::format("Square: {}  \xC2\xB7  Portrait: {}", Frames::StyleName(1, m.defaultStyle), Frames::StyleName(2, m.defaultStyle));
@@ -1624,14 +1604,11 @@ namespace Gallery
 			case Ui::SettingsAction::Cancel:
 				g_captureKey = false;
 				break;
-			case Ui::SettingsAction::Browse:
-				BrowseForFolder(0, FromUtf8Path(m.folder), L"Choose the picture folder");
+			case Ui::SettingsAction::OpenPictures:
+				OpenFolderInExplorer(cfg.folder);
 				break;
-			case Ui::SettingsAction::BrowsePlaced:
-				BrowseForFolder(1, FromUtf8Path(m.placedFolder), L"Choose the Placed Frames folder (inside Data\\textures)");
-				break;
-			case Ui::SettingsAction::DefaultFolder:
-				std::snprintf(m.folder, sizeof m.folder, "%s", ToUtf8(DefaultPictureFolder()).c_str());
+			case Ui::SettingsAction::OpenPlaced:
+				OpenFolderInExplorer((DataTexturesFolder() / FromUtf8Path(Wall::GetSettings().placedFolder)).lexically_normal());
 				break;
 			case Ui::SettingsAction::ChangeKey:
 				g_capturedDik = 0;
@@ -1647,8 +1624,14 @@ namespace Gallery
 
 		void OpenFolderInExplorer(const fs::path& a_folder)
 		{
+			const auto now = std::chrono::steady_clock::now();
+			if (now - g_lastExplorer < std::chrono::seconds(3)) {
+				return;  // one window per click burst
+			}
+			g_lastExplorer = now;
 			std::error_code ec;
 			fs::create_directories(a_folder, ec);
+			::AllowSetForegroundWindow(ASFW_ANY);  // the game has the foreground: let Explorer come to the front
 			std::thread([a_folder] {
 				::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
 				::ShellExecuteW(nullptr, L"open", a_folder.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
@@ -2026,6 +2009,7 @@ namespace Gallery
 				spdlog::info("Picture loading: {} background thread(s), thumbnail cache {}", workers, ToUtf8(g_cacheDir));
 			}
 			g_displayH = static_cast<float>(desc.BufferDesc.Height);
+			g_gameWindow = desc.OutputWindow;
 			spdlog::info("Attached to the game's swap chain ({}x{})", desc.BufferDesc.Width, desc.BufferDesc.Height);
 		}
 		if (sc != g_sc) {

@@ -954,16 +954,15 @@ namespace Ui
 				Theme::SectionLabel("Pictures");
 				Row("Picture folder", "Where the gallery looks for pictures");
 				ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(S(10.0f), S(10.0f)));
-				ImGui::SetNextItemWidth(ctl - S(250.0f));
+				ImGui::SetNextItemWidth(ctl - S(126.0f));
 				ImGui::InputText("##folder", m.folder, sizeof m.folder);
 				ImGui::PopStyleVar();
 				ImGui::SameLine(0.0f, S(6.0f));
-				if (Theme::Button("Browse...", ImVec2(S(120.0f), S(40.0f)))) {
-					r.action = SettingsAction::Browse;
+				if (Theme::Button("Open", ImVec2(S(120.0f), S(40.0f)))) {
+					r.action = SettingsAction::OpenPictures;
 				}
-				ImGui::SameLine(0.0f, S(6.0f));
-				if (Theme::Button("Default", ImVec2(S(110.0f), S(40.0f)))) {
-					r.action = SettingsAction::DefaultFolder;
+				if (ImGui::IsItemHovered()) {
+					ImGui::SetTooltip("Open the picture folder in Windows Explorer\n(type a new path in the box and press Save to change it)");
 				}
 				Row("Include subfolders", "Also show pictures in folders inside the picture folder");
 				Toggle("recursive", &m.recursive);
@@ -975,6 +974,11 @@ namespace Ui
 					std::snprintf(label, sizeof label, "%s", m.waitingForKey ? "Press a key...  (Esc cancels)" : m.keyName);
 					if (Theme::Button(label, ImVec2(S(m.waitingForKey ? 300.0f : 140.0f), S(40.0f)), m.waitingForKey) && !m.waitingForKey) {
 						r.action = SettingsAction::ChangeKey;
+					}
+					if (m.keyWarning && *m.keyWarning) {
+						ImGui::SameLine(0.0f, S(12.0f));
+						ImGui::AlignTextToFramePadding();
+						Theme::TextColoredWrapped(Theme::Warning(), m.keyWarning);
 					}
 				}
 				Row("Mouse speed");
@@ -1034,8 +1038,11 @@ namespace Ui
 				ImGui::PopStyleVar();
 				ImGui::SameLine(0.0f, S(6.0f));
 				ImGui::PushID("placed");
-				if (Theme::Button("Browse...", ImVec2(S(120.0f), S(40.0f)))) {
-					r.action = SettingsAction::BrowsePlaced;
+				if (Theme::Button("Open", ImVec2(S(120.0f), S(40.0f)))) {
+					r.action = SettingsAction::OpenPlaced;
+				}
+				if (ImGui::IsItemHovered()) {
+					ImGui::SetTooltip("Open the Placed Frames folder in Windows Explorer\n(type a new path in the box and press Save to change it)");
 				}
 				ImGui::PopID();
 			} else {
