@@ -1362,7 +1362,12 @@ namespace Wall
 		// Start converting right away so the texture is usually ready by the time the frame is hung.
 		EnsureTexture(DdsGamePath(a_picture, shape), a_picture, shape);
 		g_placing = true;
-		Notify(Note::Help, "Aim at a wall, left-click to hang. Wheel: size, Shift+wheel: frame, Up/Down: distance from wall. Right-click/Esc cancels.");
+		static const char* const help[] = {
+			"Aim at a wall, left-click to hang. Wheel or Left/Right: size, Shift + wheel or Left/Right: frame, Up/Down: distance from wall. Right-click/Esc cancels.",
+			"Aim at a wall, left-click to hang. Left/Right: size, Shift+Left/Right: frame, Up/Down: distance from wall. Right-click/Esc cancels.",
+			"Aim at a wall, left-click to hang. Wheel: size, Shift+wheel: frame, Up/Down: distance from wall. Right-click/Esc cancels.",
+		};
+		Notify(Note::Help, help[std::clamp(g_settings.resizeWith, 0, 2)]);
 	}
 
 	bool IsPlacing()

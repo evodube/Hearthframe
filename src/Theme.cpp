@@ -1,5 +1,7 @@
 #include "Theme.h"
 
+#include <imgui_internal.h>
+
 #include <cctype>
 #include <cfloat>
 #include <cstdarg>
@@ -307,6 +309,7 @@ namespace Theme
 		ImFont* g_bold = nullptr;
 		ImFont* g_italic = nullptr;
 		int     g_parchmentDepth = 0;
+		std::vector<bool> g_parchmentScroll;  // per open parchment: does it scroll (draw our scroll bar)
 
 		ImVec4 V(ImU32 c) { return ImGui::ColorConvertU32ToFloat4(c); }
 
@@ -1046,17 +1049,25 @@ namespace Theme
 	}
 
 	// ------------------------------------------------------------------ content panel
-	bool BeginParchment(const char* a_id, const ImVec2& a_size, bool a_scroll, bool a_autoHeight)
+	bool BeginParchment(const char* a_id, const ImVec2& a_size, bool a_scroll, bool a_autoHeight, bool a_alwaysBar)
 	{
 		const bool fancy = L->fx.shadows || L->fx.textured || L->fx.deckle;
 		ImGui::PushStyleColor(ImGuiCol_ChildBg, fancy ? C(0, 0, 0, 0) : L->panel);
+		// ImGui's own scroll bar stays (it does the dragging) but is invisible: EndParchment draws ours over it
+		ImGui::PushStyleColor(ImGuiCol_ScrollbarBg, C(0, 0, 0, 0));
+		ImGui::PushStyleColor(ImGuiCol_ScrollbarGrab, C(0, 0, 0, 0));
+		ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabHovered, C(0, 0, 0, 0));
+		ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabActive, C(0, 0, 0, 0));
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(S(22.0f), S(18.0f)));
 		ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, S(L->windowRounding > 0.0f ? L->rounding + 2.0f : L->rounding));
+		ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, S(30.0f));
+		ImGui::PushStyleVar(ImGuiStyleVar_GrabMinSize, S(48.0f));
 		const bool visible = ImGui::BeginChild(a_id, a_size,
 			ImGuiChildFlags_AlwaysUseWindowPadding | (a_autoHeight ? ImGuiChildFlags_AutoResizeY : 0),
-			a_scroll ? 0 : (ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse));
-		ImGui::PopStyleVar(2);
-		ImGui::PopStyleColor();
+			a_scroll ? (a_alwaysBar ? ImGuiWindowFlags_AlwaysVerticalScrollbar : 0) : (ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse));
+		ImGui::PopStyleVar(4);
+		ImGui::PopStyleColor(5);
+		g_parchmentScroll.push_back(a_scroll);
 
 		auto*        dl = ImGui::GetWindowDrawList();
 		const ImVec2 a = ImGui::GetWindowPos();
@@ -1088,7 +1099,7 @@ namespace Theme
 			dl->AddRect(a, b, L->panelBorder, pr, 0, S(1.5f));
 		}
 		if (L->fx.seal && (b.y - a.y) > S(260.0f) && (b.x - a.x) > S(500.0f)) {
-			WaxSeal(dl, ImVec2(b.x - S(36.0f), a.y + S(28.0f)), S(21.0f));
+			WaxSeal(dl, ImVec2(b.x - S(36.0f) - (ImGui::GetCurrentWindow()->ScrollbarY ? S(30.0f) : 0.0f), a.y + S(28.0f)), S(21.0f));  // clear of the scroll bar
 		}
 		dl->PopClipRect();
 
@@ -1110,10 +1121,66 @@ namespace Theme
 		return visible;
 	}
 
+	// Wood-and-brass scroll bar, drawn over ImGui's invisible one (same size and place, so dragging,
+	// clicking the track and the wheel all work as usual).
+	void DrawScrollbar(ImGuiWindow* a_win)
+	{
+		if (!a_win || !a_win->ScrollbarY) {
+			return;
+		}
+		ImGuiContext& g = *GImGui;
+		ImRect        bb = ImGui::GetWindowScrollbarRect(a_win, ImGuiAxis_Y);
+		bb.Expand(ImVec2(-3.0f, -3.0f));  // the same inset ImGui uses for its grab
+		const float trackH = bb.GetHeight();
+		if (trackH <= 1.0f) {
+			return;
+		}
+		const float avail = a_win->InnerRect.Max.y - a_win->InnerRect.Min.y;
+		const float content = a_win->ContentSize.y + a_win->WindowPadding.y * 2.0f;
+		const float winSize = ImMax(ImMax(content, avail), 1.0f);
+		const float grabH = ImClamp(trackH * (avail / winSize), S(48.0f), trackH);
+		const float ratio = a_win->ScrollMax.y > 0.0f ? ImSaturate(a_win->Scroll.y / a_win->ScrollMax.y) : 0.0f;
+		const float grabY = bb.Min.y + (trackH - grabH) * ratio;
+
+		const ImGuiID id = ImGui::GetWindowScrollbarID(a_win, ImGuiAxis_Y);
+		const bool    active = g.ActiveId == id;
+		const bool    hovered = active || (g.HoveredWindow == a_win && ImGui::IsMouseHoveringRect(bb.Min, bb.Max, false));
+
+		auto* dl = a_win->DrawList;
+		dl->PushClipRect(a_win->Rect().Min, a_win->Rect().Max, false);
+		const float r = bb.GetWidth() * 0.5f;
+		// track: a dark groove in the parchment
+		dl->AddRectFilled(bb.Min, bb.Max, WithAlpha(L->ink, 55), r);
+		dl->AddRectFilled(bb.Min, ImVec2(bb.Max.x, bb.Min.y + S(3.0f)), WithAlpha(L->ink, 30), r, ImDrawFlags_RoundCornersTop);
+		dl->AddRect(bb.Min, bb.Max, WithAlpha(L->ink, 110), r, 0, S(1.0f));
+		// grab: wood with a brass rim and grip lines
+		const ImVec2 a(bb.Min.x + S(2.0f), grabY + S(2.0f)), b(bb.Max.x - S(2.0f), grabY + grabH - S(2.0f));
+		const float  gr = (b.x - a.x) * 0.5f;
+		dl->AddRectFilled(ImVec2(a.x + S(1.0f), a.y + S(2.0f)), ImVec2(b.x + S(1.0f), b.y + S(2.0f)), C(0, 0, 0, 70), gr);  // shadow
+		dl->AddRectFilled(a, b, active ? L->pGrabAct : (hovered ? L->pGrabAct : L->pGrab), gr);
+		dl->AddRectFilled(ImVec2(a.x + S(3.0f), a.y + S(4.0f)), ImVec2(a.x + S(5.0f), b.y - S(4.0f)), C(255, 255, 255, 28), S(1.0f));  // sheen
+		dl->AddRect(a, b, hovered ? L->accent : L->accentDim, gr, 0, S(hovered ? 2.0f : 1.5f));
+		if (b.y - a.y > S(36.0f)) {
+			const float cx = (a.x + b.x) * 0.5f, cy = (a.y + b.y) * 0.5f, w = (b.x - a.x) * 0.28f;
+			for (int k = -1; k <= 1; ++k) {
+				const float y = cy + k * S(5.0f);
+				dl->AddLine(ImVec2(cx - w, y), ImVec2(cx + w, y), WithAlpha(L->accent, hovered ? 255 : 210), S(2.0f));
+			}
+		}
+		dl->PopClipRect();
+	}
+
 	void EndParchment()
 	{
 		ImGui::PopStyleColor(14);
 		--g_parchmentDepth;
+		const bool scroll = !g_parchmentScroll.empty() && g_parchmentScroll.back();
+		if (!g_parchmentScroll.empty()) {
+			g_parchmentScroll.pop_back();
+		}
+		if (scroll) {
+			DrawScrollbar(ImGui::GetCurrentWindow());
+		}
 		ImGui::EndChild();
 		if (L->fx.shadows) {  // on the parent's draw list, which renders under the child window
 			SoftShadow(ImGui::GetWindowDrawList(), ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), S(L->rounding), S(14.0f), 130);

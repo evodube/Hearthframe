@@ -82,7 +82,8 @@ namespace Theme
 	bool Header(const char* a_title, const char* a_subtitle, const Stat* a_stats = nullptr, int a_statCount = 0, bool a_closeBox = true, int* a_clickedStat = nullptr);
 
 	// ---- parchment panel (child window); text inside is dark ink
-	bool BeginParchment(const char* a_id, const ImVec2& a_size, bool a_scroll = false, bool a_autoHeight = false);
+	// a_scroll: scrolls, with the wood-and-brass scroll bar; a_alwaysBar: the bar shows even when everything fits
+	bool BeginParchment(const char* a_id, const ImVec2& a_size, bool a_scroll = false, bool a_autoHeight = false, bool a_alwaysBar = false);
 	void EndParchment();
 	void SectionLabel(const char* a_text);  // small-caps label with a rule under it (inside parchment)
 

@@ -173,6 +173,7 @@ namespace Ui
 		int   placeReach = 2000;
 		int   examineReach = 600;
 		bool  cleanUp = true;
+		int   resizeWith = 0;  // 0 wheel + arrows, 1 arrows only, 2 wheel only
 		// notifications
 		bool notifications = true, showSize = false, showDistance = false, showFrameName = false, showPlacementHelp = true,
 			 showConfirmations = true, showPlacementWarnings = true, showErrors = true, placementInfo = true;

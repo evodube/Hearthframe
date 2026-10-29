@@ -154,7 +154,7 @@ namespace Ui
 					ImGui::PopID();
 				}
 			}
-			if (Theme::BeginParchment("##grid", ImVec2(0, 0), true)) {
+			if (Theme::BeginParchment("##grid", ImVec2(0, 0), true, false, true)) {
 				if (m.notice) {
 					Theme::TextColoredWrapped(Theme::Warning(), m.notice);
 					ImGui::Dummy(ImVec2(0, S(8.0f)));
@@ -1007,6 +1007,20 @@ namespace Ui
 				Theme::SliderInt("##reach", &m.placeReach, 500, 10000, "%d units", ctl);
 				Row("Examine reach", "How far away F8 / Activate can open a hung picture's menu");
 				Theme::SliderInt("##examine", &m.examineReach, 100, 5000, "%d units", ctl);
+				Row("Resize with", "While hanging a picture: what changes its size and frame.\nArrows: Left / Right = size, Shift + Left / Right = frame.\nWheel: wheel = size, Shift + wheel = frame.\nWith \"Arrows only\" the wheel zooms the camera as usual.");
+				{
+					const char* opts[] = { "Wheel + arrows", "Arrows only", "Wheel only" };
+					for (int k = 0; k < 3; ++k) {
+						if (k) {
+							ImGui::SameLine(0.0f, S(6.0f));
+						}
+						ImGui::PushID(820 + k);
+						if (Theme::Chip(opts[k], m.resizeWith == k)) {
+							m.resizeWith = k;
+						}
+						ImGui::PopID();
+					}
+				}
 				Gap();
 				Theme::SectionLabel("Pictures on walls");
 				Row("Picture resolution", "Long side of the texture made for a hung picture. Applies to pictures you hang from now on.");

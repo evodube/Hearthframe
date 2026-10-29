@@ -775,11 +775,16 @@ namespace Gallery
 			}
 			g_placementControls = a_on;
 			using UEFlag = RE::ControlMap::UEFlag;
-			constexpr auto blocked = static_cast<UEFlag>(
-				static_cast<std::uint32_t>(UEFlag::kActivate) | static_cast<std::uint32_t>(UEFlag::kMenu) |
-				static_cast<std::uint32_t>(UEFlag::kFighting) | static_cast<std::uint32_t>(UEFlag::kWheelZoom));
+			// the wheel stays with the camera when only the arrow keys resize
+			static UEFlag blocked{};
+			if (a_on) {
+				blocked = static_cast<UEFlag>(
+					static_cast<std::uint32_t>(UEFlag::kActivate) | static_cast<std::uint32_t>(UEFlag::kMenu) |
+					static_cast<std::uint32_t>(UEFlag::kFighting) |
+					(Wall::GetSettings().resizeWith == 1 ? 0u : static_cast<std::uint32_t>(UEFlag::kWheelZoom)));
+			}
 			if (auto* cm = RE::ControlMap::GetSingleton()) {
-				cm->ToggleControls(blocked, !a_on);
+				cm->ToggleControls(blocked, !a_on);  // off: re-enable exactly what was blocked
 			}
 		}
 
@@ -886,6 +891,9 @@ namespace Gallery
 
 		// Holding Up/Down while hanging keeps moving the frame (first repeat after a short pause).
 		float g_offsetRepeatAt = 0.0f;
+		float g_sizeRepeatAt = 0.0f;
+		bool  ArrowsResize() { return Wall::GetSettings().resizeWith != 2; }
+		bool  WheelResize() { return Wall::GetSettings().resizeWith != 1; }
 
 		void PushInput(const InputMsg& m)
 		{
@@ -925,6 +933,20 @@ namespace Gallery
 								const int dir = code == kDIK_Up ? +1 : -1;
 								Wall::AdjustOffset(dir * (g_shiftDown ? 8 : 1));
 								g_offsetRepeatAt = held + (g_shiftDown ? 0.10f : 0.05f);
+							}
+						}
+						// held: Left/Right keep resizing (Shift: keep changing the frame, slower)
+						if (keyboard && Wall::IsPlacing() && ArrowsResize() && (code == kDIK_Left || code == kDIK_Right)) {
+							const float held = btn->HeldDuration();
+							if (held >= g_sizeRepeatAt) {
+								const int dir = code == kDIK_Right ? +1 : -1;
+								if (g_shiftDown) {
+									Wall::CycleStyle(dir);
+									g_sizeRepeatAt = held + 0.30f;
+								} else {
+									Wall::AdjustScale(dir);
+									g_sizeRepeatAt = held + 0.08f;
+								}
 							}
 						}
 						continue;
@@ -989,7 +1011,7 @@ namespace Gallery
 								Wall::RequestPlace();  // left click
 							} else if (code == 1) {
 								Wall::CancelPlacement();  // right click
-							} else if (code == MouseKey::kWheelUp || code == MouseKey::kWheelDown) {
+							} else if ((code == MouseKey::kWheelUp || code == MouseKey::kWheelDown) && WheelResize()) {
 								const int dir = code == MouseKey::kWheelUp ? +1 : -1;
 								if (g_shiftDown) {
 									Wall::CycleStyle(dir);
@@ -1006,6 +1028,14 @@ namespace Gallery
 							} else if (code == kDIK_Down) {
 								Wall::AdjustOffset(g_shiftDown ? -8 : -1);  // closer / into the wall (Shift: 2 units)
 								g_offsetRepeatAt = 0.35f;
+							} else if ((code == kDIK_Left || code == kDIK_Right) && ArrowsResize()) {
+								const int dir = code == kDIK_Right ? +1 : -1;
+								if (g_shiftDown) {
+									Wall::CycleStyle(dir);  // Shift + Left/Right: frame
+								} else {
+									Wall::AdjustScale(dir);  // Left/Right: size
+								}
+								g_sizeRepeatAt = 0.35f;
 							}
 						}
 						continue;
@@ -1405,6 +1435,7 @@ namespace Gallery
 			m.placeReach = static_cast<int>(w.maxDistance);
 			m.examineReach = static_cast<int>(w.examineReach);
 			m.cleanUp = w.cleanUp;
+			m.resizeWith = w.resizeWith;
 			m.notifications = w.notifications;
 			m.showSize = w.showSize;
 			m.showDistance = w.showDistance;
@@ -1436,6 +1467,7 @@ namespace Gallery
 				m.placeReach = 2000;
 				m.examineReach = 600;
 				m.cleanUp = true;
+				m.resizeWith = 0;
 			} else {
 				m.notifications = true;
 				m.showSize = m.showDistance = m.showFrameName = false;
@@ -1493,6 +1525,8 @@ namespace Gallery
 			WriteIni("Frames", "fPlaceReach", std::to_string(m.placeReach));
 			WriteIni("Frames", "fExamineReach", std::to_string(m.examineReach));
 			WriteIni("Frames", "bCleanUpTextures", m.cleanUp ? "1" : "0");
+			w.resizeWith = std::clamp(m.resizeWith, 0, 2);
+			WriteIni("Frames", "iResizeWith", std::to_string(w.resizeWith));
 			// notifications
 			w.notifications = m.notifications;
 			w.showSize = m.showSize;
@@ -1880,6 +1914,7 @@ namespace Gallery
 		::GetPrivateProfileStringA("Frames", "fPlaceReach", "2000", buf, MAX_PATH, ini.c_str());
 		wall.maxDistance = std::clamp(static_cast<float>(std::atof(buf)), 100.0f, 10000.0f);
 		wall.cleanUp = ::GetPrivateProfileIntA("Frames", "bCleanUpTextures", 1, ini.c_str()) != 0;
+		wall.resizeWith = std::clamp(static_cast<int>(::GetPrivateProfileIntA("Frames", "iResizeWith", 0, ini.c_str())), 0, 2);
 		::GetPrivateProfileStringA("Frames", "fExamineReach", "600", buf, MAX_PATH, ini.c_str());
 		wall.examineReach = std::clamp(static_cast<float>(std::atof(buf)), 100.0f, 5000.0f);
 		auto note = [&](const char* a_key, bool a_default) { return ::GetPrivateProfileIntA("Notifications", a_key, a_default ? 1 : 0, ini.c_str()) != 0; };
@@ -2062,8 +2097,12 @@ namespace Gallery
 			io.MouseDrawCursor = false;
 			const auto values = fmt::format("{}  \xC2\xB7  {}  \xC2\xB7  Size {:.0f}%  \xC2\xB7  Distance {:+.2f}", placing.frame, placing.shape,
 				placing.scale * 100.0f, placing.distance);
-			Ui::DrawPlacementInfo(values.c_str(),
-				"Click: hang   \xC2\xB7   Wheel: size   \xC2\xB7   Shift+Wheel: frame   \xC2\xB7   Up/Down (hold): distance   \xC2\xB7   Right-click / Esc: cancel");
+			static const char* const hints[] = {
+				"Click: hang   \xC2\xB7   Wheel or Left/Right: size   \xC2\xB7   Shift + Wheel or Left/Right: frame   \xC2\xB7   Up/Down: distance   \xC2\xB7   Right-click / Esc: cancel",
+				"Click: hang   \xC2\xB7   Left/Right: size   \xC2\xB7   Shift+Left/Right: frame   \xC2\xB7   Up/Down: distance   \xC2\xB7   Right-click / Esc: cancel",
+				"Click: hang   \xC2\xB7   Wheel: size   \xC2\xB7   Shift+Wheel: frame   \xC2\xB7   Up/Down: distance   \xC2\xB7   Right-click / Esc: cancel",
+			};
+			Ui::DrawPlacementInfo(values.c_str(), hints[std::clamp(Wall::GetSettings().resizeWith, 0, 2)]);
 		} else {
 			DrawUI();
 		}
