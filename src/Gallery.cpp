@@ -536,6 +536,79 @@ namespace Gallery
 		}
 
 		// ---------------------------------------------------------------- textures (render thread)
+		ID3D11ShaderResourceView* MakeSRV(const std::uint8_t* px, int w, int h);
+
+		// ---- frame previews for the hang dialog: Data\SKSE\Plugins\Hearthframe\FramePreviews\<Shape>_<Style>.png
+		// (rendered from the meshes with the canvas cut out) + holes.txt (image size and cut-out per file)
+		struct PreviewEntry
+		{
+			Ui::FramePreview          preview;
+			ID3D11ShaderResourceView* srv = nullptr;
+			bool                      tried = false;
+		};
+		std::map<std::string, PreviewEntry> g_framePreviews;
+		bool                                g_framePreviewsRead = false;
+
+		// "Painted Blue, Copper Trim" -> "Landscape_PaintedBlueCopperTrim" (same rule as tools/catalog.py file_stem)
+		std::string PreviewStem(int a_shape, int a_style)
+		{
+			std::string out = std::string(Frames::kShapes[Frames::ClampShape(a_shape)].name) + "_";
+			bool        wordStart = true;
+			for (const char* c = Frames::StyleName(a_shape, a_style); *c; ++c) {
+				const unsigned char ch = static_cast<unsigned char>(*c);
+				if (std::isalpha(ch)) {
+					out += static_cast<char>(wordStart ? std::toupper(ch) : std::tolower(ch));
+					wordStart = false;
+				} else {
+					if (std::isdigit(ch)) {
+						out += static_cast<char>(ch);
+					}
+					wordStart = true;
+				}
+			}
+			return out;
+		}
+
+		Ui::FramePreview FramePreviewFor(int a_shape, int a_style)
+		{
+			std::error_code ec;
+			const fs::path  dir = fs::absolute(fs::path(L"Data\\SKSE\\Plugins\\Hearthframe\\FramePreviews"), ec);
+			if (!g_framePreviewsRead) {
+				g_framePreviewsRead = true;
+				std::ifstream in(dir / L"holes.txt");
+				std::string   line;
+				while (std::getline(in, line)) {
+					std::istringstream ss(line);
+					std::string        stem;
+					Ui::FramePreview   f;
+					if (ss >> stem >> f.w >> f.h >> f.hx0 >> f.hy0 >> f.hx1 >> f.hy1) {
+						g_framePreviews[stem].preview = f;
+					}
+				}
+				spdlog::info("Frame previews: {} listed in {}", g_framePreviews.size(), ToUtf8(dir));
+			}
+			const auto it = g_framePreviews.find(PreviewStem(a_shape, a_style));
+			if (it == g_framePreviews.end()) {
+				return {};
+			}
+			auto& e = it->second;
+			if (!e.tried) {  // load on first use (render thread)
+				e.tried = true;
+				int   w = 0, h = 0, n = 0;
+				auto* px = stbi_load(ToUtf8(dir / (it->first + ".png")).c_str(), &w, &h, &n, 4);
+				if (px) {
+					e.srv = MakeSRV(px, w, h);
+					stbi_image_free(px);
+				}
+				if (!e.srv) {
+					spdlog::warn("Frame preview {} could not be loaded", it->first);
+				}
+			}
+			Ui::FramePreview out = e.preview;
+			out.tex = e.srv ? reinterpret_cast<ImTextureID>(e.srv) : ImTextureID{};
+			return out;
+		}
+
 		ID3D11ShaderResourceView* MakeSRV(const std::uint8_t* px, int w, int h)
 		{
 			D3D11_TEXTURE2D_DESC d{};
@@ -1239,7 +1312,7 @@ namespace Gallery
 			if (!lookChosen) {
 				lookChosen = true;
 				for (int i = 0; i < Theme::StyleCount(); ++i) {
-					if (std::strcmp(Theme::StyleName(i), "Ledger: Guild Card") == 0) {
+					if (std::strcmp(Theme::StyleName(i), "Modern") == 0) {
 						Theme::SetStyle(i);
 					}
 				}
@@ -1248,9 +1321,20 @@ namespace Gallery
 					return reinterpret_cast<ImTextureID>(MakeSRV(a_px, a_w, a_h));
 				});
 			}
-			Theme::Setup(scale, cfg.fontSize, { regular.c_str(), bold.c_str(), italic.c_str() });
+			// the modern look's fonts ship with the mod (Cinzel + Inter, SIL Open Font License); Georgia if missing
+			std::error_code   fec;
+			const std::string own = ToUtf8(fs::absolute(fs::path(L"Data\\SKSE\\Plugins\\Hearthframe\\Fonts"), fec)) + "\\";
+			const std::string display = own + "Cinzel-SemiBold.ttf", uiReg = own + "Inter-Regular.ttf", uiSemi = own + "Inter-SemiBold.ttf",
+							  uiItal = own + "Inter-Italic.ttf";
+			Theme::FontFiles files{ regular.c_str(), bold.c_str(), italic.c_str() };
+			files.display = display.c_str();
+			files.uiRegular = uiReg.c_str();
+			files.uiSemiBold = uiSemi.c_str();
+			files.uiItalic = uiItal.c_str();
+			Theme::Setup(scale, cfg.fontSize, files);
 			ImGui::GetIO().MouseDrawCursor = g_open;
-			spdlog::info("UI: scale {:.2f}, font {} ({})", scale, cfg.fontSize, Theme::Body() && Theme::Body()->ConfigData ? "Georgia" : "default");
+			spdlog::info("UI: look {}, scale {:.2f}, font {} ({})", Theme::StyleName(Theme::CurrentStyle()), scale, cfg.fontSize,
+				fs::exists(fs::path(uiReg), fec) ? "Inter + Cinzel" : "Georgia - Fonts folder missing");
 		}
 
 		bool InitImGui()
@@ -1825,6 +1909,7 @@ namespace Gallery
 			gm.hangShape = &g_hangShape;
 			gm.bestShape = [](int w, int h) { return Wall::AutoShape(w, h); };
 			gm.textureSize = [](int shape) { return Wall::TextureSize(shape); };
+			gm.framePreview = [](int shape, int style) { return FramePreviewFor(shape, style); };
 
 			const int  folderBefore = g_shapeFolder;
 			const auto r = Ui::DrawGallery(gm);
