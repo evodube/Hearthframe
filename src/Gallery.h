@@ -8,6 +8,8 @@ namespace Gallery
 	{
 		bool hookPresent = true;  // [Debug] bHookPresent
 		bool inputSink = true;    // [Debug] bInputSink
+		bool blockInput = true;   // [Debug] bBlockInput: other mods/the game get no keys while a window is open
+		bool logInput = false;    // [Debug] bLogInput: write every key the gallery receives to the log
 	};
 
 	void                 LoadSettings();

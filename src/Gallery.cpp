@@ -904,6 +904,13 @@ namespace Gallery
 		}
 
 		// ---------------------------------------------------------------- input (game input events)
+		const char*                           g_inputVia = "sink";  // "blocker" or "sink", for the input log
+		std::atomic<std::int64_t>             g_lastBlockerMs{ 0 };  // last time the game's input reached our blocker
+		std::int64_t NowMs()
+		{
+			return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+		}
+
 		void HandleInput(RE::InputEvent* const* a_event)
 		{
 				if (!a_event) {
@@ -1042,6 +1049,13 @@ namespace Gallery
 					}
 
 					if (e->GetDevice() == RE::INPUT_DEVICE::kKeyboard) {
+						if (g_open && dbg.logInput) {
+							const bool    altGr = g_ctrlDown && g_altDown;
+							const wchar_t c = down ? KeyToChar(code, g_shiftDown, altGr) : 0;
+							spdlog::info("[input] key {:02X} {} via {}  shift={} ctrl={} alt={}  char={}", code, down ? "down" : "up", g_inputVia,
+								g_shiftDown.load(), g_ctrlDown.load(), g_altDown.load(),
+								!down ? std::string("-") : (c == 0 ? std::string("none") : ((g_ctrlDown && !altGr) ? fmt::format("U+{:04X} (not typed: Ctrl held)", static_cast<int>(c)) : fmt::format("U+{:04X}", static_cast<int>(c)))));
+						}
 						if (down && code == cfg.toggleScan) {
 							if (g_wantOpen) {
 								g_wantOpen = false;
@@ -1112,8 +1126,11 @@ namespace Gallery
 		void DispatchInputHook(RE::BSTEventSource<RE::InputEvent*>* a_source, RE::InputEvent* const* a_events)
 		{
 			const auto original = reinterpret_cast<DispatchInput*>(g_dispatchInput);
+			g_lastBlockerMs = NowMs();
 			if (g_open && a_events && *a_events && !g_inputDisabled) {
+				g_inputVia = "blocker";
 				SafeHandleInput(a_events);
+				g_inputVia = "sink";
 				static RE::InputEvent* const none[] = { nullptr };
 				original(a_source, none);  // nobody else sees these keys
 				return;
@@ -1162,6 +1179,9 @@ namespace Gallery
 					break;
 				case InputMsg::Kind::Char:
 					io.AddInputCharacterUTF16(static_cast<ImWchar16>(m.button));
+					if (dbg.logInput) {
+						spdlog::info("[input] char U+{:04X} given to the window (text box focused: {})", m.button, io.WantTextInput);
+					}
 					break;
 				}
 			}
@@ -1951,9 +1971,11 @@ namespace Gallery
 		spdlog::info("Frames: resolution {}  default style {}  reach {}", wall.resolution, Frames::StyleName(0, wall.defaultStyle), wall.maxDistance);
 		dbg.hookPresent = ::GetPrivateProfileIntA("Debug", "bHookPresent", 1, ini.c_str()) != 0;
 		dbg.inputSink = ::GetPrivateProfileIntA("Debug", "bInputSink", 1, ini.c_str()) != 0;
+		dbg.logInput = ::GetPrivateProfileIntA("Debug", "bLogInput", 0, ini.c_str()) != 0;
+		dbg.blockInput = ::GetPrivateProfileIntA("Debug", "bBlockInput", 1, ini.c_str()) != 0;
 		std::error_code ec2;
 		spdlog::info("INI: {} ({})", ini, fs::exists(ini, ec2) ? "found" : "NOT FOUND - using defaults");
-		spdlog::info("Debug: bHookPresent={} bInputSink={}", dbg.hookPresent, dbg.inputSink);
+		spdlog::info("Debug: bHookPresent={} bInputSink={} bBlockInput={} bLogInput={}", dbg.hookPresent, dbg.inputSink, dbg.blockInput, dbg.logInput);
 		spdlog::info("Folder: {}  key: {} (scan 0x{:02X})  recursive: {}  mouse speed: {}",
 			ToUtf8(cfg.folder), cfg.toggleKey, cfg.toggleScan, cfg.recursive, cfg.mouseSpeed);
 	}
@@ -1986,7 +2008,8 @@ namespace Gallery
 
 	void InstallInputBlocker()
 	{
-		if (!dbg.inputSink) {
+		if (!dbg.inputSink || !dbg.blockInput) {
+			spdlog::info("Input blocker off (bInputSink={} bBlockInput={})", dbg.inputSink, dbg.blockInput);
 			return;
 		}
 		// BSInputDeviceManager::PollInputDevices -> the call that sends the input events to all listeners
@@ -2140,6 +2163,38 @@ namespace Gallery
 			Ui::DrawPlacementInfo(values.c_str(), hints[std::clamp(Wall::GetSettings().resizeWith, 0, 2)]);
 		} else {
 			DrawUI();
+		}
+		if (dbg.logInput) {  // [Debug] bLogInput: what happens around typing
+			static bool         lastText = false, lastFocus = true, staleLogged = false;
+			static std::int64_t openedMs = 0;
+			const bool          text = g_open && io.WantTextInput;
+			if (text != lastText) {
+				spdlog::info("[input] text box {}", text ? "focused - letters should type" : "not focused");
+				lastText = text;
+			}
+			const bool focus = !g_gameWindow || ::GetForegroundWindow() == g_gameWindow;
+			if (focus != lastFocus) {
+				spdlog::info("[input] game window {} the keyboard focus", focus ? "has" : "LOST");
+				lastFocus = focus;
+			}
+			const std::int64_t now = NowMs();
+			if (!g_open) {
+				openedMs = 0;
+				staleLogged = false;
+			} else {
+				if (!openedMs) {
+					openedMs = now;
+					spdlog::info("[input] window open; input blocker {}", g_dispatchInput ? "active" : "NOT installed");
+				}
+				const std::int64_t last = g_lastBlockerMs;
+				if (g_dispatchInput && now - (std::max)(last, openedMs) > 2000 && !staleLogged) {
+					spdlog::warn("[input] the game has not sent any input for 2 s while the window is open - another mod is holding it back");
+					staleLogged = true;
+				} else if (now - last < 500 && staleLogged) {
+					spdlog::info("[input] game input is arriving again");
+					staleLogged = false;
+				}
+			}
 		}
 		ImGui::Render();
 
