@@ -170,6 +170,7 @@ namespace Gallery
 		int                                g_hangShape = 0;
 		int                                g_hangStyle = 7;
 		bool                               g_placementControls = false;
+		std::uintptr_t                     g_dispatchInput = 0;  // the game's input call we sit in front of (0: blocker not installed)
 		std::atomic<bool>                  g_shiftDown{ false };
 		std::atomic<bool>                  g_ctrlDown{ false };
 		float                              g_pendingUiScale = -1.0f;  // applied between frames (fonts are rebuilt)
@@ -830,8 +831,13 @@ namespace Gallery
 				static_cast<std::uint32_t>(UEFlag::kFighting) | static_cast<std::uint32_t>(UEFlag::kJumping) |
 				static_cast<std::uint32_t>(UEFlag::kSneaking) | static_cast<std::uint32_t>(UEFlag::kWheelZoom) |
 				static_cast<std::uint32_t>(UEFlag::kPOVSwitch));
-			if (auto* cm = RE::ControlMap::GetSingleton()) {
-				cm->ToggleControls(blocked, !open);
+			// The input blocker already keeps every key press, click and mouse move away from the game and
+			// other mods while the window is open, so the game's controls are left alone. Only when the
+			// blocker is switched off (bInputSink / bBlockInput) do we fall back to turning controls off.
+			if (!g_dispatchInput) {
+				if (auto* cm = RE::ControlMap::GetSingleton()) {
+					cm->ToggleControls(blocked, !open, false);
+				}
 			}
 			if (g_imguiReady) {
 				ImGui::GetIO().MouseDrawCursor = open;
@@ -840,13 +846,17 @@ namespace Gallery
 		}
 
 		// While hanging a picture: the player can still walk and look around, but clicks and
-		// activate/menu keys belong to us.
+		// activate/menu keys belong to us. Normally the input blocker holds those presses back
+		// (see PlacementSwallows); this is the fallback for when the blocker is switched off.
 		void ApplyPlacementControls(bool a_on)
 		{
 			if (g_placementControls == a_on) {
 				return;
 			}
 			g_placementControls = a_on;
+			if (g_dispatchInput) {
+				return;
+			}
 			using UEFlag = RE::ControlMap::UEFlag;
 			// the wheel stays with the camera when only the arrow keys resize
 			static UEFlag blocked{};
@@ -857,7 +867,7 @@ namespace Gallery
 					(Wall::GetSettings().resizeWith == 1 ? 0u : static_cast<std::uint32_t>(UEFlag::kWheelZoom)));
 			}
 			if (auto* cm = RE::ControlMap::GetSingleton()) {
-				cm->ToggleControls(blocked, !a_on);  // off: re-enable exactly what was blocked
+				cm->ToggleControls(blocked, !a_on, false);  // off: re-enable exactly what was blocked
 			}
 		}
 
@@ -982,6 +992,24 @@ namespace Gallery
 		std::int64_t NowMs()
 		{
 			return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+		}
+
+		// True when another menu has the screen: any game or mod menu that pauses the game, shows a cursor
+		// or is modal (inventory, map, console, message boxes, dialogue...), or a mod that turned the
+		// player's controls off (menus drawn with ImGui and the like). ControlMap is read through the
+		// library's version-aware accessor, so this is right on 1.5.97, 1.6.x and 1.6.1130+.
+		bool OtherMenuOpen(RE::UI* a_ui)
+		{
+			if (a_ui) {
+				for (const auto& menu : a_ui->menuStack) {
+					if (menu && (menu->PausesGame() || menu->UsesCursor() || menu->Modal())) {
+						return true;
+					}
+				}
+			}
+			using UEFlag = RE::ControlMap::UEFlag;
+			auto* cm = RE::ControlMap::GetSingleton();
+			return cm && !cm->AreControlsEnabled(static_cast<UEFlag>(static_cast<std::uint32_t>(UEFlag::kMovement) | static_cast<std::uint32_t>(UEFlag::kLooking)));
 		}
 
 		void HandleInput(RE::InputEvent* const* a_event)
@@ -1134,12 +1162,9 @@ namespace Gallery
 								g_wantOpen = false;
 							} else {
 								auto* ui = RE::UI::GetSingleton();
-								auto* cm = RE::ControlMap::GetSingleton();
-								using UEFlag = RE::ControlMap::UEFlag;
-								// Something else has the player's controls (another mod's menu, dialogue...):
-								// don't open on top of it. Placing a picture only turns off activate/menu keys.
-								const bool othersBusy = !Wall::IsPlacing() && cm &&
-														!cm->AreControlsEnabled(static_cast<UEFlag>(static_cast<std::uint32_t>(UEFlag::kMovement) | static_cast<std::uint32_t>(UEFlag::kLooking)));
+								// Another menu is up (inventory, map, console, a mod's menu, dialogue...):
+								// don't open on top of it.
+								const bool othersBusy = !Wall::IsPlacing() && OtherMenuOpen(ui);
 								const bool talking = ui && ui->IsMenuOpen(RE::DialogueMenu::MENU_NAME);
 								if (othersBusy || talking) {
 									spdlog::info("Gallery key ignored: {} is using the controls right now", talking ? "a conversation" : "another menu or mod");
@@ -1203,14 +1228,73 @@ namespace Gallery
 		// game must not see the keys typed into it. The game hands each frame's input to every listener in
 		// one call; we sit in front of that call, handle the input ourselves and pass on an empty list.
 		using DispatchInput = void(RE::BSTEventSource<RE::InputEvent*>*, RE::InputEvent* const*);
-		std::uintptr_t g_dispatchInput = 0;  // the game's function we replaced the call to
 
 		bool g_inBlockerPass = false;  // the list going on was already handled by the blocker: the sink skips it
+
+		// While hanging a picture the player still walks and looks around, but these presses are ours:
+		// clicks (hang / cancel), the wheel (size / frame, unless only the arrows resize), and the
+		// activate, attack, menu and Esc keys - so placing never swings a weapon or opens a menu.
+		bool PlacementSwallows(RE::InputEvent* a_e)
+		{
+			auto* b = a_e ? a_e->AsButtonEvent() : nullptr;
+			if (!b || b->IsUp()) {
+				return false;  // releases (and mouse moves, thumbsticks) always go on
+			}
+			const auto code = b->GetIDCode();
+			if (b->GetDevice() == RE::INPUT_DEVICE::kMouse) {
+				using MouseKey = RE::BSWin32MouseDevice::Key;
+				if (code <= 2) {
+					return true;  // left, right, middle
+				}
+				if (code == MouseKey::kWheelUp || code == MouseKey::kWheelDown) {
+					return WheelResize();
+				}
+			}
+			if (b->GetDevice() == RE::INPUT_DEVICE::kKeyboard && (code == kDIK_Escape || code == cfg.toggleScan)) {
+				return true;
+			}
+			auto* ue = RE::UserEvents::GetSingleton();
+			if (!ue) {
+				return false;
+			}
+			const auto& ev = b->QUserEvent();
+			return ev == ue->activate || ev == ue->leftAttack || ev == ue->rightAttack || ev == ue->readyWeapon ||
+			       ev == ue->shout || ev == ue->tweenMenu || ev == ue->journal || ev == ue->favorites || ev == ue->wait ||
+			       ev == ue->quickInventory || ev == ue->quickMagic || ev == ue->quickStats || ev == ue->quickMap ||
+			       (WheelResize() && (ev == ue->zoomIn || ev == ue->zoomOut));
+		}
 
 		void DispatchInputHook(RE::BSTEventSource<RE::InputEvent*>* a_source, RE::InputEvent* const* a_events)
 		{
 			const auto original = reinterpret_cast<DispatchInput*>(g_dispatchInput);
 			g_lastBlockerMs = NowMs();
+			if (!g_open && Wall::IsPlacing() && a_events && *a_events && !g_inputDisabled) {
+				SafeHandleInput(a_events);  // our placement keys see everything
+				static RE::InputEvent* placing[1];
+				placing[0] = nullptr;
+				RE::InputEvent* last = nullptr;
+				std::vector<RE::InputEvent*> pass;
+				for (auto* e = *a_events; e; e = e->next) {
+					if (!PlacementSwallows(e)) {
+						pass.push_back(e);
+					}
+				}
+				for (auto* e : pass) {
+					if (last) {
+						last->next = e;
+					} else {
+						placing[0] = e;
+					}
+					last = e;
+				}
+				if (last) {
+					last->next = nullptr;
+				}
+				g_inBlockerPass = true;
+				original(a_source, placing);  // walking / looking go on as usual
+				g_inBlockerPass = false;
+				return;
+			}
 			if (g_open && a_events && *a_events && !g_inputDisabled) {
 				g_inputVia = "blocker";
 				SafeHandleInput(a_events);

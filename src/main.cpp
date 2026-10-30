@@ -81,7 +81,8 @@ namespace
 		if (!renderer) {
 			return nullptr;
 		}
-		auto* sc = renderer->data.renderWindows[0].swapChain;
+		// version-safe: the library knows where the window list sits on 1.5.97 / 1.6.x / 1.6.1130+
+		auto* sc = reinterpret_cast<IDXGISwapChain*>(renderer->GetRuntimeData().renderWindows[0].swapChain);
 		spdlog::info("  renderWindows[0].swapChain = {}", static_cast<void*>(sc));
 		return sc;
 	}

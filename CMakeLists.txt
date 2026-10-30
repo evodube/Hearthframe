@@ -1,15 +1,16 @@
 cmake_minimum_required(VERSION 3.24)
-project(Hearthframe VERSION 0.14.0 LANGUAGES CXX)
+project(Hearthframe VERSION 0.15.0 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# ---- CommonLibSSE-NG (git submodule, v3.7.0) ----
+# ---- CommonLibSSE-NG (git submodule: alandtse/CommonLibVR, branch ng - the maintained NG; knows the 1.6.1130+ layouts) ----
 # Only the Skyrim SE / AE runtimes; no VR and no unit tests.
 set(ENABLE_SKYRIM_SE ON CACHE BOOL "" FORCE)
 set(ENABLE_SKYRIM_AE ON CACHE BOOL "" FORCE)
 set(ENABLE_SKYRIM_VR OFF CACHE BOOL "" FORCE)
 set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(COMMONLIB_ENABLE_IPO OFF CACHE BOOL "" FORCE)
 add_subdirectory(extern/CommonLibSSE-NG EXCLUDE_FROM_ALL)
 include(extern/CommonLibSSE-NG/cmake/CommonLibSSE.cmake)
 

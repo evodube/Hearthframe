@@ -138,7 +138,7 @@ namespace Wall
 				break;
 			}
 			if (show && s.notifications) {
-				SKSE::GetTaskInterface()->AddTask([a_msg] { RE::DebugNotification(a_msg.c_str()); });
+				SKSE::GetTaskInterface()->AddTask([a_msg] { RE::SendHUDMessage::ShowHUDMessage(a_msg.c_str()); });
 			}
 		}
 
@@ -259,7 +259,7 @@ namespace Wall
 				return false;
 			}
 			auto* shader = netimmerse_cast<RE::BSLightingShaderProperty*>(
-				geom->GetGeometryRuntimeData().properties[RE::BSGeometry::States::kEffect].get());
+				geom->GetGeometryRuntimeData().shaderProperty.get());
 			if (!shader || !shader->material) {
 				spdlog::warn("{:08X}: SGPicture has no lighting shader", a_ref->GetFormID());
 				return false;
@@ -494,9 +494,9 @@ namespace Wall
 			RE::bhkPickData pick{};
 			pick.rayInput.from = RE::hkVector4(from.x * s, from.y * s, from.z * s, 0.0f);
 			pick.rayInput.to = RE::hkVector4(to.x * s, to.y * s, to.z * s, 0.0f);
-			std::uint32_t filter = 0;
+			RE::CFilter filter{};
 			player->GetCollisionFilterInfo(filter);
-			pick.rayInput.filterInfo = (filter & 0xFFFF0000) | static_cast<std::uint32_t>(RE::COL_LAYER::kLOS);
+			pick.rayInput.filterInfo.filter = (filter.filter & 0xFFFF0000) | static_cast<std::uint32_t>(RE::COL_LAYER::kLOS);
 
 			world->PickObject(pick);
 			if (!pick.rayOutput.HasHit()) {
@@ -882,10 +882,10 @@ namespace Wall
 					auto p = g_preview.get();
 					return p ? p->GetFormID() : 0u;
 				}();
-				tes->ForEachReferenceInRange(RE::PlayerCharacter::GetSingleton(), g_settings.examineReach + 300.0f, [&](RE::TESObjectREFR& a_ref) {
-					const int idx = FrameIndex(a_ref.GetBaseObject());
-					if (idx >= 0 && a_ref.GetFormID() != previewID && !known.contains(a_ref.GetFormID())) {
-						frames.emplace_back(a_ref.GetFormID(), Frames::ShapeOf(idx));
+				tes->ForEachReferenceInRange(RE::PlayerCharacter::GetSingleton(), g_settings.examineReach + 300.0f, [&](RE::TESObjectREFR* a_ref) {
+					const int idx = a_ref ? FrameIndex(a_ref->GetBaseObject()) : -1;
+					if (idx >= 0 && a_ref->GetFormID() != previewID && !known.contains(a_ref->GetFormID())) {
+						frames.emplace_back(a_ref->GetFormID(), Frames::ShapeOf(idx));
 					}
 					return RE::BSContainer::ForEachResult::kContinue;
 				});
@@ -940,7 +940,7 @@ namespace Wall
 			auto* obj = root ? root->GetObjectByName(RE::BSFixedString("SGPicture")) : nullptr;
 			auto* geom = obj ? obj->AsGeometry() : nullptr;
 			auto* shader = geom ? netimmerse_cast<RE::BSLightingShaderProperty*>(
-				geom->GetGeometryRuntimeData().properties[RE::BSGeometry::States::kEffect].get()) : nullptr;
+				geom->GetGeometryRuntimeData().shaderProperty.get()) : nullptr;
 			auto* material = shader ? static_cast<RE::BSLightingShaderMaterialBase*>(shader->material) : nullptr;
 			if (!material || !material->textureSet) {
 				return {};

@@ -137,8 +137,8 @@ cmake --build build --config Release
 ```
 
 - Visual Studio 2022, CMake 3.24+, [vcpkg](https://github.com/microsoft/vcpkg)
-- [CommonLibSSE-NG](https://github.com/CharmedBaryon/CommonLibSSE-NG) v3.7.0 as a git submodule in `extern/`
-- vcpkg packages (see [`vcpkg.json`](vcpkg.json)): fmt, spdlog, rapidcsv, imgui (dx11), stb
+- [CommonLibSSE-NG](https://github.com/alandtse/CommonLibVR/tree/ng) (the maintained `ng` branch, C++23) as a git submodule in `extern/`
+- vcpkg packages (see [`vcpkg.json`](vcpkg.json)): fmt, spdlog, rapidcsv, directxtk, xbyak, imgui 1.90 (dx11), stb
 
 The frame meshes and textures are **not** in this repository. They ship in the release archive only.
 
@@ -164,4 +164,4 @@ The frame meshes and textures are **not** in this repository. They ship in the r
 - **Artisanix** for the painting frame meshes and textures
 - [Dear ImGui](https://github.com/ocornut/imgui) (MIT) for the interface
 - [stb](https://github.com/nothings/stb) for image loading and DXT compression
-- [CommonLibSSE-NG](https://github.com/CharmedBaryon/CommonLibSSE-NG) and the [SKSE](https://skse.silverlock.org/) team
+- [CommonLibSSE-NG](https://github.com/alandtse/CommonLibVR/tree/ng) and the [SKSE](https://skse.silverlock.org/) team
