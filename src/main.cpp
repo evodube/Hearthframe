@@ -158,6 +158,7 @@ namespace
 		} else {
 			spdlog::warn("Step 2/2: input sink DISABLED by bInputSink=0");
 		}
+		Gallery::InstallInputBlocker();  // now, after every plugin has hooked input: we go first
 		if (Wall::Init()) {
 			spdlog::info("Wall frames ready");
 		} else {
@@ -192,7 +193,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse)
 		REL::Version::unpack(a_skse->SKSEVersion()).string("."sv));
 	LogEnvironment();
 	Gallery::LoadSettings();
-	Gallery::InstallInputBlocker();
+	Gallery::PrepareInputBlocker();
 	Wall::InstallSerialization();
 
 	if (!SKSE::GetMessagingInterface()->RegisterListener(OnMessage)) {

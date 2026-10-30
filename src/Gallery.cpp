@@ -2006,22 +2006,63 @@ namespace Gallery
 		return EXCEPTION_EXECUTE_HANDLER;
 	}
 
+	// Which module a call target ends up in (follows the jumps other mods' trampolines use), for the log.
+	std::uintptr_t FollowJumps(std::uintptr_t a_addr)  // no C++ objects here: __try needs that
+	{
+		__try {
+			for (int hop = 0; hop < 6; ++hop) {
+				const auto* b = reinterpret_cast<const std::uint8_t*>(a_addr);
+				if (b[0] == 0xFF && b[1] == 0x25) {  // jmp [rip+disp32]
+					const auto disp = *reinterpret_cast<const std::int32_t*>(b + 2);
+					a_addr = *reinterpret_cast<const std::uintptr_t*>(a_addr + 6 + disp);
+				} else if (b[0] == 0xE9) {  // jmp rel32
+					a_addr = a_addr + 5 + *reinterpret_cast<const std::int32_t*>(b + 1);
+				} else {
+					break;
+				}
+			}
+		} __except (EXCEPTION_EXECUTE_HANDLER) {
+		}
+		return a_addr;
+	}
+
+	std::string ModuleOf(std::uintptr_t a_addr)
+	{
+		a_addr = FollowJumps(a_addr);
+		HMODULE mod = nullptr;
+		wchar_t path[MAX_PATH]{};
+		if (::GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, reinterpret_cast<LPCWSTR>(a_addr), &mod) &&
+			::GetModuleFileNameW(mod, path, MAX_PATH)) {
+			return ToUtf8(fs::path(path).filename());
+		}
+		return fmt::format("unknown ({:X})", a_addr);
+	}
+
+	void PrepareInputBlocker()
+	{
+		if (dbg.inputSink && dbg.blockInput) {
+			SKSE::AllocTrampoline(14);  // reserved at plugin load; the hook itself goes in at kDataLoaded
+		}
+	}
+
 	void InstallInputBlocker()
 	{
 		if (!dbg.inputSink || !dbg.blockInput) {
 			spdlog::info("Input blocker off (bInputSink={} bBlockInput={})", dbg.inputSink, dbg.blockInput);
 			return;
 		}
-		// BSInputDeviceManager::PollInputDevices -> the call that sends the input events to all listeners
+		// BSInputDeviceManager::PollInputDevices -> the call that sends the input events to all listeners.
+		// Installed at kDataLoaded, after every plugin has hooked this call too, so we are first in line:
+		// while a Hearthframe window is open nobody else (OAR, MeridianUI, minimap...) sees the keys.
 		REL::Relocation<std::uintptr_t> target{ REL::RelocationID(67315, 68617), REL::VariantOffset(0x7B, 0x7B, 0x81) };
 		const auto* code = reinterpret_cast<const std::uint8_t*>(target.address());
 		if (*code != 0xE8) {  // not a call: different game build or another mod rewrote it
 			spdlog::warn("Input blocker: unexpected code at {:X} ({:02X}) - other mods' hotkeys can still fire while typing", target.address(), *code);
 			return;
 		}
-		SKSE::AllocTrampoline(14);
+		const std::uintptr_t next = target.address() + 5 + *reinterpret_cast<const std::int32_t*>(code + 1);
 		g_dispatchInput = SKSE::GetTrampoline().write_call<5>(target.address(), &DispatchInputHook);
-		spdlog::info("Input blocker installed: keys typed in Hearthframe windows stay there");
+		spdlog::info("Input blocker installed in front of {} - keys typed in Hearthframe windows stay there", ModuleOf(next));
 	}
 
 	bool InstallInputSink()
