@@ -2274,7 +2274,7 @@ namespace Gallery
 		dbg.inputSink = ::GetPrivateProfileIntA("Debug", "bInputSink", 1, ini.c_str()) != 0;
 		dbg.logInput = ::GetPrivateProfileIntA("Debug", "bLogInput", 0, ini.c_str()) != 0;
 		dbg.blockInput = ::GetPrivateProfileIntA("Debug", "bBlockInput", 1, ini.c_str()) != 0;
-		dbg.directMouse = ::GetPrivateProfileIntA("Debug", "bDirectMouse", 1, ini.c_str()) != 0;
+		dbg.directMouse = ::GetPrivateProfileIntA("Debug", "bDirectMouse", 0, ini.c_str()) != 0;
 		std::error_code ec2;
 		spdlog::info("INI: {} ({})", ini, fs::exists(ini, ec2) ? "found" : "NOT FOUND - using defaults");
 		spdlog::info("Debug: bHookPresent={} bInputSink={} bBlockInput={} bLogInput={} bDirectMouse={}", dbg.hookPresent, dbg.inputSink, dbg.blockInput, dbg.logInput, dbg.directMouse);
