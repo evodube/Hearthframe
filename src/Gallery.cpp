@@ -19,6 +19,8 @@
 #include <shellapi.h>
 #include <shobjidl.h>
 #include <wincodec.h>
+#define DIRECTINPUT_VERSION 0x0800
+#include <dinput.h>
 
 namespace fs = std::filesystem;
 
@@ -796,12 +798,102 @@ namespace Gallery
 		}
 
 		// ---------------------------------------------------------------- opening / closing (render thread)
+		// ---------------------------------------------------------------- direct mouse (render thread)
+		// The game reads the mouse at the start of its frame and the gallery is drawn at the end, often a
+		// frame later, so a cursor fed by the game's input trails the hand. While the gallery is open we
+		// read the mouse ourselves - a shared (non-exclusive) DirectInput device next to the game's own -
+		// right before drawing. The game keeps its mouse; if anything here fails, the cursor simply goes
+		// back to the game's input ([Debug] bDirectMouse=0 does that on purpose).
+		IDirectInput8W*       g_di = nullptr;
+		IDirectInputDevice8W* g_diMouse = nullptr;
+		bool                  g_diFailed = false;
+		std::atomic<bool>     g_directMouse{ false };  // this frame's cursor came from our own read
+
+		void DirectMouseFail(const char* a_step, HRESULT a_hr)
+		{
+			spdlog::warn("Direct mouse: {} failed (0x{:08X}) - the cursor follows the game's mouse input", a_step, static_cast<std::uint32_t>(a_hr));
+			if (g_diMouse) {
+				g_diMouse->Unacquire();
+				g_diMouse->Release();
+				g_diMouse = nullptr;
+			}
+			if (g_di) {
+				g_di->Release();
+				g_di = nullptr;
+			}
+			g_diFailed = true;
+		}
+
+		void DirectMouseStart()
+		{
+			if (!dbg.directMouse || g_diFailed || !g_gameWindow) {
+				return;
+			}
+			if (!g_diMouse) {
+				HRESULT hr = ::DirectInput8Create(::GetModuleHandleW(nullptr), DIRECTINPUT_VERSION, IID_IDirectInput8W, reinterpret_cast<void**>(&g_di), nullptr);
+				if (FAILED(hr) || !g_di) {
+					return DirectMouseFail("DirectInput8Create", hr);
+				}
+				hr = g_di->CreateDevice(GUID_SysMouse, &g_diMouse, nullptr);
+				if (FAILED(hr) || !g_diMouse) {
+					return DirectMouseFail("CreateDevice", hr);
+				}
+				hr = g_diMouse->SetDataFormat(&c_dfDIMouse2);
+				if (FAILED(hr)) {
+					return DirectMouseFail("SetDataFormat", hr);
+				}
+				hr = g_diMouse->SetCooperativeLevel(g_gameWindow, DISCL_NONEXCLUSIVE | DISCL_FOREGROUND);
+				if (FAILED(hr)) {
+					return DirectMouseFail("SetCooperativeLevel", hr);
+				}
+				spdlog::info("Direct mouse: ready (the gallery cursor reads the mouse right before each frame)");
+			}
+			g_diMouse->Acquire();  // may fail if the game isn't in front; retried every frame
+			DIMOUSESTATE2 st{};
+			g_diMouse->GetDeviceState(sizeof st, &st);  // drop movement from before the window opened
+		}
+
+		void DirectMouseStop()
+		{
+			if (g_diMouse) {
+				g_diMouse->Unacquire();
+			}
+			g_directMouse = false;
+		}
+
+		// Movement since the last call; false when the mouse can't be read this frame (alt-tabbed...).
+		bool DirectMousePoll(float& a_dx, float& a_dy)
+		{
+			if (!g_diMouse) {
+				return false;
+			}
+			DIMOUSESTATE2 st{};
+			HRESULT       hr = g_diMouse->GetDeviceState(sizeof st, &st);
+			if (hr == DIERR_INPUTLOST || hr == DIERR_NOTACQUIRED) {
+				if (FAILED(g_diMouse->Acquire())) {
+					return false;
+				}
+				hr = g_diMouse->GetDeviceState(sizeof st, &st);
+			}
+			if (FAILED(hr)) {
+				return false;
+			}
+			a_dx = static_cast<float>(st.lX);
+			a_dy = static_cast<float>(st.lY);
+			return true;
+		}
+
 		void ApplyOpen(bool open)
 		{
 			if (g_open == open) {
 				return;
 			}
 			g_open = open;
+			if (open) {
+				DirectMouseStart();
+			} else {
+				DirectMouseStop();
+			}
 			g_wantOpen = open;
 			if (open && g_uiMode == UiMode::Gallery) {
 				g_needScan = true;
@@ -1354,6 +1446,9 @@ namespace Gallery
 			for (const auto& m : msgs) {
 				switch (m.kind) {
 				case InputMsg::Kind::MouseMove:
+					if (g_directMouse) {
+						break;  // the cursor was already moved from our own mouse read this frame
+					}
 					g_mouseX = std::clamp(g_mouseX + m.x * cfg.mouseSpeed, 0.0f, io.DisplaySize.x - 1.0f);
 					g_mouseY = std::clamp(g_mouseY + m.y * cfg.mouseSpeed, 0.0f, io.DisplaySize.y - 1.0f);
 					io.AddMousePosEvent(g_mouseX, g_mouseY);
@@ -2179,9 +2274,10 @@ namespace Gallery
 		dbg.inputSink = ::GetPrivateProfileIntA("Debug", "bInputSink", 1, ini.c_str()) != 0;
 		dbg.logInput = ::GetPrivateProfileIntA("Debug", "bLogInput", 0, ini.c_str()) != 0;
 		dbg.blockInput = ::GetPrivateProfileIntA("Debug", "bBlockInput", 1, ini.c_str()) != 0;
+		dbg.directMouse = ::GetPrivateProfileIntA("Debug", "bDirectMouse", 1, ini.c_str()) != 0;
 		std::error_code ec2;
 		spdlog::info("INI: {} ({})", ini, fs::exists(ini, ec2) ? "found" : "NOT FOUND - using defaults");
-		spdlog::info("Debug: bHookPresent={} bInputSink={} bBlockInput={} bLogInput={}", dbg.hookPresent, dbg.inputSink, dbg.blockInput, dbg.logInput);
+		spdlog::info("Debug: bHookPresent={} bInputSink={} bBlockInput={} bLogInput={} bDirectMouse={}", dbg.hookPresent, dbg.inputSink, dbg.blockInput, dbg.logInput, dbg.directMouse);
 		spdlog::info("Folder: {}  key: {} (scan 0x{:02X})  recursive: {}  mouse speed: {}",
 			ToUtf8(cfg.folder), cfg.toggleKey, cfg.toggleScan, cfg.recursive, cfg.mouseSpeed);
 	}
@@ -2379,6 +2475,14 @@ namespace Gallery
 			Scan();
 		}
 		if (!infoLine) {
+			float dx = 0.0f, dy = 0.0f;
+			const bool direct = g_open && DirectMousePoll(dx, dy);
+			if (direct && (dx != 0.0f || dy != 0.0f)) {
+				g_mouseX = std::clamp(g_mouseX + dx * cfg.mouseSpeed, 0.0f, io.DisplaySize.x - 1.0f);
+				g_mouseY = std::clamp(g_mouseY + dy * cfg.mouseSpeed, 0.0f, io.DisplaySize.y - 1.0f);
+				io.AddMousePosEvent(g_mouseX, g_mouseY);
+			}
+			g_directMouse = direct;
 			DrainInput();
 		}
 		UploadReady();

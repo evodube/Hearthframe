@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(Hearthframe VERSION 0.15.2 LANGUAGES CXX)
+project(Hearthframe VERSION 0.15.3 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -26,7 +26,7 @@ add_commonlibsse_plugin(${PROJECT_NAME}
 target_include_directories(${PROJECT_NAME} PRIVATE src ${STB_INCLUDE_DIRS})
 target_precompile_headers(${PROJECT_NAME} PRIVATE src/PCH.h)
 target_compile_definitions(${PROJECT_NAME} PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
-target_link_libraries(${PROJECT_NAME} PRIVATE imgui::imgui d3d11 dxgi windowscodecs ole32 shell32 uuid)
+target_link_libraries(${PROJECT_NAME} PRIVATE imgui::imgui d3d11 dxgi dinput8 dxguid windowscodecs ole32 shell32 uuid)
 
 if (MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE /utf-8 /permissive- /Zc:preprocessor)

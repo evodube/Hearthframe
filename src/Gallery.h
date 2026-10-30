@@ -10,6 +10,7 @@ namespace Gallery
 		bool inputSink = true;    // [Debug] bInputSink
 		bool blockInput = true;   // [Debug] bBlockInput: other mods/the game get no keys while a window is open
 		bool logInput = false;    // [Debug] bLogInput: write every key the gallery receives to the log
+		bool directMouse = true;  // [Debug] bDirectMouse: cursor reads the mouse right before drawing (0 = from the game's input)
 	};
 
 	void                 LoadSettings();
