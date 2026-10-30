@@ -1,6 +1,6 @@
 {
   "name": "hearthframe",
-  "version-string": "0.15.0",
+  "version-string": "0.15.1",
   "builtin-baseline": "ee12231b20c95013c6638d845d04c91559a1d1ff",
   "dependencies": [
     "fmt",

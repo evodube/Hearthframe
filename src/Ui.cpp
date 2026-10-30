@@ -105,20 +105,75 @@ namespace Ui
 			if (Theme::Button("Settings", ImVec2(S(150.0f), 0))) {
 				r.action = GalleryAction::OpenSettings;
 			}
+			// Toolbar: the search field takes the room that's left, so the sliders always fit. When the
+			// window is too narrow even for a small search field, the sliders move to their own row.
+			const float gap = S(24.0f);
+			const float sp = ImGui::GetStyle().ItemSpacing.x;
+			float       slidersW = ImGui::CalcTextSize("Thumbnails").x + sp + S(260.0f);
+			if (m.uiScalePct) {
+				slidersW += gap + ImGui::CalcTextSize("Interface").x + sp + S(220.0f);
+			}
+			bool slidersOwnRow = false;
 			if (m.search) {
-				ImGui::SameLine(0.0f, S(24.0f));
-				ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(S(12.0f), S(12.0f)));
-				ImGui::SetNextItemWidth(S(280.0f));
+				ImGui::SameLine(0.0f, gap);
+				const float avail = ImGui::GetContentRegionAvail().x;
+				float       searchW = avail - gap - slidersW;
+				if (searchW < S(220.0f)) {
+					slidersOwnRow = true;
+					searchW = avail;
+				}
+				searchW = (std::min)(searchW, S(460.0f));
+				const float h = S(46.0f);
+				const float clearW = h;  // the clear button sits inside the field, on its right end
+				auto*       dl = ImGui::GetWindowDrawList();
+				dl->ChannelsSplit(2);
+				dl->ChannelsSetCurrent(1);
+				const ImVec2 a = ImGui::GetCursorScreenPos();
+				ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(S(14.0f), (h - ImGui::GetFontSize()) * 0.5f));
+				ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+				for (ImGuiCol c : { ImGuiCol_FrameBg, ImGuiCol_FrameBgHovered, ImGuiCol_FrameBgActive }) {
+					ImGui::PushStyleColor(c, IM_COL32(0, 0, 0, 0));
+				}
+				ImGui::SetNextItemWidth(searchW - clearW);
 				ImGui::InputTextWithHint("##search", "Search pictures...", m.search, static_cast<size_t>(m.searchSize), ImGuiInputTextFlags_EscapeClearsAll);
-				ImGui::PopStyleVar();
+				const bool active = ImGui::IsItemActive();
+				bool       hovered = ImGui::IsItemHovered();
+				ImGui::PopStyleColor(3);
+				ImGui::PopStyleVar(2);
+				ImGui::SameLine(0.0f, 0.0f);
+				const ImVec2 ca = ImGui::GetCursorScreenPos();
+				bool         clearHov = false;
 				if (m.search[0]) {
-					ImGui::SameLine(0.0f, S(6.0f));
-					if (Theme::Button("Clear", ImVec2(0, 0))) {
+					if (ImGui::InvisibleButton("##clearsearch", ImVec2(clearW, h))) {
 						m.search[0] = 0;
 					}
+					clearHov = ImGui::IsItemHovered();
+					if (clearHov) {
+						ImGui::SetTooltip("Clear search");
+					}
+					const ImVec2 c = ca + ImVec2(clearW * 0.5f, h * 0.5f);
+					const float  r = S(6.5f);
+					const ImU32  col = clearHov ? Theme::Gold() : Theme::Muted();
+					if (clearHov) {
+						dl->AddCircleFilled(c, S(15.0f), IM_COL32(255, 255, 255, 18), 24);
+					}
+					dl->AddLine(c - ImVec2(r, r), c + ImVec2(r, r), col, S(1.6f));
+					dl->AddLine(c + ImVec2(-r, r), c + ImVec2(r, -r), col, S(1.6f));
+				} else {
+					ImGui::Dummy(ImVec2(clearW, h));
 				}
+				hovered = hovered || clearHov;
+				// one frame around field + clear button
+				dl->ChannelsSetCurrent(0);
+				const ImVec2      b(ca.x + clearW, a.y + h);
+				const ImGuiStyle& st = ImGui::GetStyle();
+				dl->AddRectFilled(a, b, ImGui::GetColorU32(active ? ImGuiCol_FrameBgActive : hovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg), st.FrameRounding);
+				dl->AddRect(a, b, active ? Theme::GoldDim() : ImGui::GetColorU32(ImGuiCol_Border), st.FrameRounding, 0, (std::max)(1.0f, st.FrameBorderSize));
+				dl->ChannelsMerge();
 			}
-			ImGui::SameLine(0.0f, S(24.0f));
+			if (!slidersOwnRow) {
+				ImGui::SameLine(0.0f, gap);
+			}
 			ImGui::AlignTextToFramePadding();
 			ImGui::TextDisabled("Thumbnails");
 			ImGui::SameLine();
