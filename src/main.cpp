@@ -128,6 +128,13 @@ namespace
 	{
 		spdlog::info("SKSE message {}", a_msg->type);
 		if (a_msg->type == SKSE::MessagingInterface::kPostLoadGame || a_msg->type == SKSE::MessagingInterface::kNewGame) {
+			// First save loaded / new game: later than every plugin that hooks input at the main menu
+			// (Hearthsworn, OAR's menu...), so Hearthframe's blocker is first in line. Only the first time.
+			static bool blockerDone = false;
+			if (!blockerDone) {
+				blockerDone = true;
+				Gallery::InstallInputBlocker();
+			}
 			Wall::CancelPlacement(false);
 			Wall::OnGameLoaded();
 			return;
@@ -158,7 +165,6 @@ namespace
 		} else {
 			spdlog::warn("Step 2/2: input sink DISABLED by bInputSink=0");
 		}
-		Gallery::InstallInputBlocker();  // now, after every plugin has hooked input: we go first
 		if (Wall::Init()) {
 			spdlog::info("Wall frames ready");
 		} else {

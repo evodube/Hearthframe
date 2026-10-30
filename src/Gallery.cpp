@@ -1061,7 +1061,16 @@ namespace Gallery
 								g_wantOpen = false;
 							} else {
 								auto* ui = RE::UI::GetSingleton();
-								if (!(ui && ui->GameIsPaused())) {
+								auto* cm = RE::ControlMap::GetSingleton();
+								using UEFlag = RE::ControlMap::UEFlag;
+								// Something else has the player's controls (another mod's menu, dialogue...):
+								// don't open on top of it. Placing a picture only turns off activate/menu keys.
+								const bool othersBusy = !Wall::IsPlacing() && cm &&
+														!cm->AreControlsEnabled(static_cast<UEFlag>(static_cast<std::uint32_t>(UEFlag::kMovement) | static_cast<std::uint32_t>(UEFlag::kLooking)));
+								const bool talking = ui && ui->IsMenuOpen(RE::DialogueMenu::MENU_NAME);
+								if (othersBusy || talking) {
+									spdlog::info("Gallery key ignored: {} is using the controls right now", talking ? "a conversation" : "another menu or mod");
+								} else if (!(ui && ui->GameIsPaused())) {
 									// Looking at a hung picture: open its menu; otherwise the gallery.
 									Wall::RequestExamine([] {
 										g_uiMode = UiMode::Gallery;
@@ -1123,6 +1132,8 @@ namespace Gallery
 		using DispatchInput = void(RE::BSTEventSource<RE::InputEvent*>*, RE::InputEvent* const*);
 		std::uintptr_t g_dispatchInput = 0;  // the game's function we replaced the call to
 
+		bool g_inBlockerPass = false;  // the list going on was already handled by the blocker: the sink skips it
+
 		void DispatchInputHook(RE::BSTEventSource<RE::InputEvent*>* a_source, RE::InputEvent* const* a_events)
 		{
 			const auto original = reinterpret_cast<DispatchInput*>(g_dispatchInput);
@@ -1155,7 +1166,9 @@ namespace Gallery
 				if (last) {
 					last->next = nullptr;
 				}
+				g_inBlockerPass = true;
 				original(a_source, kept);  // nobody else sees the presses
+				g_inBlockerPass = false;
 				return;
 			}
 			original(a_source, a_events);
@@ -1166,7 +1179,7 @@ namespace Gallery
 		public:
 			RE::BSEventNotifyControl ProcessEvent(RE::InputEvent* const* a_event, RE::BSTEventSource<RE::InputEvent*>*) override
 			{
-				if (!g_inputDisabled) {
+				if (!g_inputDisabled && !g_inBlockerPass) {
 					SafeHandleInput(a_event);
 				}
 				return RE::BSEventNotifyControl::kContinue;

@@ -20,7 +20,7 @@ namespace Gallery
 	bool InstallInputSink();
 	// Plugin load: while a Hearthframe window is open, other mods and the game get no keyboard/mouse input.
 	void PrepareInputBlocker();  // plugin load
-	void InstallInputBlocker();  // kDataLoaded
+	void InstallInputBlocker();  // first kPostLoadGame / kNewGame
 
 	// Called from inside the game's IDXGISwapChain::Present, on the render thread.
 	void OnPresent(IDXGISwapChain* a_swapChain);
