@@ -1131,11 +1131,31 @@ namespace Gallery
 				g_inputVia = "blocker";
 				SafeHandleInput(a_events);
 				g_inputVia = "sink";
-				// An empty list in writable memory: mods further down the chain (SKSE Menu Framework...)
+				// Key/button releases still go on, so nothing (movement, another mod's hold key, Shift...)
+				// stays held after the window closes; presses - what hotkeys react to - stay with us.
+				// The list goes in writable memory: mods further down the chain (SKSE Menu Framework...)
 				// write their filtered list back into it - a read-only constant crashed the game.
-				static RE::InputEvent* none[1];
-				none[0] = nullptr;
-				original(a_source, none);  // nobody else sees these keys
+				static RE::InputEvent* kept[1];
+				kept[0] = nullptr;
+				RE::InputEvent* last = nullptr;
+				std::vector<RE::InputEvent*> releases;
+				for (auto* e = *a_events; e; e = e->next) {
+					if (auto* b = e->AsButtonEvent(); b && b->IsUp()) {
+						releases.push_back(e);
+					}
+				}
+				for (auto* e : releases) {  // relink only the releases (like other menu mods filter the list)
+					if (last) {
+						last->next = e;
+					} else {
+						kept[0] = e;
+					}
+					last = e;
+				}
+				if (last) {
+					last->next = nullptr;
+				}
+				original(a_source, kept);  // nobody else sees the presses
 				return;
 			}
 			original(a_source, a_events);
