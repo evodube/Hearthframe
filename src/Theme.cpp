@@ -935,6 +935,26 @@ namespace Theme
 	{
 		ImFont* LabelFont() { return g_label ? g_label : g_body; }
 		bool    Modern() { return L->fx.hall == 4; }
+		// Vertical gradient that follows rounded top corners all the way to the edges (no strips at the sides):
+		// the first band spans the corner radius and is rounded, the rest are plain bands.
+		void TopFade(ImDrawList* a_dl, const ImVec2& a_a, const ImVec2& a_b, ImU32 a_top, ImU32 a_bottom, float a_r)
+		{
+			const float h = a_b.y - a_a.y;
+			if (h <= 0.0f) {
+				return;
+			}
+			auto        lerp = [&](float t) { return ImGui::ColorConvertFloat4ToU32(ImLerp(ImGui::ColorConvertU32ToFloat4(a_top), ImGui::ColorConvertU32ToFloat4(a_bottom), t)); };
+			const float r = (std::min)(a_r, h);
+			if (r > 0.5f) {
+				a_dl->AddRectFilled(a_a, ImVec2(a_b.x, a_a.y + r), lerp(r * 0.5f / h), a_r, ImDrawFlags_RoundCornersTop);
+			}
+			const int n = 24;
+			for (int i = 0; i < n; ++i) {
+				const float y0 = a_a.y + r + (h - r) * i / n, y1 = a_a.y + r + (h - r) * (i + 1) / n;
+				a_dl->AddRectFilled(ImVec2(a_a.x, y0), ImVec2(a_b.x, y1), lerp(((y0 + y1) * 0.5f - a_a.y) / h));
+			}
+		}
+
 		// 0..1 that eases towards a_on (hover fades, card lifts). Kept per item in ImGui's state storage.
 		float Ease(ImGuiID a_id, bool a_on, float a_speed = 12.0f)
 		{
@@ -995,7 +1015,7 @@ namespace Theme
 			dl->PushClipRect(a, b, false);
 			dl->AddRectFilled(a, b, L->winEdge, wr);
 			// smoked-glass sheen: lighter towards the top
-			dl->AddRectFilledMultiColor(ImVec2(a.x + wr, a.y + 1), ImVec2(b.x - wr, a.y + S(160.0f)), IM_COL32(255, 255, 255, 10), IM_COL32(255, 255, 255, 10), IM_COL32(255, 255, 255, 0), IM_COL32(255, 255, 255, 0));
+			TopFade(dl, a, ImVec2(b.x, a.y + S(160.0f)), IM_COL32(255, 255, 255, 10), IM_COL32(255, 255, 255, 0), wr);
 			dl->AddRect(a, b, IM_COL32(255, 255, 255, 26), wr, 0, S(1.0f));
 			// warm accent line along the top edge, brightest in the middle
 			const float  mid = (a.x + b.x) * 0.5f, half = (b.x - a.x) * 0.32f;
@@ -1505,7 +1525,7 @@ namespace Theme
 		if (dark && Modern()) {  // recessed smoked glass
 			const float mr = S(10.0f);
 			dl->AddRectFilled(a, b, IM_COL32(0, 0, 0, 72), mr);
-			dl->AddRectFilledMultiColor(ImVec2(a.x + mr, a.y), ImVec2(b.x - mr, a.y + S(14.0f)), IM_COL32(0, 0, 0, 60), IM_COL32(0, 0, 0, 60), IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 0));
+			TopFade(dl, a, ImVec2(b.x, a.y + S(14.0f)), IM_COL32(0, 0, 0, 60), IM_COL32(0, 0, 0, 0), mr);
 			dl->AddRect(a, b, IM_COL32(255, 255, 255, 16), mr, 0, S(1.0f));
 		} else if (dark) {  // the gallery wall: dark recessed stone, gold inset line
 			dl->AddRectFilled(a, b, C(19, 17, 15));
@@ -1747,7 +1767,7 @@ namespace Theme
 						dl->AddRect(a - ImVec2(S(2), S(2)), b + ImVec2(S(2), S(2)), WithAlpha(L->accent, 70), a_r + S(2), 0, S(3.0f));
 					}
 					dl->AddRectFilled(a, b, Mix(top, bot, 0.5f), a_r);
-					dl->AddRectFilledMultiColor(ImVec2(a.x + a_r, a.y + 1), ImVec2(b.x - a_r, (a.y + b.y) * 0.5f), IM_COL32(255, 255, 255, 40), IM_COL32(255, 255, 255, 40), IM_COL32(255, 255, 255, 0), IM_COL32(255, 255, 255, 0));
+					TopFade(dl, a, ImVec2(b.x, (a.y + b.y) * 0.5f), IM_COL32(255, 255, 255, 40), IM_COL32(255, 255, 255, 0), a_r);
 				} else {
 					dl->AddRectFilled(a, b, fill, a_r);
 				}
