@@ -1103,6 +1103,24 @@ namespace Gallery
 			}
 		}
 
+		// While a Hearthframe window is open, other mods' hotkeys (minimap Ctrl+N, OAR Ctrl+O...) and the
+		// game must not see the keys typed into it. The game hands each frame's input to every listener in
+		// one call; we sit in front of that call, handle the input ourselves and pass on an empty list.
+		using DispatchInput = void(RE::BSTEventSource<RE::InputEvent*>*, RE::InputEvent* const*);
+		std::uintptr_t g_dispatchInput = 0;  // the game's function we replaced the call to
+
+		void DispatchInputHook(RE::BSTEventSource<RE::InputEvent*>* a_source, RE::InputEvent* const* a_events)
+		{
+			const auto original = reinterpret_cast<DispatchInput*>(g_dispatchInput);
+			if (g_open && a_events && *a_events && !g_inputDisabled) {
+				SafeHandleInput(a_events);
+				static RE::InputEvent* const none[] = { nullptr };
+				original(a_source, none);  // nobody else sees these keys
+				return;
+			}
+			original(a_source, a_events);
+		}
+
 		class InputSink final : public RE::BSTEventSink<RE::InputEvent*>
 		{
 		public:
@@ -1964,6 +1982,23 @@ namespace Gallery
 		spdlog::critical("CRASH CAUGHT in {}: exception 0x{:08X} at {}+0x{:X}{} - this part is now switched off so the game keeps running",
 			a_where, rec ? static_cast<std::uint32_t>(rec->ExceptionCode) : 0u, modName.empty() ? "?" : modName, offset, detail);
 		return EXCEPTION_EXECUTE_HANDLER;
+	}
+
+	void InstallInputBlocker()
+	{
+		if (!dbg.inputSink) {
+			return;
+		}
+		// BSInputDeviceManager::PollInputDevices -> the call that sends the input events to all listeners
+		REL::Relocation<std::uintptr_t> target{ REL::RelocationID(67315, 68617), REL::VariantOffset(0x7B, 0x7B, 0x81) };
+		const auto* code = reinterpret_cast<const std::uint8_t*>(target.address());
+		if (*code != 0xE8) {  // not a call: different game build or another mod rewrote it
+			spdlog::warn("Input blocker: unexpected code at {:X} ({:02X}) - other mods' hotkeys can still fire while typing", target.address(), *code);
+			return;
+		}
+		SKSE::AllocTrampoline(14);
+		g_dispatchInput = SKSE::GetTrampoline().write_call<5>(target.address(), &DispatchInputHook);
+		spdlog::info("Input blocker installed: keys typed in Hearthframe windows stay there");
 	}
 
 	bool InstallInputSink()

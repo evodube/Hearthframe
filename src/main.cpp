@@ -192,6 +192,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse)
 		REL::Version::unpack(a_skse->SKSEVersion()).string("."sv));
 	LogEnvironment();
 	Gallery::LoadSettings();
+	Gallery::InstallInputBlocker();
 	Wall::InstallSerialization();
 
 	if (!SKSE::GetMessagingInterface()->RegisterListener(OnMessage)) {
