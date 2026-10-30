@@ -1131,7 +1131,10 @@ namespace Gallery
 				g_inputVia = "blocker";
 				SafeHandleInput(a_events);
 				g_inputVia = "sink";
-				static RE::InputEvent* const none[] = { nullptr };
+				// An empty list in writable memory: mods further down the chain (SKSE Menu Framework...)
+				// write their filtered list back into it - a read-only constant crashed the game.
+				static RE::InputEvent* none[1];
+				none[0] = nullptr;
 				original(a_source, none);  // nobody else sees these keys
 				return;
 			}
