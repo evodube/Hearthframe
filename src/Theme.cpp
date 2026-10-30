@@ -1812,8 +1812,8 @@ namespace Theme
 			push(ImGuiCol_Border, a_selected ? L->pSel : L->pBorder);
 		} else {
 			push(ImGuiCol_Button, a_selected ? L->priBg : C(0, 0, 0, 0));
-			push(ImGuiCol_ButtonHovered, L->btnHov);
-			push(ImGuiCol_ButtonActive, L->btnAct);
+			push(ImGuiCol_ButtonHovered, a_selected ? L->priHov : L->btnHov);  // a selected chip stays gold when hovered
+			push(ImGuiCol_ButtonActive, a_selected ? L->priAct : L->btnAct);
 			push(ImGuiCol_Text, a_selected ? L->priText : L->text);
 			push(ImGuiCol_Border, a_selected ? L->priBorder : L->btnBorder);
 		}
