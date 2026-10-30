@@ -247,6 +247,55 @@ namespace Theme
 			hall("Hall of Memories", "Centred engraved title, every picture matted in a wooden frame with its name on the mat", 1);
 			hall("Royal Archive", "Emblem title bar, gold-cornered pictures with name plaques underneath", 2);
 			hall("Carved Ledger", "Carved wood border, title on a plaque, gold-lined picture tiles on parchment", 3);
+			{  // Modern: smoked-glass panels over the dimmed game, hairlines, one warm accent, big pictures
+				Look l = kLooks[0];
+				l.name = "Modern";
+				l.blurb = "Smoked glass over the dimmed game, Cinzel titles, big pictures with names on them, smooth hover";
+				l.sans = true;
+				l.title = Title::Upper;
+				l.chrome = Chrome::Rounded;
+				l.rounding = 6.0f;
+				l.windowRounding = 12.0f;
+				l.winMid = C(22, 22, 25, 238);
+				l.winEdge = C(13, 13, 15, 242);
+				l.winOuter = C(0, 0, 0, 0);
+				l.accent = C(218, 184, 124);
+				l.accentDim = C(150, 126, 88);
+				l.accentFaint = C(255, 255, 255, 22);
+				l.text = C(238, 234, 226);
+				l.textDim = C(150, 146, 138);
+				l.frameBg = C(255, 255, 255, 12);
+				l.frameHov = C(255, 255, 255, 20);
+				l.frameAct = C(255, 255, 255, 28);
+				l.grab = C(218, 184, 124);
+				l.grabAct = C(236, 206, 150);
+				l.btnBg = C(255, 255, 255, 6);
+				l.btnHov = C(255, 255, 255, 18);
+				l.btnAct = C(255, 255, 255, 28);
+				l.btnText = C(232, 226, 216);
+				l.btnBorder = C(255, 255, 255, 42);
+				l.priBg = C(206, 172, 112);
+				l.priHov = C(224, 192, 134);
+				l.priAct = C(188, 154, 98);
+				l.priText = C(26, 21, 14);
+				l.priBorder = C(232, 202, 146);
+				l.boxBg = C(255, 255, 255, 6);
+				l.closeHov = C(255, 255, 255, 20);
+				l.closeX = C(232, 226, 216);
+				l.panel = C(0, 0, 0, 70);
+				l.panelShade = C(0, 0, 0, 0);
+				l.panelBorder = C(255, 255, 255, 16);
+				l.ink = C(238, 234, 226);
+				l.inkSoft = C(150, 146, 138);
+				l.panelRule = C(255, 255, 255, 16);
+				l.well = C(10, 10, 12);
+				l.cardBorder = C(255, 255, 255, 26);
+				l.shadow = C(0, 0, 0, 120);
+				l.muted = C(124, 120, 114);
+				l.viewerBg = C(6, 6, 7, 245);
+				l.fx = Fx{ false, false, false, false, 0, false, false, false, 4 };
+				v.push_back(l);
+			}
 			return v;
 		}
 		const std::vector<Look>& Looks()
@@ -350,6 +399,10 @@ namespace Theme
 		ImFont* g_body = nullptr;
 		ImFont* g_bold = nullptr;
 		ImFont* g_italic = nullptr;
+		ImFont* g_label = nullptr;   // labels / names (Inter SemiBold in the modern look, else = body)
+		bool    g_backdrop = false;
+		const char* g_hoverLabel = nullptr;
+		const char* g_hoverHelp = nullptr;
 		int     g_parchmentDepth = 0;
 		std::vector<bool> g_parchmentScroll;  // per open parchment: does it scroll (draw our scroll bar)
 		std::vector<bool> g_parchmentDark;    // per open parchment: dark gallery wall instead of paper
@@ -445,6 +498,21 @@ namespace Theme
 		if (!g_italic) {
 			g_italic = g_body;
 		}
+		g_label = g_body;
+		if (L->fx.hall == 4) {  // modern: Inter for text, Cinzel for titles (bundled fonts; fall back if missing)
+			if (ImFont* f = LoadFont(a_files.uiRegular, size * 0.92f)) {
+				g_body = f;
+			}
+			if (ImFont* f = LoadFont(a_files.display, size * 1.9f)) {
+				g_bold = f;
+			}
+			if (ImFont* f = LoadFont(a_files.uiItalic, size * 0.88f)) {
+				g_italic = f;
+			}
+			if (ImFont* f = LoadFont(a_files.uiSemiBold, size * 0.92f)) {
+				g_label = f;
+			}
+		}
 		io.FontDefault = g_body;
 		if (L->fx.textured) {
 			MakeTextures();
@@ -478,7 +546,7 @@ namespace Theme
 		c[ImGuiCol_WindowBg] = V(L->winEdge);
 		c[ImGuiCol_ChildBg] = ImVec4(0, 0, 0, 0);
 		c[ImGuiCol_PopupBg] = V(WithAlpha(L->winMid, 250));
-		c[ImGuiCol_Border] = V(L->accentDim);
+		c[ImGuiCol_Border] = V(L->fx.hall == 4 ? IM_COL32(255, 255, 255, 40) : L->accentDim);
 		c[ImGuiCol_BorderShadow] = ImVec4(0, 0, 0, 0);
 		c[ImGuiCol_FrameBg] = V(L->frameBg);
 		c[ImGuiCol_FrameBgHovered] = V(L->frameHov);
@@ -863,6 +931,20 @@ namespace Theme
 		}
 	}
 
+	namespace
+	{
+		ImFont* LabelFont() { return g_label ? g_label : g_body; }
+		bool    Modern() { return L->fx.hall == 4; }
+		// 0..1 that eases towards a_on (hover fades, card lifts). Kept per item in ImGui's state storage.
+		float Ease(ImGuiID a_id, bool a_on, float a_speed = 12.0f)
+		{
+			float*      v = ImGui::GetStateStorage()->GetFloatRef(a_id, 0.0f);
+			const float k = 1.0f - std::exp(-a_speed * ImGui::GetIO().DeltaTime);
+			*v += ((a_on ? 1.0f : 0.0f) - *v) * k;
+			return *v;
+		}
+	}
+
 	void TextItalic(const char* a_fmt, ...)
 	{
 		ImGui::PushFont(g_italic);
@@ -896,6 +978,34 @@ namespace Theme
 		const ImVec2 a = ImGui::GetWindowPos();
 		const ImVec2 b = a + ImGui::GetWindowSize();
 		const float  wr = S(L->windowRounding);
+		if (Modern()) {
+			auto* bg = ImGui::GetBackgroundDrawList();
+			if (g_backdrop) {  // dim + vignette the game behind the main window
+				g_backdrop = false;
+				const ImVec2 ds = ImGui::GetIO().DisplaySize;
+				bg->AddRectFilled(ImVec2(0, 0), ds, IM_COL32(4, 4, 6, 150));
+				const float e = ds.y * 0.35f;
+				const ImU32 dk = IM_COL32(0, 0, 0, 150), no = IM_COL32(0, 0, 0, 0);
+				bg->AddRectFilledMultiColor(ImVec2(0, 0), ImVec2(ds.x, e), dk, dk, no, no);
+				bg->AddRectFilledMultiColor(ImVec2(0, ds.y - e), ds, no, no, dk, dk);
+				bg->AddRectFilledMultiColor(ImVec2(0, 0), ImVec2(e, ds.y), dk, no, no, dk);
+				bg->AddRectFilledMultiColor(ImVec2(ds.x - e, 0), ds, no, dk, dk, no);
+			}
+			SoftShadow(bg, a, b, wr, S(40.0f), 160);  // deep, soft shadow under the panel
+			dl->PushClipRect(a, b, false);
+			dl->AddRectFilled(a, b, L->winEdge, wr);
+			// smoked-glass sheen: lighter towards the top
+			dl->AddRectFilledMultiColor(ImVec2(a.x + wr, a.y + 1), ImVec2(b.x - wr, a.y + S(160.0f)), IM_COL32(255, 255, 255, 10), IM_COL32(255, 255, 255, 10), IM_COL32(255, 255, 255, 0), IM_COL32(255, 255, 255, 0));
+			dl->AddRect(a, b, IM_COL32(255, 255, 255, 26), wr, 0, S(1.0f));
+			// warm accent line along the top edge, brightest in the middle
+			const float  mid = (a.x + b.x) * 0.5f, half = (b.x - a.x) * 0.32f;
+			const ImU32  acc = WithAlpha(L->accent, 200), clear = WithAlpha(L->accent, 0);
+			dl->AddRectFilledMultiColor(ImVec2(mid - half, a.y), ImVec2(mid, a.y + S(1.5f)), clear, acc, acc, clear);
+			dl->AddRectFilledMultiColor(ImVec2(mid, a.y), ImVec2(mid + half, a.y + S(1.5f)), acc, clear, clear, acc);
+			dl->AddRectFilledMultiColor(ImVec2(mid - half * 0.6f, a.y + S(1.5f)), ImVec2(mid, a.y + S(26.0f)), IM_COL32(0, 0, 0, 0), WithAlpha(L->accent, 0), WithAlpha(L->accent, 0), IM_COL32(0, 0, 0, 0));
+			dl->PopClipRect();
+			return;
+		}
 		dl->PushClipRect(a, b, false);  // the window's own clip rect excludes its padding
 
 		// background: vignette (lighter middle) or flat
@@ -1052,6 +1162,8 @@ namespace Theme
 		dl->PopClipRect();
 	}
 
+	void SetBackdrop() { g_backdrop = true; }
+
 	void EndWindow()
 	{
 		ImGui::End();
@@ -1173,6 +1285,14 @@ namespace Theme
 			sp = ImVec2(cx, pb.y + S(8.0f));
 			centerSub = true;
 			h = S(100.0f);
+		} else if (Modern()) {  // big Cinzel title in warm white, quiet subtitle, hairline under the header
+			const float ts = S(38.0f);
+			Heading(dl, g_bold, ts, p + ImVec2(S(1.0f), S(3.0f)), IM_COL32(0, 0, 0, 120), a_title);
+			Heading(dl, g_bold, ts, p + ImVec2(0, S(1.0f)), L->text, a_title);
+			sp = p + ImVec2(S(2.0f), S(50.0f));
+			h = S(92.0f);
+			dl->AddRectFilledMultiColor(ImVec2(p.x, p.y + h - S(10.0f)), ImVec2(p.x + w * 0.5f, p.y + h - S(9.0f)), IM_COL32(255, 255, 255, 30), IM_COL32(255, 255, 255, 18), IM_COL32(255, 255, 255, 18), IM_COL32(255, 255, 255, 30));
+			dl->AddRectFilledMultiColor(ImVec2(p.x + w * 0.5f, p.y + h - S(10.0f)), ImVec2(p.x + w, p.y + h - S(9.0f)), IM_COL32(255, 255, 255, 18), IM_COL32(255, 255, 255, 4), IM_COL32(255, 255, 255, 4), IM_COL32(255, 255, 255, 18));
 		} else {
 			if (L->fx.medallion) {
 				Medallion(dl, p + ImVec2(S(34.0f), S(34.0f)), S(32.0f));
@@ -1246,7 +1366,20 @@ namespace Theme
 		bool        closed = false;
 		float       right = p.x + w;
 		const float box = S(54.0f);
-		if (a_closeBox) {
+		if (a_closeBox && Modern()) {  // round close button
+			const float  d = S(46.0f);
+			const ImVec2 ca(right - d, p.y + S(6.0f)), cb(right, p.y + S(6.0f) + d);
+			ImGui::SetCursorScreenPos(ca);
+			closed = ImGui::InvisibleButton("##close", ImVec2(d, d));
+			const bool   hov = ImGui::IsItemHovered();
+			const ImVec2 cc = (ca + cb) * 0.5f;
+			dl->AddCircleFilled(cc, d * 0.5f, hov ? IM_COL32(255, 255, 255, 26) : IM_COL32(255, 255, 255, 8), 40);
+			dl->AddCircle(cc, d * 0.5f, hov ? L->accent : IM_COL32(255, 255, 255, 50), 40, S(1.2f));
+			const float k = d * 0.17f;
+			dl->AddLine(cc - ImVec2(k, k), cc + ImVec2(k, k), hov ? L->accent : L->text, S(1.6f));
+			dl->AddLine(cc + ImVec2(-k, k), cc + ImVec2(k, -k), hov ? L->accent : L->text, S(1.6f));
+			right -= d + S(26.0f);
+		} else if (a_closeBox) {
 			const ImVec2 ca(right - box, p.y + S(4.0f)), cb(right, p.y + S(4.0f) + box);
 			ImGui::SetCursorScreenPos(ca);
 			closed = ImGui::InvisibleButton("##close", ImVec2(box, box));
@@ -1268,7 +1401,36 @@ namespace Theme
 		}
 
 		// stat boxes, right to left
-		for (int i = a_statCount - 1; i >= 0; --i) {
+		for (int i = a_statCount - 1; i >= 0 && Modern(); --i) {  // modern: number over a small label, hairline dividers
+			const float  vs = S(28.0f), ls = S(12.0f);
+			const float  vw = LabelFont()->CalcTextSizeA(vs, FLT_MAX, 0.0f, a_stats[i].value).x;
+			const float  lw = HeadingWidth(LabelFont(), ls, a_stats[i].label);
+			const float  bw = (std::max)(vw, lw) + S(8.0f);
+			const ImVec2 sa(right - bw, p.y + S(6.0f)), sb(right, p.y + S(56.0f));
+			bool         hov = false;
+			if (a_stats[i].tooltip) {
+				ImGui::SetCursorScreenPos(sa);
+				ImGui::PushID(i);
+				if (ImGui::InvisibleButton("##stat", sb - sa) && a_clickedStat) {
+					*a_clickedStat = i;
+				}
+				ImGui::PopID();
+				hov = ImGui::IsItemHovered();
+				if (hov) {
+					ImGui::SetTooltip("%s", a_stats[i].tooltip);
+				}
+			}
+			dl->AddText(LabelFont(), vs, ImVec2(sb.x - vw, sa.y), hov ? L->accent : L->text, a_stats[i].value);
+			Heading(dl, LabelFont(), ls, ImVec2(sb.x - lw, sa.y + vs + S(4.0f)), hov ? L->accent : L->textDim, a_stats[i].label);
+			if (a_stats[i].tooltip) {
+				dl->AddLine(ImVec2(sb.x - lw, sb.y + S(4.0f)), ImVec2(sb.x, sb.y + S(4.0f)), hov ? L->accent : WithAlpha(L->accent, 90), S(1.0f));
+			}
+			right -= bw + S(20.0f);
+			if (i > 0) {
+				dl->AddLine(ImVec2(right + S(10.0f), sa.y + S(6.0f)), ImVec2(right + S(10.0f), sb.y - S(2.0f)), IM_COL32(255, 255, 255, 26), S(1.0f));
+			}
+		}
+		for (int i = a_statCount - 1; i >= 0 && !Modern(); --i) {
 			const float  bw = S(130.0f), bh = box;
 			const ImVec2 sa(right - bw, p.y + S(4.0f)), sb(right, p.y + S(4.0f) + bh);
 			bool         hov = false;
@@ -1314,7 +1476,7 @@ namespace Theme
 
 	bool BeginParchment(const char* a_id, const ImVec2& a_size, bool a_scroll, bool a_autoHeight, bool a_alwaysBar)
 	{
-		const bool dark = g_nextDark;
+		const bool dark = g_nextDark || Modern();
 		g_nextDark = false;
 		const bool fancy = L->fx.shadows || L->fx.textured || L->fx.deckle || dark;
 		ImGui::PushStyleColor(ImGuiCol_ChildBg, fancy ? C(0, 0, 0, 0) : L->panel);
@@ -1325,7 +1487,7 @@ namespace Theme
 		ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabActive, C(0, 0, 0, 0));
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(S(22.0f), S(18.0f)));
 		ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, S(L->windowRounding > 0.0f ? L->rounding + 2.0f : L->rounding));
-		ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, S(30.0f));
+		ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, S(Modern() ? 14.0f : 30.0f));
 		ImGui::PushStyleVar(ImGuiStyleVar_GrabMinSize, S(48.0f));
 		const bool visible = ImGui::BeginChild(a_id, a_size,
 			ImGuiChildFlags_AlwaysUseWindowPadding | (a_autoHeight ? ImGuiChildFlags_AutoResizeY : 0),
@@ -1340,7 +1502,12 @@ namespace Theme
 		const ImVec2 b = a + ImGui::GetWindowSize();
 		dl->PushClipRect(a, b, false);
 		const float pr = S(L->windowRounding > 0.0f ? L->rounding + 2.0f : L->rounding);
-		if (dark) {  // the gallery wall: dark recessed stone, gold inset line
+		if (dark && Modern()) {  // recessed smoked glass
+			const float mr = S(10.0f);
+			dl->AddRectFilled(a, b, IM_COL32(0, 0, 0, 72), mr);
+			dl->AddRectFilledMultiColor(ImVec2(a.x + mr, a.y), ImVec2(b.x - mr, a.y + S(14.0f)), IM_COL32(0, 0, 0, 60), IM_COL32(0, 0, 0, 60), IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 0));
+			dl->AddRect(a, b, IM_COL32(255, 255, 255, 16), mr, 0, S(1.0f));
+		} else if (dark) {  // the gallery wall: dark recessed stone, gold inset line
 			dl->AddRectFilled(a, b, C(19, 17, 15));
 			if (g_texGrain) {
 				Tiled(dl, g_texGrain, a, b, IM_COL32(0, 0, 0, 255));
@@ -1349,6 +1516,8 @@ namespace Theme
 			dl->AddRectFilledMultiColor(a, ImVec2(a.x + S(14.0f), b.y), IM_COL32(0, 0, 0, 110), IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 110));
 			Bevel(dl, a, b, S(1.5f), true, 40, 170);
 			dl->AddRect(a + ImVec2(S(5), S(5)), b - ImVec2(S(5), S(5)), L->accentFaint, 0.0f, 0, S(1.0f));
+		}
+		if (dark) {
 			dl->PopClipRect();
 			++g_parchmentDepth;
 			ImGui::PushStyleColor(ImGuiCol_Text, L->text);
@@ -1454,6 +1623,13 @@ namespace Theme
 		auto* dl = a_win->DrawList;
 		dl->PushClipRect(a_win->Rect().Min, a_win->Rect().Max, false);
 		const float r = bb.GetWidth() * 0.5f;
+		if (Modern()) {  // slim pill
+			const float  cxm = (bb.Min.x + bb.Max.x) * 0.5f, hw = hovered ? S(3.5f) : S(2.5f);
+			dl->AddRectFilled(ImVec2(cxm - S(1.0f), bb.Min.y), ImVec2(cxm + S(1.0f), bb.Max.y), IM_COL32(255, 255, 255, 16), S(1.0f));
+			dl->AddRectFilled(ImVec2(cxm - hw, grabY), ImVec2(cxm + hw, grabY + grabH), active ? L->accent : (hovered ? IM_COL32(255, 255, 255, 120) : IM_COL32(255, 255, 255, 60)), hw);
+			dl->PopClipRect();
+			return;
+		}
 		// track: a dark groove in the parchment
 		const bool darkWall = InDarkPanel();
 		dl->AddRectFilled(bb.Min, bb.Max, darkWall ? IM_COL32(0, 0, 0, 120) : WithAlpha(L->ink, 55), r);
@@ -1498,6 +1674,17 @@ namespace Theme
 
 	void SectionLabel(const char* a_text)
 	{
+		if (Modern()) {  // small accent capitals, faint hairline
+			auto*        dl = ImGui::GetWindowDrawList();
+			const ImVec2 p = ImGui::GetCursorScreenPos();
+			const float  w = ImGui::GetContentRegionAvail().x;
+			const float  size = S(13.0f);
+			Heading(dl, LabelFont(), size, p + ImVec2(0, S(4.0f)), L->accent, a_text);
+			const float tw = HeadingWidth(LabelFont(), size, a_text);
+			dl->AddLine(ImVec2(p.x + tw + S(14.0f), p.y + S(4.0f) + size * 0.55f), ImVec2(p.x + w, p.y + S(4.0f) + size * 0.55f), IM_COL32(255, 255, 255, 18), S(1.0f));
+			ImGui::Dummy(ImVec2(w, size + S(16.0f)));
+			return;
+		}
 		auto*        dl = ImGui::GetWindowDrawList();
 		const ImVec2 p = ImGui::GetCursorScreenPos();
 		const float  w = ImGui::GetContentRegionAvail().x;
@@ -1514,7 +1701,7 @@ namespace Theme
 		// ImGui::Button with the current Button colours, but drawn with light and depth when the look asks for it.
 		bool DepthButton(const char* a_label, const ImVec2& a_size, float a_r, bool a_parch)
 		{
-			if (!L->fx.bevel) {
+			if (!L->fx.bevel && !Modern()) {
 				return ImGui::Button(a_label, a_size);
 			}
 			auto&       st = ImGui::GetStyle();
@@ -1531,26 +1718,43 @@ namespace Theme
 			const char* labelEnd = ImGui::FindRenderedTextEnd(a_label);
 			const std::string shown(a_label, labelEnd);
 			ImVec2      size = a_size;
-			const float capsSize = S(17.0f);
+			const float capsSize = S(Modern() ? 14.5f : 17.0f);
 			if (L->fx.hall) {
 				ImGui::PushStyleColor(ImGuiCol_Text, C(0, 0, 0, 0));  // we write the label ourselves, in capitals
 				if (size.x <= 0.0f) {
-					size.x = HeadingWidth(g_body, capsSize, shown.c_str()) + st.FramePadding.x * 2.0f + (a_parch ? 0.0f : 0.0f);
+					size.x = HeadingWidth(LabelFont(), capsSize, shown.c_str()) + st.FramePadding.x * 2.0f + (a_parch ? 0.0f : 0.0f);
 				}
 			}
 			const bool pressed = ImGui::Button(a_label, size);
 			if (L->fx.hall) {
 				ImGui::PopStyleColor();
 				const ImVec2 ia = ImGui::GetItemRectMin(), ib = ImGui::GetItemRectMax();
-				const float  tw = HeadingWidth(g_body, capsSize, shown.c_str());
+				const float  tw = HeadingWidth(LabelFont(), capsSize, shown.c_str());
 				const ImVec2 tp((ia.x + ib.x - tw) * 0.5f, (ia.y + ib.y - capsSize) * 0.5f);
-				Heading(dl, g_body, capsSize, tp, textCol, shown.c_str());
+				Heading(dl, LabelFont(), capsSize, tp, textCol, shown.c_str());
 			}
 			ImGui::PopStyleColor(4);
 			const bool   down = ImGui::IsItemActive() && ImGui::IsItemHovered();
 			const ImU32  fill = down ? act : (ImGui::IsItemHovered() ? hov : base);
 			const ImVec2 a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax();
 			dl->ChannelsSetCurrent(0);
+			if (Modern()) {  // flat: fill, hairline (accent on hover), gentle glow on the gold one
+				const bool  hovd = ImGui::IsItemHovered();
+				const bool  gold = (base >> 24) > 200;
+				if (gold) {
+					const ImU32 top = down ? Dark(fill, 0.08f) : Bright(fill, 0.10f), bot = down ? fill : Dark(fill, 0.12f);
+					if (hovd) {
+						dl->AddRect(a - ImVec2(S(2), S(2)), b + ImVec2(S(2), S(2)), WithAlpha(L->accent, 70), a_r + S(2), 0, S(3.0f));
+					}
+					dl->AddRectFilled(a, b, Mix(top, bot, 0.5f), a_r);
+					dl->AddRectFilledMultiColor(ImVec2(a.x + a_r, a.y + 1), ImVec2(b.x - a_r, (a.y + b.y) * 0.5f), IM_COL32(255, 255, 255, 40), IM_COL32(255, 255, 255, 40), IM_COL32(255, 255, 255, 0), IM_COL32(255, 255, 255, 0));
+				} else {
+					dl->AddRectFilled(a, b, fill, a_r);
+				}
+				dl->AddRect(a, b, gold ? Bright(fill, 0.25f) : (hovd ? L->accent : border), a_r, 0, S(1.0f));
+				dl->ChannelsMerge();
+				return pressed;
+			}
 			if (L->fx.shadows && !down) {
 				SoftShadow(dl, a, b, a_r, S(5.0f), a_parch ? 45 : 90);
 			}
@@ -1615,8 +1819,9 @@ namespace Theme
 		}
 		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(S(14.0f), S(8.0f)));
 		ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, S(1.2f));
-		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, S(L->rounding > 4.0f ? 16.0f : L->rounding));
-		const bool pressed = DepthButton(a_label, ImVec2(0, S(40.0f)), S(L->rounding > 4.0f ? 16.0f : L->rounding), parch);
+		const float chipR = Modern() ? S(6.0f) : S(L->rounding > 4.0f ? 16.0f : L->rounding);
+		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, chipR);
+		const bool pressed = DepthButton(a_label, ImVec2(0, S(40.0f)), chipR, parch);
 		ImGui::PopStyleVar(3);
 		ImGui::PopStyleColor(colors);
 		return pressed;
@@ -1628,7 +1833,22 @@ namespace Theme
 		// handle and the value beside it.
 		void HallSliderTrack(const ImVec2& a_a, const ImVec2& a_b, float a_t, bool a_hov, bool a_parch)
 		{
-			auto*       dl = ImGui::GetWindowDrawList();
+			auto* dl = ImGui::GetWindowDrawList();
+			if (Modern()) {  // slim track, warm fill, white knob with an accent ring
+				const float y = (a_a.y + a_b.y) * 0.5f, x0 = a_a.x + S(10.0f), x1 = a_b.x - S(10.0f);
+				const float t = std::fmin(1.0f, std::fmax(0.0f, a_t));
+				const float gx = x0 + (x1 - x0) * t;
+				dl->AddRectFilled(ImVec2(x0, y - S(2.0f)), ImVec2(x1, y + S(2.0f)), IM_COL32(255, 255, 255, 30), S(2.0f));
+				dl->AddRectFilled(ImVec2(x0, y - S(2.0f)), ImVec2(gx, y + S(2.0f)), L->accent, S(2.0f));
+				const float kr = a_hov ? S(10.0f) : S(8.5f);
+				if (a_hov) {
+					dl->AddCircleFilled(ImVec2(gx, y), kr + S(6.0f), WithAlpha(L->accent, 40), 32);
+				}
+				dl->AddCircleFilled(ImVec2(gx, y + S(1.5f)), kr, IM_COL32(0, 0, 0, 90), 32);
+				dl->AddCircleFilled(ImVec2(gx, y), kr, IM_COL32(250, 248, 244, 255), 32);
+				dl->AddCircle(ImVec2(gx, y), kr, L->accent, 32, S(2.0f));
+				return;
+			}
 			const float y = (a_a.y + a_b.y) * 0.5f, x0 = a_a.x + S(13.0f), x1 = a_b.x - S(13.0f);
 			const float t = std::fmin(1.0f, std::fmax(0.0f, a_t));
 			const float gx = x0 + (x1 - x0) * t;
@@ -1643,6 +1863,13 @@ namespace Theme
 
 		void HallSliderValue(const char* a_text, const ImVec2& a_a, const ImVec2& a_b, float a_valueW, bool a_parch)
 		{
+			if (Modern()) {  // value in plain text, like a game's settings screen
+				const float vs = S(16.0f);
+				ImGui::GetWindowDrawList()->AddText(LabelFont(), vs, ImVec2(a_b.x + S(14.0f), (a_a.y + a_b.y - vs) * 0.5f), L->text, a_text);
+				ImGui::SameLine(0.0f, 0.0f);
+				ImGui::Dummy(ImVec2(a_valueW, a_b.y - a_a.y));
+				return;
+			}
 			const float vs = S(16.0f);
 			Heading(ImGui::GetWindowDrawList(), g_body, vs, ImVec2(a_b.x + S(12.0f), (a_a.y + a_b.y - vs) * 0.5f), a_parch ? L->ink : L->text, a_text);
 			ImGui::SameLine(0.0f, 0.0f);
@@ -1718,9 +1945,44 @@ namespace Theme
 	// ------------------------------------------------------------------ gallery hall controls
 	bool Tab(const char* a_label, bool a_selected, float a_h, int a_icon)
 	{
+		if (Modern()) {  // text tab: capitals, dim count, gold underline that grows in
+			auto*             dl = ImGui::GetWindowDrawList();
+			const float       ts = S(14.5f);
+			std::string       name = a_label, count;
+			if (const auto sp2 = name.rfind("  "); sp2 != std::string::npos) {
+				count = name.substr(sp2 + 2);
+				name.resize(sp2);
+			}
+			const float  nw = HeadingWidth(LabelFont(), ts, name.c_str());
+			const float  cw = count.empty() ? 0.0f : LabelFont()->CalcTextSizeA(ts, FLT_MAX, 0.0f, count.c_str()).x + S(10.0f);
+			const float  iconW = a_icon >= 0 ? S(26.0f) : 0.0f;
+			const ImVec2 size(iconW + nw + cw + S(8.0f), a_h);
+			const ImVec2 p = ImGui::GetCursorScreenPos();
+			const bool   pressed = ImGui::InvisibleButton("##tab", size);
+			const bool   hov = ImGui::IsItemHovered();
+			const float  t = Ease(ImGui::GetItemID(), a_selected, 14.0f);
+			const float  hv = Ease(ImGui::GetItemID() + 1, hov, 16.0f);
+			const ImU32  col = Mix(Mix(L->textDim, L->text, hv * 0.7f), L->text, t);
+			const float  ty = p.y + (a_h - ts) * 0.5f - S(2.0f);
+			if (a_icon >= 0) {
+				TabIcon(dl, a_icon, ImVec2(p.x + S(9.0f), ty + ts * 0.5f), S(7.5f), Mix(WithAlpha(L->textDim, 200), L->accent, t));
+			}
+			Heading(dl, LabelFont(), ts, ImVec2(p.x + iconW, ty), col, name.c_str());
+			if (!count.empty()) {
+				dl->AddText(LabelFont(), ts, ImVec2(p.x + iconW + nw + S(10.0f), ty), Mix(L->textDim, L->accent, t), count.c_str());
+			}
+			const float uw = size.x * (0.25f + 0.75f * t), ux = p.x + (size.x - uw) * 0.5f, uy = p.y + a_h - S(3.0f);
+			if (t > 0.01f) {
+				dl->AddRectFilled(ImVec2(ux, uy - S(4.0f)), ImVec2(ux + uw, uy + S(4.0f)), WithAlpha(L->accent, static_cast<int>(30 * t)), S(4.0f));
+				dl->AddRectFilled(ImVec2(ux, uy - S(1.0f)), ImVec2(ux + uw, uy + S(1.0f)), WithAlpha(L->accent, static_cast<int>(255 * t)), S(1.0f));
+			} else if (hv > 0.01f) {
+				dl->AddRectFilled(ImVec2(p.x, uy - S(0.5f)), ImVec2(p.x + size.x, uy + S(0.5f)), IM_COL32(255, 255, 255, static_cast<int>(50 * hv)));
+			}
+			return pressed;
+		}
 		auto*        dl = ImGui::GetWindowDrawList();
 		const float  ts = S(16.0f);
-		const float  tw = HeadingWidth(g_body, ts, a_label);
+		const float  tw = HeadingWidth(LabelFont(), ts, a_label);
 		const float  iconW = a_icon >= 0 ? S(28.0f) : 0.0f, padX = S(18.0f);
 		const ImVec2 size(padX * 2 + iconW + tw, a_h);
 		const ImVec2 p = ImGui::GetCursorScreenPos();
@@ -1742,7 +2004,7 @@ namespace Theme
 		if (a_icon >= 0) {
 			TabIcon(dl, a_icon, ImVec2(a.x + padX + S(10.0f), (a.y + b.y) * 0.5f), S(9.0f), a_selected ? Dark(L->accentDim, 0.35f) : (hov ? L->accent : L->accentDim));
 		}
-		Heading(dl, g_body, ts, ImVec2(a.x + padX + iconW, (a.y + b.y - ts) * 0.5f), col, a_label);
+		Heading(dl, LabelFont(), ts, ImVec2(a.x + padX + iconW, (a.y + b.y - ts) * 0.5f), col, a_label);
 		return pressed;
 	}
 
@@ -1751,7 +2013,7 @@ namespace Theme
 	float ButtonLabelWidth(const char* a_label)
 	{
 		const std::string shown(a_label, ImGui::FindRenderedTextEnd(a_label));
-		return L->fx.hall ? HeadingWidth(g_body, S(17.0f), shown.c_str()) : ImGui::CalcTextSize(shown.c_str()).x;
+		return L->fx.hall ? HeadingWidth(LabelFont(), S(17.0f), shown.c_str()) : ImGui::CalcTextSize(shown.c_str()).x;
 	}
 
 	bool Toggle(const char* a_id, bool* a_v)
@@ -1768,6 +2030,18 @@ namespace Theme
 		auto*        dl = ImGui::GetWindowDrawList();
 		const ImVec2 a = p, b = p + size;
 		const float  r = size.y * 0.5f;
+		if (Modern()) {  // iOS-like switch that slides
+			const float t = Ease(ImGui::GetItemID(), *a_v, 14.0f);
+			dl->AddRectFilled(a, b, Mix(IM_COL32(255, 255, 255, 28), L->accent, t), r);
+			dl->AddRect(a, b, hov ? WithAlpha(L->accent, 220) : IM_COL32(255, 255, 255, static_cast<int>(40 * (1 - t))), r, 0, S(1.0f));
+			const ImVec2 k(a.x + r + (size.x - 2 * r) * t, (a.y + b.y) * 0.5f);
+			dl->AddCircleFilled(k + ImVec2(0, S(1.5f)), r - S(3.0f), IM_COL32(0, 0, 0, 80), 24);
+			dl->AddCircleFilled(k, r - S(3.5f), IM_COL32(250, 248, 244, 255), 24);
+			ImGui::SetCursorScreenPos(ImVec2(p.x, b.y));
+			ImGui::Dummy(ImVec2(size.x, S(5.0f)));
+			ImGui::PopID();
+			return pressed;
+		}
 		if (*a_v) {
 			dl->AddRectFilledMultiColor(a + ImVec2(r * 0.4f, 0), b - ImVec2(r * 0.4f, 0), Bright(L->accent, 0.15f), Bright(L->accent, 0.15f), L->accentDim, L->accentDim);
 			dl->AddRectFilled(a, b, WithAlpha(L->accentDim, 160), r);
@@ -1802,10 +2076,10 @@ namespace Theme
 					ch = ' ';
 				}
 			}
-			if (HeadingWidth(g_body, a_size, s.c_str()) <= a_maxW) {
+			if (HeadingWidth(LabelFont(), a_size, s.c_str()) <= a_maxW) {
 				return s;
 			}
-			while (!s.empty() && HeadingWidth(g_body, a_size, (s + "...").c_str()) > a_maxW) {
+			while (!s.empty() && HeadingWidth(LabelFont(), a_size, (s + "...").c_str()) > a_maxW) {
 				s.pop_back();
 			}
 			return s + "...";
@@ -1852,14 +2126,76 @@ namespace Theme
 		case 1: return a_cell * 0.80f + S(34.0f);
 		case 2: return a_cell * 0.76f + S(22.0f);
 		case 3: return a_cell * 0.74f + S(34.0f);
+		case 4: return a_cell * 0.64f;
 		default: return a_cell;
 		}
 	}
 
 	void PictureCard(ImDrawList* a_dl, const ImVec2& a_pos, float a_cell, ImTextureID a_tex, float a_w, float a_h,
-		const char* a_name, const char* a_placeholder, bool a_hovered)
+		const char* a_name, const char* a_placeholder, bool a_hovered, const char* a_detail)
 	{
 		const float H = PictureCardHeight(a_cell);
+		if (Modern()) {  // the picture is the card: rounded, name on a fade at the bottom, lifts and glows on hover
+			const float  t = Ease(ImGui::GetID("##lift"), a_hovered, 14.0f);
+			const float  r = S(8.0f);
+			const ImVec2 a = a_pos - ImVec2(0, S(5.0f) * t), b = a + ImVec2(a_cell, H);
+			SoftShadow(a_dl, a, b, r, S(12.0f + 14.0f * t), static_cast<int>(120 + 80 * t));
+			if (t > 0.01f) {
+				a_dl->AddRect(a - ImVec2(S(3), S(3)), b + ImVec2(S(3), S(3)), WithAlpha(L->accent, static_cast<int>(55 * t)), r + S(3), 0, S(4.0f));
+			}
+			if (a_tex) {
+				ImVec2 uv0, uv1;
+				CoverUV(a_w, a_h, b.x - a.x, b.y - a.y, uv0, uv1);
+				const int v = static_cast<int>(212 + 43 * t);
+				a_dl->AddImageRounded(a_tex, a, b, uv0, uv1, IM_COL32(v, v, v, 255), r);
+			} else {  // skeleton
+				a_dl->AddRectFilled(a, b, IM_COL32(255, 255, 255, 12), r);
+				const float sx = a.x + (b.x - a.x) * std::fmod(static_cast<float>(ImGui::GetTime()) * 0.6f, 1.4f) - (b.x - a.x) * 0.2f;
+				a_dl->PushClipRect(a, b, true);
+				a_dl->AddRectFilledMultiColor(ImVec2(sx - S(60), a.y), ImVec2(sx, b.y), IM_COL32(255, 255, 255, 0), IM_COL32(255, 255, 255, 14), IM_COL32(255, 255, 255, 14), IM_COL32(255, 255, 255, 0));
+				a_dl->AddRectFilledMultiColor(ImVec2(sx, a.y), ImVec2(sx + S(60), b.y), IM_COL32(255, 255, 255, 14), IM_COL32(255, 255, 255, 0), IM_COL32(255, 255, 255, 0), IM_COL32(255, 255, 255, 14));
+				a_dl->PopClipRect();
+			}
+			// fade to black under the name (bands, the last one rounded to the card's corners)
+			const float fadeTop = b.y - (b.y - a.y) * 0.48f;
+			const int   n = 10;
+			for (int i = 0; i < n; ++i) {
+				const float y0 = fadeTop + (b.y - fadeTop) * i / n, y1 = (i == n - 1) ? b.y : fadeTop + (b.y - fadeTop) * (i + 1) / n;
+				const float k = (i + 1.0f) / n;
+				a_dl->AddRectFilled(ImVec2(a.x, y0), ImVec2(b.x, y1 + 0.5f), IM_COL32(6, 6, 8, static_cast<int>(210 * k * k)), i == n - 1 ? r : 0.0f, ImDrawFlags_RoundCornersBottom);
+			}
+			// name + size
+			std::string name = a_name ? a_name : "";
+			if (const auto dot = name.find_last_of('.'); dot != std::string::npos && dot > 0) {
+				name.resize(dot);
+			}
+			for (auto& ch : name) {
+				if (ch == '_' || ch == '-') {
+					ch = ' ';
+				}
+			}
+			if (!name.empty()) {
+				name[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(name[0])));
+			}
+			const float ns = S(16.0f), ds = S(12.5f), maxW = (b.x - a.x) - S(28.0f);
+			auto width = [&](const std::string& s) { return LabelFont()->CalcTextSizeA(ns, FLT_MAX, 0.0f, s.c_str()).x; };
+			if (width(name) > maxW) {
+				while (name.size() > 1 && width(name + "...") > maxW) {
+					name.pop_back();
+				}
+				name += "...";
+			}
+			const bool  detail = a_detail && *a_detail;
+			const float ny = b.y - S(14.0f) - ns - (detail ? ds + S(5.0f) : 0.0f);
+			a_dl->AddText(LabelFont(), ns, ImVec2(a.x + S(14.0f), ny + S(1.0f)), IM_COL32(0, 0, 0, 160), name.c_str());
+			a_dl->AddText(LabelFont(), ns, ImVec2(a.x + S(14.0f), ny), IM_COL32(248, 244, 236, 255), name.c_str());
+			if (detail) {
+				a_dl->AddText(g_body, ds, ImVec2(a.x + S(14.0f), ny + ns + S(5.0f)), Mix(IM_COL32(200, 194, 184, 200), L->accent, t), a_detail);
+			}
+			// border: hairline, warm accent when hovered
+			a_dl->AddRect(a, b, Mix(IM_COL32(255, 255, 255, 26), L->accent, t), r, 0, S(1.0f + 0.5f * t));
+			return;
+		}
 		auto placeholder = [&](const ImVec2& a, const ImVec2& b, ImU32 col) {
 			const char*  txt = a_placeholder ? a_placeholder : "";
 			const ImVec2 ts = g_italic->CalcTextSizeA(g_italic->FontSize, FLT_MAX, 0.0f, txt);
@@ -1883,8 +2219,8 @@ namespace Theme
 			a_dl->AddRectFilledMultiColor(m0, ImVec2(m1.x, m0.y + S(8.0f)), IM_COL32(60, 35, 15, 70), IM_COL32(60, 35, 15, 70), IM_COL32(60, 35, 15, 0), IM_COL32(60, 35, 15, 0));
 			const float       cs = S(14.5f);
 			const std::string cap = Caption(a_name, cs, (m1.x - m0.x) - S(16.0f));
-			const float       cw = HeadingWidth(g_body, cs, cap.c_str());
-			Heading(a_dl, g_body, cs, ImVec2((m0.x + m1.x - cw) * 0.5f, m0.y + S(8.0f)), L->ink, cap.c_str());
+			const float       cw = HeadingWidth(LabelFont(), cs, cap.c_str());
+			Heading(a_dl, LabelFont(), cs, ImVec2((m0.x + m1.x - cw) * 0.5f, m0.y + S(8.0f)), L->ink, cap.c_str());
 			const ImVec2 pa = m0 + ImVec2(S(10.0f), S(32.0f)), pb = m1 - ImVec2(S(10.0f), S(10.0f));
 			if (a_tex) {
 				ImVec2       i1;
@@ -1931,7 +2267,7 @@ namespace Theme
 			// name plaque with angled ends, centred on the bottom edge
 			const float       cs = S(14.0f);
 			const std::string cap = Caption(a_name, cs, a_cell - S(40.0f));
-			const float       cw = HeadingWidth(g_body, cs, cap.c_str());
+			const float       cw = HeadingWidth(LabelFont(), cs, cap.c_str());
 			const float       pw = (std::min)(a_cell + S(8.0f), cw + S(40.0f)), pht = S(32.0f), notch = S(12.0f);
 			const float       pcx = (a.x + b.x) * 0.5f, pcy = b.y;
 			const ImVec2      q0(pcx - pw * 0.5f, pcy - pht * 0.5f), q1(pcx + pw * 0.5f, pcy + pht * 0.5f);
@@ -1940,7 +2276,7 @@ namespace Theme
 			a_dl->AddConvexPolyFilled(poly, 6, C(36, 31, 26));
 			a_dl->AddRectFilledMultiColor(ImVec2(q0.x + notch, q0.y + S(1)), ImVec2(q1.x - notch, pcy), IM_COL32(255, 240, 200, 18), IM_COL32(255, 240, 200, 18), IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 0));
 			a_dl->AddPolyline(poly, 6, a_hovered ? L->accent : L->accentDim, ImDrawFlags_Closed, S(1.5f));
-			Heading(a_dl, g_body, cs, ImVec2(pcx - cw * 0.5f, pcy - cs * 0.55f), a_hovered ? Bright(L->accent, 0.3f) : L->accent, cap.c_str());
+			Heading(a_dl, LabelFont(), cs, ImVec2(pcx - cw * 0.5f, pcy - cs * 0.55f), a_hovered ? Bright(L->accent, 0.3f) : L->accent, cap.c_str());
 			return;
 		}
 		// 3: dark tile with gold double lines and notched corners, name underneath on the parchment
@@ -1973,8 +2309,83 @@ namespace Theme
 		a_dl->AddRect(a, b, a_hovered ? L->accent : Dark(L->accentDim, 0.3f), 0.0f, 0, a_hovered ? S(2.0f) : S(1.4f));
 		const float       cs = S(15.0f);
 		const std::string cap = Caption(a_name, cs, a_cell);
-		const float       cw = HeadingWidth(g_body, cs, cap.c_str());
-		Heading(a_dl, g_body, cs, ImVec2((a.x + b.x - cw) * 0.5f, b.y + S(10.0f)), a_hovered ? Dark(L->accentDim, 0.2f) : L->ink, cap.c_str());
+		const float       cw = HeadingWidth(LabelFont(), cs, cap.c_str());
+		Heading(a_dl, LabelFont(), cs, ImVec2((a.x + b.x - cw) * 0.5f, b.y + S(10.0f)), a_hovered ? Dark(L->accentDim, 0.2f) : L->ink, cap.c_str());
+	}
+
+	// ------------------------------------------------------------------ modern extras
+	float FooterHeight() { return Modern() ? S(52.0f) : 0.0f; }
+
+	void KeyHints(const char* const* a_keys, const char* const* a_labels, int a_count)
+	{
+		if (!Modern()) {
+			return;
+		}
+		auto*        dl = ImGui::GetWindowDrawList();
+		const ImVec2 p = ImGui::GetCursorScreenPos() + ImVec2(0, S(14.0f));
+		const float  ks = S(12.5f), ls = S(14.0f), kh = S(26.0f);
+		float        x = p.x;
+		for (int i = 0; i < a_count; ++i) {
+			// the key cap(s): "Ctrl+Wheel" -> two caps joined by +
+			std::string keys = a_keys[i];
+			size_t      start = 0;
+			while (true) {
+				const size_t      plus = keys.find('+', start);
+				const std::string k = keys.substr(start, plus == std::string::npos ? std::string::npos : plus - start);
+				const float       kw = (std::max)(kh, LabelFont()->CalcTextSizeA(ks, FLT_MAX, 0.0f, k.c_str()).x + S(16.0f));
+				const ImVec2      ka(x, p.y), kb(x + kw, p.y + kh);
+				dl->AddRectFilled(ka + ImVec2(0, S(2)), kb + ImVec2(0, S(2)), IM_COL32(0, 0, 0, 90), S(5.0f));
+				dl->AddRectFilled(ka, kb, IM_COL32(255, 255, 255, 18), S(5.0f));
+				dl->AddRect(ka, kb, IM_COL32(255, 255, 255, 60), S(5.0f), 0, S(1.0f));
+				const ImVec2 kt = LabelFont()->CalcTextSizeA(ks, FLT_MAX, 0.0f, k.c_str());
+				dl->AddText(LabelFont(), ks, ImVec2(x + (kw - kt.x) * 0.5f, p.y + (kh - kt.y) * 0.5f), L->text, k.c_str());
+				x += kw;
+				if (plus == std::string::npos) {
+					break;
+				}
+				dl->AddText(g_body, ls, ImVec2(x + S(4.0f), p.y + (kh - ls) * 0.5f - S(1.0f)), L->textDim, "+");
+				x += S(16.0f);
+				start = plus + 1;
+			}
+			const ImVec2 lt = g_body->CalcTextSizeA(ls, FLT_MAX, 0.0f, a_labels[i]);
+			dl->AddText(g_body, ls, ImVec2(x + S(10.0f), p.y + (kh - lt.y) * 0.5f), L->textDim, a_labels[i]);
+			x += S(10.0f) + lt.x + S(30.0f);
+		}
+		ImGui::Dummy(ImVec2(x - p.x, kh + S(14.0f)));
+	}
+
+	bool DescriptionPane() { return Modern(); }
+	void SetHoveredHelp(const char* a_label, const char* a_help)
+	{
+		g_hoverLabel = a_label;
+		g_hoverHelp = a_help;
+	}
+	void DrawDescription(const char* a_fallbackTitle, const char* a_fallbackText)
+	{
+		const char*  title = g_hoverLabel ? g_hoverLabel : a_fallbackTitle;
+		const char*  text = g_hoverLabel ? (g_hoverHelp ? g_hoverHelp : "") : a_fallbackText;
+		auto*        dl = ImGui::GetWindowDrawList();
+		const ImVec2 p = ImGui::GetCursorScreenPos();
+		const float  w = ImGui::GetContentRegionAvail().x;
+		dl->AddRectFilled(p + ImVec2(0, S(4.0f)), p + ImVec2(S(28.0f), S(6.0f)), L->accent);
+		ImGui::Dummy(ImVec2(w, S(16.0f)));
+		ImGui::PushFont(g_bold);
+		ImGui::SetWindowFontScale(0.66f);
+		ImGui::PushStyleColor(ImGuiCol_Text, L->text);
+		ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + w);
+		ImGui::TextUnformatted(title);
+		ImGui::PopTextWrapPos();
+		ImGui::PopStyleColor();
+		ImGui::SetWindowFontScale(1.0f);
+		ImGui::PopFont();
+		ImGui::Dummy(ImVec2(0, S(6.0f)));
+		ImGui::PushStyleColor(ImGuiCol_Text, L->textDim);
+		ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + w);
+		ImGui::TextUnformatted(text);
+		ImGui::PopTextWrapPos();
+		ImGui::PopStyleColor();
+		g_hoverLabel = nullptr;
+		g_hoverHelp = nullptr;
 	}
 
 	float CardInset() { return S(L->fx.gilt ? 13.0f : 4.0f); }

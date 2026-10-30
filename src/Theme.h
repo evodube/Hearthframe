@@ -21,6 +21,11 @@ namespace Theme
 		const char* sansRegular = nullptr;  // e.g. C:\Windows\Fonts\segoeui.ttf (used by sans-serif styles)
 		const char* sansBold = nullptr;
 		const char* sansItalic = nullptr;
+		// modern look (bundled with the mod; any missing file falls back to the ones above)
+		const char* display = nullptr;     // Cinzel SemiBold: titles
+		const char* uiRegular = nullptr;   // Inter Regular: body text
+		const char* uiSemiBold = nullptr;  // Inter SemiBold: labels, names
+		const char* uiItalic = nullptr;    // Inter Italic
 	};
 
 	// ---- styles ("looks"): call SetStyle before Setup
@@ -96,10 +101,19 @@ namespace Theme
 	bool Toggle(const char* a_id, bool* a_v);
 	bool ToggleSwitches();  // the look uses switches instead of On / Off chips
 	float ButtonLabelWidth(const char* a_label);  // width of a button/chip label as the look writes it
+	// Modern look: dim and vignette the game behind the next window (one-shot; the main gallery uses it).
+	void SetBackdrop();
+	// Row of key hints ("[Esc] Close") along the bottom of a window; FooterHeight() = room to leave for it (0 = look has none).
+	float FooterHeight();
+	void  KeyHints(const char* const* a_keys, const char* const* a_labels, int a_count);
+	// Settings description pane (modern look): rows report the hovered label/help, the pane shows it.
+	bool  DescriptionPane();
+	void  SetHoveredHelp(const char* a_label, const char* a_help);
+	void  DrawDescription(const char* a_fallbackTitle, const char* a_fallbackText);
 	// Height of a picture card for a cell a_cell wide (CardStyle 1-3), and the card itself.
 	float PictureCardHeight(float a_cell);
 	void  PictureCard(ImDrawList* a_dl, const ImVec2& a_pos, float a_cell, ImTextureID a_tex, float a_w, float a_h,
-		 const char* a_name, const char* a_placeholder, bool a_hovered);
+		 const char* a_name, const char* a_placeholder, bool a_hovered, const char* a_detail = nullptr);
 	void EndParchment();
 	void SectionLabel(const char* a_text);  // small-caps label with a rule under it (inside parchment)
 

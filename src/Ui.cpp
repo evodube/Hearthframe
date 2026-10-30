@@ -164,7 +164,7 @@ namespace Ui
 			if (cardStyle) {
 				ImGui::Dummy(ImVec2(0, S(6.0f)));  // plaque tabs sit apart from the panel
 			}
-			if (Theme::BeginParchment("##grid", ImVec2(0, 0), true, false, true)) {
+			if (Theme::BeginParchment("##grid", ImVec2(0, -Theme::FooterHeight()), true, false, true)) {
 				if (m.notice) {
 					Theme::TextColoredWrapped(Theme::Warning(), m.notice);
 					ImGui::Dummy(ImVec2(0, S(8.0f)));
@@ -183,14 +183,21 @@ namespace Ui
 				}
 				const float cell = static_cast<float>(*m.thumbSize) * Theme::Scale();
 				const float labelH = cardStyle ? Theme::PictureCardHeight(cell) - cell : ImGui::GetTextLineHeight() + Theme::Italic()->FontSize + S(10.0f);
-				const float gap = cardStyle ? S(26.0f) : S(18.0f);
+				const float gap = cardStyle == 4 ? S(22.0f) : cardStyle ? S(26.0f) : S(18.0f);
 				const float availW = ImGui::GetContentRegionAvail().x;
 				const int   cols = (std::max)(1, static_cast<int>((availW + gap) / (cell + gap)));
 				auto*       dl = ImGui::GetWindowDrawList();
+				// modern look: centre the grid and space rows like columns
+				const float indent = cardStyle == 4 ? (std::max)(0.0f, (availW - (cols * cell + (cols - 1) * gap)) * 0.5f) : 0.0f;
+				if (cardStyle == 4) {
+					ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(gap, gap));
+				}
 				for (int i = 0; i < static_cast<int>(m.pictures.size()); ++i) {
 					auto& pic = m.pictures[i];
 					if (i % cols != 0) {
 						ImGui::SameLine(0.0f, gap);
+					} else if (indent > 0.0f) {
+						ImGui::SetCursorPosX(ImGui::GetCursorPosX() + indent);
 					}
 					ImGui::PushID(i);
 					const ImVec2 p = ImGui::GetCursorScreenPos();
@@ -218,8 +225,12 @@ namespace Ui
 					if (cardStyle) {
 						const float pw0 = static_cast<float>(pic.thumb ? pic.thumbW : pic.origW);
 						const float ph0 = static_cast<float>(pic.thumb ? pic.thumbH : pic.origH);
-						Theme::PictureCard(dl, p, cell, pic.thumb, pw0, ph0, pic.name, pic.failed ? "can't read" : "loading...", hovered);
-						if (hovered && !ImGui::IsPopupOpen("##card")) {
+						char detail[64] = "";
+						if (pic.origW > 0) {
+							std::snprintf(detail, sizeof detail, "%d %s %d", pic.origW, kTimes, pic.origH);
+						}
+						Theme::PictureCard(dl, p, cell, pic.thumb, pw0, ph0, pic.name, pic.failed ? "can't read" : "loading...", hovered, detail);
+						if (hovered && !ImGui::IsPopupOpen("##card") && (cardStyle != 4 || pic.failed)) {  // modern cards show their name
 							if (pic.failed && pic.error && *pic.error) {
 								ImGui::SetTooltip("%s\nCan't read: %s\nPress Refresh to try again.", pic.name, pic.error);
 							} else {
@@ -275,8 +286,16 @@ namespace Ui
 					}
 					ImGui::PopID();
 				}
+				if (cardStyle == 4) {
+					ImGui::PopStyleVar();
+				}
 			}
 			Theme::EndParchment();
+			if (Theme::FooterHeight() > 0.0f) {
+				static const char* keys[] = { "LMB", "RMB", "Ctrl+Wheel", "Esc" };
+				static const char* labels[] = { "Open", "Rename", "Interface size", "Close" };
+				Theme::KeyHints(keys, labels, 4);
+			}
 			return r;
 		}
 
@@ -702,6 +721,7 @@ namespace Ui
 		}
 		ImGui::SetNextWindowSizeConstraints(ImVec2((std::min)(S(760.0f), io.DisplaySize.x), (std::min)(S(520.0f), io.DisplaySize.y)), io.DisplaySize);
 		GalleryResult r;
+		Theme::SetBackdrop();  // modern look: dim the game behind the gallery
 		const bool visible = Theme::BeginWindow("Hearthframe", nullptr);
 		lastScale = scale;
 		lastSize = ImGui::GetWindowSize();
@@ -909,6 +929,14 @@ namespace Ui
 		// label column + control column
 		void Row(const char* a_label, const char* a_help = nullptr)
 		{
+			if (Theme::DescriptionPane()) {  // the whole row reports its help to the description pane
+				const ImVec2 p = ImGui::GetCursorScreenPos();
+				const ImVec2 q(ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x, p.y + S(46.0f));
+				if (ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) && ImGui::IsMouseHoveringRect(p, q)) {
+					Theme::SetHoveredHelp(a_label, a_help);
+					ImGui::GetWindowDrawList()->AddRectFilled(p - ImVec2(S(10.0f), S(3.0f)), q + ImVec2(S(4.0f), -S(3.0f)), IM_COL32(255, 255, 255, 8), S(6.0f));
+				}
+			}
 			ImGui::AlignTextToFramePadding();
 			ImGui::TextUnformatted(a_label);
 			if (a_help && ImGui::IsItemHovered()) {
@@ -957,7 +985,7 @@ namespace Ui
 		}
 		const ImVec2 center = ImGui::GetIO().DisplaySize * 0.5f;
 		ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-		ImGui::SetNextWindowSize(ImVec2((std::min)(S(1000.0f), ImGui::GetIO().DisplaySize.x * 0.95f), 0));
+		ImGui::SetNextWindowSize(ImVec2((std::min)(S(Theme::DescriptionPane() ? 1300.0f : 1000.0f), ImGui::GetIO().DisplaySize.x * 0.95f), 0));
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(S(30.0f), S(26.0f)));
 		const bool open = ImGui::BeginPopupModal("Hearthframe settings", nullptr,
 			ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar);
@@ -981,7 +1009,8 @@ namespace Ui
 			}
 			ImGui::PopID();
 		}
-		if (Theme::BeginParchment("##settings", ImVec2(0, (std::min)(S(600.0f), ImGui::GetIO().DisplaySize.y * 0.6f)), true)) {
+		const float settingsH = (std::min)(S(600.0f), ImGui::GetIO().DisplaySize.y * 0.6f);
+		if (Theme::BeginParchment("##settings", ImVec2(Theme::DescriptionPane() ? -S(380.0f) : 0.0f, settingsH), true)) {
 			const float ctl = ImGui::GetContentRegionAvail().x - S(300.0f);
 			if (g_settingsTab == 0) {
 				Theme::SectionLabel("Pictures");
@@ -1100,6 +1129,16 @@ namespace Ui
 			}
 		}
 		Theme::EndParchment();
+		if (Theme::DescriptionPane()) {  // what the hovered setting does
+			ImGui::SameLine(0.0f, S(28.0f));
+			ImGui::BeginChild("##desc", ImVec2(0, settingsH));
+			static const char* blurbs[] = { "Where your pictures come from, the key that opens Hearthframe and how its windows look.",
+				"How pictures are hung on walls: the default frame, how far you can reach and how big the textures are.",
+				"Which messages Hearthframe shows in the corner of the screen while you play." };
+			static const char* titles[] = { "Gallery", "Frames & hanging", "Notifications" };
+			Theme::DrawDescription(titles[g_settingsTab], blurbs[g_settingsTab]);
+			ImGui::EndChild();
+		}
 		ImGui::Dummy(ImVec2(0, S(6.0f)));
 		if (Theme::Button("Reset this tab", ImVec2(S(200.0f), S(52.0f)))) {
 			r = { SettingsAction::ResetTab, g_settingsTab };
