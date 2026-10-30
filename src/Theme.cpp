@@ -2143,7 +2143,7 @@ namespace Theme
 		case 1: return a_cell * 0.80f + S(34.0f);
 		case 2: return a_cell * 0.76f + S(22.0f);
 		case 3: return a_cell * 0.74f + S(34.0f);
-		case 4: return a_cell * 0.64f;
+		case 4: return a_cell;  // square slot; the card inside has the picture's shape
 		default: return a_cell;
 		}
 	}
@@ -2153,9 +2153,12 @@ namespace Theme
 	{
 		const float H = PictureCardHeight(a_cell);
 		if (Modern()) {  // the picture is the card: rounded, name on a fade at the bottom, lifts and glows on hover
-			const float  t = Ease(ImGui::GetID("##lift"), a_hovered, 14.0f);
-			const float  r = S(8.0f);
-			const ImVec2 a = a_pos - ImVec2(0, S(5.0f) * t), b = a + ImVec2(a_cell, H);
+			const float t = Ease(ImGui::GetID("##lift"), a_hovered, 14.0f);
+			const float r = S(8.0f);
+			// the card takes the picture's shape inside the square slot, sitting on the bottom so rows line up
+			const float aspect = (a_w > 0 && a_h > 0) ? a_w / a_h : 4.0f / 3.0f;
+			const float cw = aspect >= 1.0f ? a_cell : a_cell * aspect, ch = aspect >= 1.0f ? a_cell / aspect : H;
+			const ImVec2 a = a_pos + ImVec2((a_cell - cw) * 0.5f, H - ch) - ImVec2(0, S(5.0f) * t), b = a + ImVec2(cw, ch);
 			SoftShadow(a_dl, a, b, r, S(12.0f + 14.0f * t), static_cast<int>(120 + 80 * t));
 			if (t > 0.01f) {
 				a_dl->AddRect(a - ImVec2(S(3), S(3)), b + ImVec2(S(3), S(3)), WithAlpha(L->accent, static_cast<int>(55 * t)), r + S(3), 0, S(4.0f));
