@@ -300,12 +300,120 @@ namespace Ui
 		}
 
 		// ------------------------------------------------------------------ hang dialog
+		// The picture inside a frame preview: picture cropped to fill the cut-out, the frame drawn over it.
+		void FramedPicture(ImDrawList* a_dl, const FramePreview& a_f, const Picture& a_pic, const ImVec2& a_a, const ImVec2& a_b)
+		{
+			const ImVec2 box = a_b - a_a;
+			const float  s = (std::min)(box.x / a_f.w, box.y / a_f.h);
+			const ImVec2 sz(a_f.w * s, a_f.h * s);
+			const ImVec2 o = a_a + (box - sz) * 0.5f;
+			const ImVec2 h0 = o + ImVec2(a_f.hx0, a_f.hy0) * s - ImVec2(1, 1), h1 = o + ImVec2(a_f.hx1, a_f.hy1) * s + ImVec2(1, 1);
+			if (a_pic.thumb) {
+				const float pw = static_cast<float>(a_pic.thumbW), ph = static_cast<float>(a_pic.thumbH);
+				ImVec2      uv0(0, 0), uv1(1, 1);
+				const float pa = pw / ph, ha = (h1.x - h0.x) / (h1.y - h0.y);
+				if (pa > ha) {
+					const float k = ha / pa;
+					uv0.x = (1 - k) * 0.5f;
+					uv1.x = 1 - uv0.x;
+				} else {
+					const float k = pa / ha;
+					uv0.y = (1 - k) * 0.5f;
+					uv1.y = 1 - uv0.y;
+				}
+				a_dl->AddImage(a_pic.thumb, h0, h1, uv0, uv1);
+			} else {
+				a_dl->AddRectFilled(h0, h1, Theme::Well());
+			}
+			a_dl->AddRectFilledMultiColor(h0, ImVec2(h1.x, h0.y + (h1.y - h0.y) * 0.25f), IM_COL32(0, 0, 0, 70), IM_COL32(0, 0, 0, 70), IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 0));
+			a_dl->AddImage(a_f.tex, o, o + sz);
+		}
+
+		// Hang dialog: a big preview of the chosen frame with the picture in it, and every frame as a tile.
+		void DrawFramePicker(GalleryModel& m, const Picture& a_pic, const char* const* a_names, int a_count)
+		{
+			auto*       dl = ImGui::GetWindowDrawList();
+			const float h = S(430.0f);
+			const float bigW = S(360.0f);
+			// big preview
+			{
+				const ImVec2 p = ImGui::GetCursorScreenPos();
+				ImGui::Dummy(ImVec2(bigW, h));
+				const ImVec2 a = p, b = p + ImVec2(bigW, h);
+				dl->AddRectFilled(a, b, IM_COL32(0, 0, 0, 60), S(10.0f));
+				dl->AddRectFilledMultiColor(a + ImVec2(S(10), S(10)), ImVec2(b.x - S(10), a.y + h * 0.6f), IM_COL32(255, 230, 190, 14), IM_COL32(255, 230, 190, 14), IM_COL32(255, 230, 190, 0), IM_COL32(255, 230, 190, 0));
+				const FramePreview f = m.framePreview(*m.hangShape, *m.hangStyle);
+				if (f.tex) {
+					FramedPicture(dl, f, a_pic, a + ImVec2(S(26.0f), S(26.0f)), ImVec2(b.x - S(26.0f), b.y - S(84.0f)));
+				}
+				const char*  nm = (*m.hangStyle >= 0 && *m.hangStyle < a_count) ? a_names[*m.hangStyle] : "";
+				const ImVec2 ns = Theme::Body()->CalcTextSizeA(Theme::Body()->FontSize * 1.15f, FLT_MAX, 0.0f, nm);
+				dl->AddText(Theme::Body(), Theme::Body()->FontSize * 1.15f, ImVec2((a.x + b.x - ns.x) * 0.5f, b.y - S(66.0f)), Theme::Cream(), nm);
+				char idx[32];
+				std::snprintf(idx, sizeof idx, "%d / %d", *m.hangStyle + 1, a_count);
+				const ImVec2 is = Theme::Body()->CalcTextSizeA(Theme::Body()->FontSize * 0.85f, FLT_MAX, 0.0f, idx);
+				dl->AddText(Theme::Body(), Theme::Body()->FontSize * 0.85f, ImVec2((a.x + b.x - is.x) * 0.5f, b.y - S(36.0f)), Theme::Muted(), idx);
+			}
+			ImGui::SameLine(0.0f, S(22.0f));
+			// tiles
+			ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(0, 0, 0, 0));
+			ImGui::BeginChild("##framegrid", ImVec2(0, h), ImGuiChildFlags_None, 0);
+			const float gap = S(14.0f);
+			const float availW = ImGui::GetContentRegionAvail().x;
+			const int   cols = (std::max)(1, static_cast<int>((availW + gap) / (S(150.0f) + gap)));
+			const float tw = (availW - gap * (cols - 1)) / cols, th = tw * 0.80f + S(30.0f);
+			auto*       gdl = ImGui::GetWindowDrawList();
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(gap, gap));
+			for (int i = 0; i < a_count; ++i) {
+				if (i % cols != 0) {
+					ImGui::SameLine();
+				}
+				ImGui::PushID(i);
+				const ImVec2 p = ImGui::GetCursorScreenPos();
+				if (ImGui::InvisibleButton("##tile", ImVec2(tw, th))) {
+					*m.hangStyle = i;
+				}
+				const bool hov = ImGui::IsItemHovered(), sel = *m.hangStyle == i;
+				if (ImGui::IsRectVisible(p, p + ImVec2(tw, th))) {
+					const ImVec2 a = p, b = p + ImVec2(tw, tw * 0.80f);
+					gdl->AddRectFilled(a, b, sel ? IM_COL32(255, 230, 180, 22) : (hov ? IM_COL32(255, 255, 255, 14) : IM_COL32(255, 255, 255, 6)), S(8.0f));
+					const FramePreview f = m.framePreview(*m.hangShape, i);
+					if (f.tex) {
+						FramedPicture(gdl, f, a_pic, a + ImVec2(S(12.0f), S(12.0f)), b - ImVec2(S(12.0f), S(12.0f)));
+					}
+					if (sel) {
+						gdl->AddRect(a - ImVec2(S(3), S(3)), b + ImVec2(S(3), S(3)), (Theme::Gold() & 0x00FFFFFF) | (60u << 24), S(10.0f), 0, S(4.0f));
+					}
+					gdl->AddRect(a, b, sel ? Theme::Gold() : (hov ? (Theme::Gold() & 0x00FFFFFF) | (150u << 24) : IM_COL32(255, 255, 255, 20)), S(8.0f), 0, sel ? S(1.6f) : S(1.0f));
+					// name, shortened to fit
+					std::string nm = a_names[i];
+					ImFont*     font = Theme::Body();
+					const float fs = font->FontSize * 0.82f;
+					if (font->CalcTextSizeA(fs, FLT_MAX, 0.0f, nm.c_str()).x > tw) {
+						while (nm.size() > 1 && font->CalcTextSizeA(fs, FLT_MAX, 0.0f, (nm + "...").c_str()).x > tw) {
+							nm.pop_back();
+						}
+						nm += "...";
+					}
+					const ImVec2 ns = font->CalcTextSizeA(fs, FLT_MAX, 0.0f, nm.c_str());
+					gdl->AddText(font, fs, ImVec2(a.x + (tw - ns.x) * 0.5f, b.y + S(8.0f)), sel ? Theme::Gold() : (hov ? Theme::Cream() : Theme::Muted()), nm.c_str());
+					if (hov && nm != a_names[i]) {
+						ImGui::SetTooltip("%s", a_names[i]);
+					}
+				}
+				ImGui::PopID();
+			}
+			ImGui::PopStyleVar();
+			ImGui::EndChild();
+			ImGui::PopStyleColor();
+		}
+
 		void DrawHangDialog(GalleryModel& m, GalleryResult& r)
 		{
 			const auto& pic = m.pictures[m.viewing];
 			const ImVec2 center = ImGui::GetIO().DisplaySize * 0.5f;
 			ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));  // stays centred as its height changes
-			ImGui::SetNextWindowSize(ImVec2(S(980.0f), 0));
+			ImGui::SetNextWindowSize(ImVec2(S(m.framePreview ? 1180.0f : 980.0f), 0));
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(S(30.0f), S(26.0f)));
 			const bool open = ImGui::BeginPopupModal("Hang on wall", nullptr,
 				ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar);
@@ -340,14 +448,18 @@ namespace Ui
 				if (m.stylesFor) {
 					const auto [names, count] = m.stylesFor(*m.hangShape);
 					*m.hangStyle = std::clamp(*m.hangStyle, 0, (std::max)(0, count - 1));
+					const bool previews = m.framePreview && m.framePreview(*m.hangShape, 0).tex;
+					if (previews) {
+						DrawFramePicker(m, pic, names, count);
+					}
 					// long lists scroll so the dialog stays on screen
-					const bool scroll = count > 12;
+					const bool scroll = !previews && count > 12;
 					if (scroll) {
 						ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(0, 0, 0, 0));
 						ImGui::BeginChild("##frames", ImVec2(0, S(260.0f)), ImGuiChildFlags_None, 0);
 					}
 					Flow flow;
-					for (int i = 0; i < count; ++i) {
+					for (int i = 0; i < count && !previews; ++i) {
 						flow.Next(names[i]);
 						ImGui::PushID(i);
 						if (Theme::Chip(names[i], *m.hangStyle == i)) {
@@ -877,24 +989,26 @@ namespace Ui
 			ImGui::Dummy(ImVec2(0, S(6.0f)));
 			const float  half = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
 			const ImVec2 big(half, S(54.0f));
-			if (Theme::Button("Change picture", big, true)) {
-				act = FrameAction::ChangePicture;
-			}
-			ImGui::SameLine();
-			ImGui::BeginDisabled(!m.canMove);
-			if (Theme::Button("Move", big)) {
-				act = FrameAction::Move;
-			}
-			ImGui::EndDisabled();
-			if (Theme::Button("Take down", big)) {
-				act = FrameAction::TakeDown;
-			}
-			ImGui::SameLine();
+			// Change frame | Change picture
+			// Move         | Take down
 			ImGui::BeginDisabled(m.styleCount < 2);
 			if (Theme::Button("Change frame", big)) {
 				g_choosingFrame = true;
 			}
 			ImGui::EndDisabled();
+			ImGui::SameLine();
+			if (Theme::Button("Change picture", big, true)) {
+				act = FrameAction::ChangePicture;
+			}
+			ImGui::BeginDisabled(!m.canMove);
+			if (Theme::Button("Move", big)) {
+				act = FrameAction::Move;
+			}
+			ImGui::EndDisabled();
+			ImGui::SameLine();
+			if (Theme::Button("Take down", big)) {
+				act = FrameAction::TakeDown;
+			}
 		}
 		Theme::EndWindow();
 		return act;

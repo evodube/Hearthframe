@@ -1834,19 +1834,22 @@ namespace Theme
 		void HallSliderTrack(const ImVec2& a_a, const ImVec2& a_b, float a_t, bool a_hov, bool a_parch)
 		{
 			auto* dl = ImGui::GetWindowDrawList();
-			if (Modern()) {  // slim track, warm fill, white knob with an accent ring
-				const float y = (a_a.y + a_b.y) * 0.5f, x0 = a_a.x + S(10.0f), x1 = a_b.x - S(10.0f);
+			if (Modern()) {  // hairline track, glowing gold fill, slim pill handle that grows on hover
+				const float y = (a_a.y + a_b.y) * 0.5f, x0 = a_a.x + S(4.0f), x1 = a_b.x - S(4.0f);
 				const float t = std::fmin(1.0f, std::fmax(0.0f, a_t));
 				const float gx = x0 + (x1 - x0) * t;
-				dl->AddRectFilled(ImVec2(x0, y - S(2.0f)), ImVec2(x1, y + S(2.0f)), IM_COL32(255, 255, 255, 30), S(2.0f));
-				dl->AddRectFilled(ImVec2(x0, y - S(2.0f)), ImVec2(gx, y + S(2.0f)), L->accent, S(2.0f));
-				const float kr = a_hov ? S(10.0f) : S(8.5f);
-				if (a_hov) {
-					dl->AddCircleFilled(ImVec2(gx, y), kr + S(6.0f), WithAlpha(L->accent, 40), 32);
+				const float h = Ease(ImGui::GetItemID(), a_hov, 16.0f);
+				dl->AddRectFilled(ImVec2(x0, y - S(1.0f)), ImVec2(x1, y + S(1.0f)), IM_COL32(255, 255, 255, 34), S(1.0f));
+				// soft glow under the filled part
+				dl->AddRectFilledMultiColor(ImVec2(x0, y - S(5.0f)), ImVec2(gx, y), WithAlpha(L->accent, 0), WithAlpha(L->accent, static_cast<int>(26 + 30 * h)), WithAlpha(L->accent, static_cast<int>(26 + 30 * h)), WithAlpha(L->accent, 0));
+				dl->AddRectFilledMultiColor(ImVec2(x0, y), ImVec2(gx, y + S(5.0f)), WithAlpha(L->accent, 0), WithAlpha(L->accent, static_cast<int>(26 + 30 * h)), WithAlpha(L->accent, 0), WithAlpha(L->accent, 0));
+				dl->AddRectFilledMultiColor(ImVec2(x0, y - S(1.0f)), ImVec2(gx, y + S(1.0f)), L->accentDim, L->accent, L->accent, L->accentDim);
+				const float hw = S(2.0f + 1.0f * h), hh = S(9.0f + 3.0f * h);
+				if (h > 0.01f) {
+					dl->AddRectFilled(ImVec2(gx - hw - S(5.0f), y - hh - S(5.0f)), ImVec2(gx + hw + S(5.0f), y + hh + S(5.0f)), WithAlpha(L->accent, static_cast<int>(40 * h)), hw + S(5.0f));
 				}
-				dl->AddCircleFilled(ImVec2(gx, y + S(1.5f)), kr, IM_COL32(0, 0, 0, 90), 32);
-				dl->AddCircleFilled(ImVec2(gx, y), kr, IM_COL32(250, 248, 244, 255), 32);
-				dl->AddCircle(ImVec2(gx, y), kr, L->accent, 32, S(2.0f));
+				dl->AddRectFilled(ImVec2(gx - hw, y - hh + S(1.5f)), ImVec2(gx + hw, y + hh + S(1.5f)), IM_COL32(0, 0, 0, 110), hw);
+				dl->AddRectFilled(ImVec2(gx - hw, y - hh), ImVec2(gx + hw, y + hh), Mix(IM_COL32(248, 244, 236, 255), Bright(L->accent, 0.35f), h), hw);
 				return;
 			}
 			const float y = (a_a.y + a_b.y) * 0.5f, x0 = a_a.x + S(13.0f), x1 = a_b.x - S(13.0f);
@@ -1863,9 +1866,23 @@ namespace Theme
 
 		void HallSliderValue(const char* a_text, const ImVec2& a_a, const ImVec2& a_b, float a_valueW, bool a_parch)
 		{
-			if (Modern()) {  // value in plain text, like a game's settings screen
+			if (Modern()) {  // number bright, unit dim ("200" "px")
 				const float vs = S(16.0f);
-				ImGui::GetWindowDrawList()->AddText(LabelFont(), vs, ImVec2(a_b.x + S(14.0f), (a_a.y + a_b.y - vs) * 0.5f), L->text, a_text);
+				std::string num = a_text, unit;
+				size_t      i = 0;
+				while (i < num.size() && (std::isdigit(static_cast<unsigned char>(num[i])) || num[i] == '.' || num[i] == '-' || num[i] == ',')) {
+					++i;
+				}
+				if (i > 0 && i < num.size()) {
+					unit = num.substr(i);
+					num.resize(i);
+				}
+				auto*        dl = ImGui::GetWindowDrawList();
+				const ImVec2 tp(a_b.x + S(16.0f), (a_a.y + a_b.y - vs) * 0.5f);
+				dl->AddText(LabelFont(), vs, tp, L->text, num.c_str());
+				if (!unit.empty()) {
+					dl->AddText(g_body, vs * 0.88f, ImVec2(tp.x + LabelFont()->CalcTextSizeA(vs, FLT_MAX, 0.0f, num.c_str()).x, tp.y + vs * 0.08f), L->textDim, unit.c_str());
+				}
 				ImGui::SameLine(0.0f, 0.0f);
 				ImGui::Dummy(ImVec2(a_valueW, a_b.y - a_a.y));
 				return;

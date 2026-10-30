@@ -38,6 +38,14 @@ namespace Ui
 		bool        stray = false;    // a frame with no record / picture
 	};
 
+	// A rendered picture of a frame with its canvas cut out (so the gallery can show any picture inside it).
+	struct FramePreview
+	{
+		ImTextureID tex = 0;
+		float       w = 0.0f, h = 0.0f;                          // image size in pixels
+		float       hx0 = 0.0f, hy0 = 0.0f, hx1 = 0.0f, hy1 = 0.0f;  // the cut-out (canvas) in those pixels
+	};
+
 	struct GalleryModel
 	{
 		const char*                 folder = "";
@@ -82,6 +90,7 @@ namespace Ui
 		bool                                 openHangDialog = false;  // set to open the dialog (cleared when opened)
 		std::function<int(int, int)>         bestShape;            // (w, h) -> shape
 		std::function<std::pair<int, int>(int)> textureSize;       // shape -> texture size
+		std::function<FramePreview(int, int)>   framePreview;      // (shape, style) -> preview image (tex 0 = none)
 	};
 
 	enum class GalleryAction
