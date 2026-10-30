@@ -1361,11 +1361,11 @@ namespace Ui
 				Gap();
 				Theme::SectionLabel("Look");
 				Row("Thumbnail size");
-				Theme::SliderInt("##thumb", &m.thumbSize, 100, 320, "%d px", ctl);
+				Theme::SliderIntEdit("##thumb", &m.thumbSize, 100, 320, "px", ctl);
 				Row("Interface size", "Size of all Hearthframe windows (Ctrl + wheel also works)");
-				Theme::SliderInt("##ui", &m.uiScalePct, 60, 200, "%d%%", ctl);
+				Theme::SliderIntEdit("##ui", &m.uiScalePct, 60, 200, "%", ctl);
 				Row("Text size");
-				Theme::SliderInt("##font", &m.fontSize, 12, 32, "%d px", ctl);
+				Theme::SliderIntEdit("##font", &m.fontSize, 12, 32, "px", ctl);
 			} else if (g_settingsTab == 1) {
 				Theme::SectionLabel("Hanging");
 				Row("Default frame", "Preselected in the Hang on Wall window (same position in each shape's list)");
@@ -1376,9 +1376,9 @@ namespace Ui
 					Theme::TextItalic("%s", m.defaultStyleOthers);
 				}
 				Row("Hang reach", "How far away the preview follows your aim");
-				Theme::SliderInt("##reach", &m.placeReach, 500, 10000, "%d units", ctl);
+				Theme::SliderIntEdit("##reach", &m.placeReach, 500, 10000, "units", ctl);
 				Row("Examine reach", "How far away F8 / Activate can open a hung picture's menu");
-				Theme::SliderInt("##examine", &m.examineReach, 100, 5000, "%d units", ctl);
+				Theme::SliderIntEdit("##examine", &m.examineReach, 100, 5000, "units", ctl);
 				Row("Resize with", "While hanging a picture: what changes its size and frame.\nArrows: Left / Right = size, Shift + Left / Right = frame.\nWheel: wheel = size, Shift + wheel = frame.\nWith \"Arrows only\" the wheel zooms the camera as usual.");
 				{
 					const char* opts[] = { "Wheel + arrows", "Arrows only", "Wheel only" };

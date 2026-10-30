@@ -123,6 +123,7 @@ namespace Theme
 	bool Button(const char* a_label, const ImVec2& a_size = ImVec2(0, 0), bool a_primary = false);
 	bool Chip(const char* a_label, bool a_selected = false);  // outlined chip for parchment panels
 	bool SliderInt(const char* a_label, int* a_v, int a_min, int a_max, const char* a_format, float a_width);
+	bool SliderIntEdit(const char* a_label, int* a_v, int a_min, int a_max, const char* a_unit, float a_width);  // slider + typed value
 	bool SliderFloat(const char* a_label, float* a_v, float a_min, float a_max, const char* a_format, float a_width);
 
 	// Text helpers

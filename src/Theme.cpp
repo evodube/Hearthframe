@@ -2,7 +2,9 @@
 
 #include <imgui_internal.h>
 
+#include <algorithm>
 #include <cctype>
+#include <cstdlib>
 #include <cfloat>
 #include <cstdarg>
 #include <cstdio>
@@ -1915,9 +1917,9 @@ namespace Theme
 
 		// The invisible ImGui slider for the hall look; a_draw does the actual ImGui call.
 		template <class F>
-		bool HallSlider(float a_width, float& a_valueW, ImVec2& a_a, ImVec2& a_b, bool& a_hov, F a_draw)
+		bool HallSlider(float a_width, float& a_valueW, ImVec2& a_a, ImVec2& a_b, bool& a_hov, F a_draw, float a_fixedValueW = -1.0f)
 		{
-			a_valueW = (std::min)(S(150.0f), a_width * 0.36f);
+			a_valueW = a_fixedValueW >= 0.0f ? a_fixedValueW : (std::min)(S(150.0f), a_width * 0.36f);
 			const float trackW = (std::max)(S(80.0f), a_width - a_valueW);
 			for (ImGuiCol c : { ImGuiCol_FrameBg, ImGuiCol_FrameBgHovered, ImGuiCol_FrameBgActive, ImGuiCol_SliderGrab, ImGuiCol_SliderGrabActive }) {
 				ImGui::PushStyleColor(c, C(0, 0, 0, 0));
@@ -1955,6 +1957,82 @@ namespace Theme
 		ImGui::SetNextItemWidth(a_width);
 		const bool changed = ImGui::SliderInt(a_label, a_v, a_min, a_max, a_format);
 		ImGui::PopStyleVar(2);
+		return changed;
+	}
+
+	// Slider plus a box to type the number into. The typed number is applied on Enter or when the box
+	// loses focus (clamped to the range); Esc keeps the old value.
+	bool SliderIntEdit(const char* a_label, int* a_v, int a_min, int a_max, const char* a_unit, float a_width)
+	{
+		ImGui::PushID(a_label);
+		const bool  hasUnit = a_unit && *a_unit;
+		// Same width to the right of the track as the other sliders' value, whatever the unit, so the
+		// tracks and boxes line up from row to row.
+		const float zone = S(150.0f);
+		const float unitGap = S(10.0f);
+		const float unitW = S(56.0f);
+		const float boxW = zone - S(14.0f) - unitW;
+		bool        changed = false;
+		float       rowH = ImGui::GetFrameHeight();
+		if (L->fx.hall) {
+			const bool parch = g_parchmentDepth > 0 && !InDarkPanel();
+			float      valueW;
+			ImVec2     a, b;
+			bool       hov;
+			changed = HallSlider(a_width, valueW, a, b, hov, [&] { return ImGui::SliderInt("##slider", a_v, a_min, a_max, ""); }, zone);
+			HallSliderTrack(a, b, a_max > a_min ? static_cast<float>(*a_v - a_min) / (a_max - a_min) : 0.0f, hov, parch);
+			rowH = b.y - a.y;
+		} else {
+			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(S(12.0f), S(10.0f)));
+			ImGui::SetNextItemWidth((std::max)(S(80.0f), a_width - zone));
+			changed = ImGui::SliderInt("##slider", a_v, a_min, a_max, "%d");
+			ImGui::PopStyleVar();
+			rowH = ImGui::GetItemRectSize().y;
+		}
+
+		// the number box
+		ImGui::SameLine(0.0f, S(14.0f));
+		const ImGuiID       boxId = ImGui::GetID("##value");
+		static char         buf[16];       // only one box can be edited at a time
+		static ImGuiID      editing = 0;   // the box being edited (its text is the user's, not the value)
+		if (editing != boxId) {
+			std::snprintf(buf, sizeof buf, "%d", *a_v);
+		}
+		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(S(12.0f), (rowH - ImGui::GetFontSize()) * 0.5f));
+		ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, (std::max)(1.0f, S(1.0f)));
+		ImGui::SetNextItemWidth(boxW);
+		ImGui::InputText("##value", buf, sizeof buf, ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_AutoSelectAll);
+		const bool active = ImGui::IsItemActive();
+		if (active) {
+			editing = boxId;
+		}
+		if (ImGui::IsItemHovered() && !active) {
+			ImGui::SetTooltip("Click to type a value (%d - %d)", a_min, a_max);
+		}
+		if (ImGui::IsItemDeactivated() && editing == boxId) {
+			char* end = nullptr;
+			const long n = std::strtol(buf, &end, 10);
+			if (end != buf) {
+				const int v = static_cast<int>((std::clamp)(n, static_cast<long>(a_min), static_cast<long>(a_max)));
+				if (v != *a_v) {
+					*a_v = v;
+					changed = true;
+				}
+			}
+			editing = 0;
+		}
+		if (active || (ImGui::IsItemHovered())) {
+			const ImVec2 a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax();
+			ImGui::GetWindowDrawList()->AddRect(a, b, active ? L->accent : WithAlpha(L->accentDim, 160), ImGui::GetStyle().FrameRounding, 0, S(1.2f));
+		}
+		ImGui::PopStyleVar(2);
+		if (hasUnit) {
+			const ImVec2 a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax();
+			ImGui::GetWindowDrawList()->AddText(ImVec2(b.x + unitGap, (a.y + b.y - ImGui::GetFontSize()) * 0.5f), ImGui::GetColorU32(ImGuiCol_TextDisabled), a_unit);
+			ImGui::SameLine(0.0f, 0.0f);
+			ImGui::ItemSize(ImVec2(unitW, b.y - a.y));
+		}
+		ImGui::PopID();
 		return changed;
 	}
 
