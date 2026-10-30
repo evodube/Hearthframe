@@ -1010,7 +1010,7 @@ namespace Gallery
 						if (keyboard && Wall::IsPlacing() && (code == kDIK_Up || code == kDIK_Down)) {
 							const float held = btn->HeldDuration();
 							if (held >= g_offsetRepeatAt) {
-								const int dir = code == kDIK_Up ? +1 : -1;
+								const int dir = code == kDIK_Up ? -1 : +1;  // Up = towards the wall, Down = away
 								Wall::AdjustOffset(dir * (g_shiftDown ? 8 : 1));
 								g_offsetRepeatAt = held + (g_shiftDown ? 0.10f : 0.05f);
 							}
@@ -1103,10 +1103,10 @@ namespace Gallery
 							if (code == kDIK_Escape || code == cfg.toggleScan) {
 								Wall::CancelPlacement();
 							} else if (code == kDIK_Up) {
-								Wall::AdjustOffset(g_shiftDown ? +8 : +1);  // away from the wall (Shift: 2 units)
+								Wall::AdjustOffset(g_shiftDown ? -8 : -1);  // Up: towards / into the wall (Shift: 2 units)
 								g_offsetRepeatAt = 0.35f;
 							} else if (code == kDIK_Down) {
-								Wall::AdjustOffset(g_shiftDown ? -8 : -1);  // closer / into the wall (Shift: 2 units)
+								Wall::AdjustOffset(g_shiftDown ? +8 : +1);  // Down: away from the wall (Shift: 2 units)
 								g_offsetRepeatAt = 0.35f;
 							} else if ((code == kDIK_Left || code == kDIK_Right) && ArrowsResize()) {
 								const int dir = code == kDIK_Right ? +1 : -1;

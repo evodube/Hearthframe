@@ -1884,13 +1884,13 @@ namespace Theme
 					dl->AddText(g_body, vs * 0.88f, ImVec2(tp.x + LabelFont()->CalcTextSizeA(vs, FLT_MAX, 0.0f, num.c_str()).x, tp.y + vs * 0.08f), L->textDim, unit.c_str());
 				}
 				ImGui::SameLine(0.0f, 0.0f);
-				ImGui::Dummy(ImVec2(a_valueW, a_b.y - a_a.y));
+				ImGui::ItemSize(ImVec2(a_valueW, a_b.y - a_a.y));  // room for the value without a new item: IsItemDeactivatedAfterEdit etc. still see the slider
 				return;
 			}
 			const float vs = S(16.0f);
 			Heading(ImGui::GetWindowDrawList(), g_body, vs, ImVec2(a_b.x + S(12.0f), (a_a.y + a_b.y - vs) * 0.5f), a_parch ? L->ink : L->text, a_text);
 			ImGui::SameLine(0.0f, 0.0f);
-			ImGui::Dummy(ImVec2(a_valueW, a_b.y - a_a.y));
+			ImGui::ItemSize(ImVec2(a_valueW, a_b.y - a_a.y));  // room for the value without a new item: IsItemDeactivatedAfterEdit etc. still see the slider
 		}
 
 		// The invisible ImGui slider for the hall look; a_draw does the actual ImGui call.
