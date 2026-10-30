@@ -230,6 +230,9 @@ namespace Ui
 				} else if (m.pictures.empty() && m.search && m.search[0] && m.totalPictures > 0) {
 					Theme::SectionLabel("No matches");
 					ImGui::TextWrapped("No picture name contains \"%s\".", m.search);
+				} else if (m.pictures.empty() && m.scanning) {
+					Theme::SectionLabel("Loading pictures");
+					ImGui::TextWrapped("Reading %s ...", m.folder);
 				} else if (m.pictures.empty()) {
 					Theme::SectionLabel("No pictures yet");
 					std::string msg = "Put .png, .jpg, .bmp or .tga files in this folder, then press Refresh:\n";

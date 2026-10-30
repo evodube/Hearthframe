@@ -58,6 +58,7 @@ namespace Ui
 		int*                        uiScalePct = nullptr; // in/out, 60..200 (applied on release -> UiScale)
 		std::vector<PlacedPicture>  placed;                // filled after OpenPlaced
 		bool                        placedLoading = false;
+		bool                        scanning = false;      // the picture folder is still being read
 		std::function<void(int)>    requestThumb;          // called for visible pictures without a thumbnail
 
 		// search (pictures holds only the matches; totalPictures counts all)

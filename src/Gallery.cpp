@@ -737,6 +737,19 @@ namespace Gallery
 			return ext == L".png" || ext == L".jpg" || ext == L".jpeg" || ext == L".bmp" || ext == L".tga";
 		}
 
+		// Reading the folder (and the file sizes/dates the thumbnail cache keys need) is disk work: with a
+		// big folder, subfolders or a slow drive it took long enough to freeze the game when the gallery
+		// opened. It runs on its own thread now; the window opens at once and the pictures appear when
+		// the list is ready (TakeScanResult, render thread).
+		struct ScanResult
+		{
+			int                   gen = 0;
+			std::vector<fs::path> paths;  // newest first
+		};
+		std::mutex                g_scanMtx;
+		std::optional<ScanResult> g_scanResult;
+		std::atomic<bool>         g_scanning{ false };
+
 		void Scan()
 		{
 			++g_gen;
@@ -755,45 +768,97 @@ namespace Gallery
 			viewing = -1;
 			ReleaseFull();
 
-			std::error_code ec;
-			fs::create_directories(cfg.folder, ec);
-			ec.clear();
+			g_scanning = true;
+			const int gen = g_gen.load();
+			std::thread([gen, folder = cfg.folder, recursive = cfg.recursive] {
+				std::error_code ec;
+				fs::create_directories(folder, ec);
+				ec.clear();
 
-			std::vector<std::pair<fs::file_time_type, fs::path>> found;
-			auto consider = [&](const fs::directory_entry& e) {
-				std::error_code e2;
-				if (e.is_regular_file(e2) && IsPicture(e.path())) {
-					found.emplace_back(e.last_write_time(e2), e.path());
+				std::vector<std::pair<fs::file_time_type, fs::path>> found;
+				auto consider = [&](const fs::directory_entry& e) {
+					std::error_code e2;
+					if (e.is_regular_file(e2) && IsPicture(e.path())) {
+						found.emplace_back(e.last_write_time(e2), e.path());
+					}
+				};
+				if (recursive) {
+					for (fs::recursive_directory_iterator it(folder, fs::directory_options::skip_permission_denied, ec), end; !ec && it != end; it.increment(ec)) {
+						consider(*it);
+					}
+				} else {
+					for (fs::directory_iterator it(folder, fs::directory_options::skip_permission_denied, ec), end; !ec && it != end; it.increment(ec)) {
+						consider(*it);
+					}
 				}
-			};
-			if (cfg.recursive) {
-				for (fs::recursive_directory_iterator it(cfg.folder, fs::directory_options::skip_permission_denied, ec), end; !ec && it != end; it.increment(ec)) {
-					consider(*it);
+				std::sort(found.begin(), found.end(), [](const auto& a, const auto& b) { return a.first > b.first; });  // newest first
+
+				ScanResult r;
+				r.gen = gen;
+				r.paths.reserve(found.size());
+				std::unordered_set<std::string> keep;
+				for (auto& [time, path] : found) {
+					keep.insert(CacheKey(path));
+					r.paths.push_back(std::move(path));
 				}
-			} else {
-				for (fs::directory_iterator it(cfg.folder, fs::directory_options::skip_permission_denied, ec), end; !ec && it != end; it.increment(ec)) {
-					consider(*it);
+				{
+					std::lock_guard lk(g_scanMtx);
+					g_scanResult = std::move(r);
 				}
+				CleanCache(std::move(keep));
+			}).detach();
+		}
+
+		// Render thread, every frame while open: turns a finished folder read into gallery items.
+		void TakeScanResult()
+		{
+			std::optional<ScanResult> r;
+			{
+				std::lock_guard lk(g_scanMtx);
+				r.swap(g_scanResult);
 			}
-
-			std::sort(found.begin(), found.end(), [](const auto& a, const auto& b) { return a.first > b.first; });  // newest first
-			items.reserve(found.size());
-			for (auto& [time, path] : found) {
+			if (!r || r->gen != g_gen.load()) {
+				return;  // nothing new, or an older read (Refresh pressed again meanwhile)
+			}
+			items.reserve(r->paths.size());
+			for (auto& path : r->paths) {
 				Item it;
-				it.path = path;
-				it.name = ToUtf8(path.filename());
-				Job info{ g_gen.load(), static_cast<int>(items.size()), path, 0, false };  // size only, for the folder tabs
+				it.path = std::move(path);
+				it.name = ToUtf8(it.path.filename());
+				Job info{ g_gen.load(), static_cast<int>(items.size()), it.path, 0, false };  // size only, for the folder tabs
 				info.info = true;
 				Submit(std::move(info));
 				items.push_back(std::move(it));
 			}
+			g_scanning = false;
 			spdlog::info("Scanned {} -> {} picture(s)", ToUtf8(cfg.folder), items.size());
+		}
+
+		// Closing: give the video memory back to the game while playing. The next open reads the folder
+		// again and the thumbnails come back from the disk cache, so nothing is lost by freeing them.
+		void ReleaseGalleryTextures()
+		{
 			{
-				std::unordered_set<std::string> keep;
-				for (const auto& it : items) {
-					keep.insert(CacheKey(it.path));
+				std::lock_guard lk(S.mtx);
+				S.jobs.clear();  // the decode threads go idle too
+				S.results.clear();
+			}
+			int freed = 0;
+			for (auto& it : items) {
+				if (it.srv) {
+					it.srv->Release();
+					it.srv = nullptr;
+					++freed;
 				}
-				CleanCache(std::move(keep));
+				if (it.state != State::Failed) {
+					it.state = State::None;
+				}
+				it.loadedDim = 0;
+			}
+			viewing = -1;
+			ReleaseFull();
+			if (freed) {
+				spdlog::info("Gallery closed: freed {} thumbnail(s) from video memory", freed);
 			}
 		}
 
@@ -914,6 +979,7 @@ namespace Gallery
 				}
 				g_placedThumbs.clear();
 				g_placed.clear();
+				ReleaseGalleryTextures();
 			}
 
 			using UEFlag = RE::ControlMap::UEFlag;
@@ -2035,6 +2101,7 @@ namespace Gallery
 				g_placedLoading = false;
 			}
 			gm.placedLoading = g_placedLoading;
+			gm.scanning = g_scanning;
 			std::vector<std::string> frameNames;  // keep the strings alive for this frame
 			frameNames.reserve(g_placed.size());
 			for (const auto& pi : g_placed) {
@@ -2505,6 +2572,7 @@ namespace Gallery
 			g_needScan = false;
 			Scan();
 		}
+		TakeScanResult();
 		if (!infoLine) {
 			float dx = 0.0f, dy = 0.0f;
 			const bool direct = g_open && DirectMousePoll(dx, dy);
