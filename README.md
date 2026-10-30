@@ -10,9 +10,9 @@ Press **F8**, browse your screenshots or artwork, pick one, and hang it in your 
 
 | Requirement | Notes |
 |---|---|
-| Skyrim Special Edition | Tested on **1.5.97**. Built for SE and AE (AE untested). VR is not supported. |
-| [SKSE64](https://skse.silverlock.org/) | Built and tested with SKSE 2.0.20 |
-| [Address Library for SKSE Plugins](https://www.nexusmods.com/skyrimspecialedition/mods/32444) | Use the version that matches your game |
+| Skyrim Special Edition / Anniversary Edition | **1.5.97** and **1.6.317 or newer** (Steam), **1.6.659 / 1.6.1179** (GOG). One DLL covers all of them. VR is not supported. |
+| [SKSE64](https://skse.silverlock.org/) | The build for your game version (tested with SKSE 2.0.20 on 1.5.97) |
+| [Address Library for SKSE Plugins](https://www.nexusmods.com/skyrimspecialedition/mods/32444) | The **SE** file for 1.5.97, the **AE** file for 1.6.x (Steam or GOG) |
 | Windows 10 / 11 | Picture decoding uses the built-in Windows Imaging Component |
 
 No other mods are needed: no SkyUI, MCM or other masters beyond `Skyrim.esm`. The plugin is **ESL-flagged**.

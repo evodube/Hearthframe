@@ -53,7 +53,7 @@ def main():
                    sub("MODL", zstr(f"Hearthframe\\{stem}.nif")) + sub("RNAM", zstr("Examine")))
         acti += record("ACTI", MASTER_PREFIX | (FIRST_ID + i), payload)
 
-    hedr = struct.pack("<fiI", 1.71, len(frames) + 1, FIRST_ID + len(frames))
+    hedr = struct.pack("<fiI", 1.70, len(frames) + 1, FIRST_ID + len(frames))
     tes4 = (sub("HEDR", hedr) + sub("CNAM", zstr("Hearthframe")) +
             sub("SNAM", zstr("Hearthframe - picture viewer and wall frames (needs Hearthframe.dll and its Meshes/Textures folders)")) +
             sub("MAST", zstr("Skyrim.esm")) + sub("DATA", b"\0" * 8))
