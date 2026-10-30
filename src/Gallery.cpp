@@ -998,7 +998,28 @@ namespace Gallery
 		{
 			const UINT sc = (a_dik & 0x7F) | ((a_dik & 0x80) ? 0xE000u : 0u);
 			HKL        layout = ::GetKeyboardLayout(::GetWindowThreadProcessId(::GetForegroundWindow(), nullptr));
-			const UINT vk = ::MapVirtualKeyExW(sc, MAPVK_VSC_TO_VK_EX, layout);
+			// Number pad with Num Lock on: a scan code alone maps to Home / Up / PgUp..., so the digits
+			// (and the decimal key, which follows the keyboard layout) are picked here.
+			UINT vk = 0;
+			if (::GetKeyState(VK_NUMLOCK) & 1) {
+				switch (a_dik) {
+				case 0x47: vk = VK_NUMPAD7; break;
+				case 0x48: vk = VK_NUMPAD8; break;
+				case 0x49: vk = VK_NUMPAD9; break;
+				case 0x4B: vk = VK_NUMPAD4; break;
+				case 0x4C: vk = VK_NUMPAD5; break;
+				case 0x4D: vk = VK_NUMPAD6; break;
+				case 0x4F: vk = VK_NUMPAD1; break;
+				case 0x50: vk = VK_NUMPAD2; break;
+				case 0x51: vk = VK_NUMPAD3; break;
+				case 0x52: vk = VK_NUMPAD0; break;
+				case 0x53: vk = VK_DECIMAL; break;
+				default: break;
+				}
+			}
+			if (vk == 0) {
+				vk = ::MapVirtualKeyExW(sc, MAPVK_VSC_TO_VK_EX, layout);
+			}
 			if (vk == 0) {
 				return 0;
 			}
@@ -1022,6 +1043,16 @@ namespace Gallery
 
 		ImGuiKey KeyToImGui(std::uint32_t a_dik)
 		{
+			if (!(::GetKeyState(VK_NUMLOCK) & 1)) {  // Num Lock off: the number pad moves the text cursor
+				switch (a_dik) {
+				case 0x4B: return ImGuiKey_LeftArrow;
+				case 0x4D: return ImGuiKey_RightArrow;
+				case 0x47: return ImGuiKey_Home;
+				case 0x4F: return ImGuiKey_End;
+				case 0x53: return ImGuiKey_Delete;
+				default: break;
+				}
+			}
 			switch (a_dik) {
 			case kDIK_Escape:
 				return ImGuiKey_Escape;
