@@ -1528,6 +1528,7 @@ namespace Gallery
 			fm.canvasAspect = Frames::kShapes[Frames::ClampShape(f.shape)].canvasW / Frames::kShapes[Frames::ClampShape(f.shape)].canvasH;
 			fm.styles = Frames::StyleNames(f.shape);
 			fm.styleCount = Frames::StyleCount(f.shape);
+			fm.framePreview = [shape = f.shape](int style) { return FramePreviewFor(shape, style); };
 			fm.currentStyle = f.style;
 			int chosen = f.style;
 			fm.chosenStyle = &chosen;
@@ -2322,7 +2323,17 @@ namespace Gallery
 				"Click: hang   \xC2\xB7   Left/Right: size   \xC2\xB7   Shift+Left/Right: frame   \xC2\xB7   Up/Down: distance   \xC2\xB7   Right-click / Esc: cancel",
 				"Click: hang   \xC2\xB7   Wheel: size   \xC2\xB7   Shift+Wheel: frame   \xC2\xB7   Up/Down: distance   \xC2\xB7   Right-click / Esc: cancel",
 			};
-			Ui::DrawPlacementInfo(values.c_str(), hints[std::clamp(Wall::GetSettings().resizeWith, 0, 2)]);
+			if (Theme::IsModern()) {
+				Ui::PlacementHud hud;
+				hud.frame = placing.frame.c_str();
+				hud.shape = placing.shape.c_str();
+				hud.sizePct = static_cast<int>(std::lround(placing.scale * 100.0f));
+				hud.distance = placing.distance;
+				hud.resizeWith = std::clamp(Wall::GetSettings().resizeWith, 0, 2);
+				Ui::DrawPlacementHud(hud);
+			} else {
+				Ui::DrawPlacementInfo(values.c_str(), hints[std::clamp(Wall::GetSettings().resizeWith, 0, 2)]);
+			}
 		} else {
 			DrawUI();
 		}

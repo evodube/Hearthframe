@@ -143,6 +143,7 @@ namespace Ui
 		bool        previewLoading = false;
 		bool        previewMissing = false;
 		float       canvasAspect = 1.0f;  // width / height of the frame's picture area
+		std::function<FramePreview(int)> framePreview;  // style -> preview image of that frame (tex 0 = none)
 	};
 
 	enum class FrameAction
@@ -213,4 +214,14 @@ namespace Ui
 
 	// Small line at the bottom of the screen while hanging a picture (no window, no input).
 	void DrawPlacementInfo(const char* a_values, const char* a_keys);
+	// Modern hanging HUD: frame and shape, size and distance, and the keys as key caps.
+	struct PlacementHud
+	{
+		const char* frame = "";
+		const char* shape = "";
+		int         sizePct = 100;
+		float       distance = 0.0f;
+		int         resizeWith = 0;  // 0 wheel + arrows, 1 arrows only, 2 wheel only
+	};
+	void DrawPlacementHud(const PlacementHud& a_hud);
 }

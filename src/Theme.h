@@ -106,6 +106,8 @@ namespace Theme
 	// Row of key hints ("[Esc] Close") along the bottom of a window; FooterHeight() = room to leave for it (0 = look has none).
 	float FooterHeight();
 	void  KeyHints(const char* const* a_keys, const char* const* a_labels, int a_count);
+	float KeyHintsAt(ImDrawList* a_dl, const ImVec2& a_pos, const char* const* a_keys, const char* const* a_labels, int a_count, bool a_draw = true);
+	bool  IsModern();  // the Modern look is active
 	// Settings description pane (modern look): rows report the hovered label/help, the pane shows it.
 	bool  DescriptionPane();
 	void  SetHoveredHelp(const char* a_label, const char* a_help);

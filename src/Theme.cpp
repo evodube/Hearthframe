@@ -2336,43 +2336,67 @@ namespace Theme
 	// ------------------------------------------------------------------ modern extras
 	float FooterHeight() { return Modern() ? S(52.0f) : 0.0f; }
 
+	// Key caps: "Ctrl+Wheel" = two caps joined by +, "Wheel/Left/Right" = alternatives split by /,
+	// Up/Down/Left/Right draw an arrow. Returns the width; a_draw false only measures.
+	float KeyHintsAt(ImDrawList* a_dl, const ImVec2& a_pos, const char* const* a_keys, const char* const* a_labels, int a_count, bool a_draw)
+	{
+		const float ks = S(12.5f), ls = S(14.0f), kh = S(26.0f);
+		float       x = a_pos.x;
+		for (int i = 0; i < a_count; ++i) {
+			const std::string keys = a_keys[i];
+			size_t            start = 0;
+			while (true) {
+				const size_t      sep = keys.find_first_of("+/", start);
+				const std::string k = keys.substr(start, sep == std::string::npos ? std::string::npos : sep - start);
+				const int         arrow = k == "Up" ? 0 : k == "Down" ? 1 : k == "Left" ? 2 : k == "Right" ? 3 : -1;
+				const ImVec2      kt = LabelFont()->CalcTextSizeA(ks, FLT_MAX, 0.0f, k.c_str());
+				const float       kw = arrow >= 0 ? kh : (std::max)(kh, kt.x + S(16.0f));
+				if (a_draw) {
+					const ImVec2 ka(x, a_pos.y), kb(x + kw, a_pos.y + kh);
+					a_dl->AddRectFilled(ka + ImVec2(0, S(2)), kb + ImVec2(0, S(2)), IM_COL32(0, 0, 0, 90), S(5.0f));
+					a_dl->AddRectFilled(ka, kb, IM_COL32(255, 255, 255, 18), S(5.0f));
+					a_dl->AddRect(ka, kb, IM_COL32(255, 255, 255, 60), S(5.0f), 0, S(1.0f));
+					if (arrow >= 0) {
+						const ImVec2 c = (ka + kb) * 0.5f;
+						const float  r = S(5.0f);
+						const ImVec2 d[4] = { ImVec2(0, -1), ImVec2(0, 1), ImVec2(-1, 0), ImVec2(1, 0) };
+						const ImVec2 n(-d[arrow].y, d[arrow].x);
+						a_dl->AddTriangleFilled(c + d[arrow] * r, c - d[arrow] * r * 0.6f + n * r * 0.9f, c - d[arrow] * r * 0.6f - n * r * 0.9f, L->text);
+					} else {
+						a_dl->AddText(LabelFont(), ks, ImVec2(x + (kw - kt.x) * 0.5f, a_pos.y + (kh - kt.y) * 0.5f), L->text, k.c_str());
+					}
+				}
+				x += kw;
+				if (sep == std::string::npos) {
+					break;
+				}
+				const char sepText[2] = { keys[sep], 0 };
+				if (a_draw) {
+					a_dl->AddText(g_body, ls, ImVec2(x + S(4.0f), a_pos.y + (kh - ls) * 0.5f - S(1.0f)), L->textDim, sepText);
+				}
+				x += S(16.0f);
+				start = sep + 1;
+			}
+			const ImVec2 lt = g_body->CalcTextSizeA(ls, FLT_MAX, 0.0f, a_labels[i]);
+			if (a_draw) {
+				a_dl->AddText(g_body, ls, ImVec2(x + S(10.0f), a_pos.y + (kh - lt.y) * 0.5f), L->textDim, a_labels[i]);
+			}
+			x += S(10.0f) + lt.x + (i + 1 < a_count ? S(30.0f) : 0.0f);
+		}
+		return x - a_pos.x;
+	}
+
 	void KeyHints(const char* const* a_keys, const char* const* a_labels, int a_count)
 	{
 		if (!Modern()) {
 			return;
 		}
-		auto*        dl = ImGui::GetWindowDrawList();
 		const ImVec2 p = ImGui::GetCursorScreenPos() + ImVec2(0, S(14.0f));
-		const float  ks = S(12.5f), ls = S(14.0f), kh = S(26.0f);
-		float        x = p.x;
-		for (int i = 0; i < a_count; ++i) {
-			// the key cap(s): "Ctrl+Wheel" -> two caps joined by +
-			std::string keys = a_keys[i];
-			size_t      start = 0;
-			while (true) {
-				const size_t      plus = keys.find('+', start);
-				const std::string k = keys.substr(start, plus == std::string::npos ? std::string::npos : plus - start);
-				const float       kw = (std::max)(kh, LabelFont()->CalcTextSizeA(ks, FLT_MAX, 0.0f, k.c_str()).x + S(16.0f));
-				const ImVec2      ka(x, p.y), kb(x + kw, p.y + kh);
-				dl->AddRectFilled(ka + ImVec2(0, S(2)), kb + ImVec2(0, S(2)), IM_COL32(0, 0, 0, 90), S(5.0f));
-				dl->AddRectFilled(ka, kb, IM_COL32(255, 255, 255, 18), S(5.0f));
-				dl->AddRect(ka, kb, IM_COL32(255, 255, 255, 60), S(5.0f), 0, S(1.0f));
-				const ImVec2 kt = LabelFont()->CalcTextSizeA(ks, FLT_MAX, 0.0f, k.c_str());
-				dl->AddText(LabelFont(), ks, ImVec2(x + (kw - kt.x) * 0.5f, p.y + (kh - kt.y) * 0.5f), L->text, k.c_str());
-				x += kw;
-				if (plus == std::string::npos) {
-					break;
-				}
-				dl->AddText(g_body, ls, ImVec2(x + S(4.0f), p.y + (kh - ls) * 0.5f - S(1.0f)), L->textDim, "+");
-				x += S(16.0f);
-				start = plus + 1;
-			}
-			const ImVec2 lt = g_body->CalcTextSizeA(ls, FLT_MAX, 0.0f, a_labels[i]);
-			dl->AddText(g_body, ls, ImVec2(x + S(10.0f), p.y + (kh - lt.y) * 0.5f), L->textDim, a_labels[i]);
-			x += S(10.0f) + lt.x + S(30.0f);
-		}
-		ImGui::Dummy(ImVec2(x - p.x, kh + S(14.0f)));
+		const float  w = KeyHintsAt(ImGui::GetWindowDrawList(), p, a_keys, a_labels, a_count, true);
+		ImGui::Dummy(ImVec2(w, S(26.0f) + S(14.0f)));
 	}
+
+	bool IsModern() { return Modern(); }
 
 	bool DescriptionPane() { return Modern(); }
 	void SetHoveredHelp(const char* a_label, const char* a_help)

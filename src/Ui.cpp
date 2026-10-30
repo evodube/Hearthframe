@@ -501,7 +501,87 @@ namespace Ui
 			if (Theme::Header("Change Frame", sub.c_str())) {
 				g_choosingFrame = false;
 			}
-			if (Theme::BeginParchment("##change", ImVec2(0, 0), false, true)) {
+			const bool strip = m.framePreview && m.framePreview(0).tex;
+			if (strip && Theme::BeginParchment("##change", ImVec2(0, 0), false, true)) {
+				// one row of frames, each showing this picture; the wheel scrolls it sideways
+				Picture pic;
+				pic.thumb = m.preview;
+				pic.thumbW = m.previewW;
+				pic.thumbH = m.previewH;
+				const float tw = S(168.0f), th = tw * 0.80f, rowH = th + S(34.0f);
+				ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(0, 0, 0, 0));
+				ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, S(10.0f));
+				ImGui::BeginChild("##strip", ImVec2(0, rowH + S(16.0f)), ImGuiChildFlags_None, ImGuiWindowFlags_HorizontalScrollbar);
+				if (ImGui::IsWindowHovered() && ImGui::GetIO().MouseWheel != 0.0f) {
+					ImGui::SetScrollX(ImGui::GetScrollX() - ImGui::GetIO().MouseWheel * (tw + S(14.0f)));
+				}
+				static int scrolledTo = -1;  // bring the current frame into view when the strip opens
+				if (scrolledTo != m.currentStyle) {
+					ImGui::SetScrollX((std::max)(0.0f, m.currentStyle * (tw + S(14.0f)) - S(300.0f)));
+					scrolledTo = m.currentStyle;
+				}
+				auto* dl = ImGui::GetWindowDrawList();
+				ImGui::BeginDisabled(m.changing);
+				for (int i = 0; i < m.styleCount; ++i) {
+					if (i > 0) {
+						ImGui::SameLine(0.0f, S(14.0f));
+					}
+					ImGui::PushID(i);
+					const ImVec2 p = ImGui::GetCursorScreenPos();
+					const bool   cur = i == m.currentStyle;
+					if (ImGui::InvisibleButton("##tile", ImVec2(tw, rowH)) && !cur) {
+						if (m.chosenStyle) {
+							*m.chosenStyle = i;
+						}
+						act = FrameAction::ChangeFrame;
+					}
+					const bool hov = ImGui::IsItemHovered();
+					if (ImGui::IsRectVisible(p, p + ImVec2(tw, rowH))) {
+						const ImVec2 a = p, b = p + ImVec2(tw, th);
+						dl->AddRectFilled(a, b, cur ? IM_COL32(255, 230, 180, 22) : (hov ? IM_COL32(255, 255, 255, 14) : IM_COL32(255, 255, 255, 6)), S(8.0f));
+						const FramePreview f = m.framePreview(i);
+						if (f.tex) {
+							FramedPicture(dl, f, pic, a + ImVec2(S(12.0f), S(12.0f)), b - ImVec2(S(12.0f), S(12.0f)));
+						}
+						if (cur) {
+							dl->AddRect(a - ImVec2(S(3), S(3)), b + ImVec2(S(3), S(3)), (Theme::Gold() & 0x00FFFFFF) | (60u << 24), S(10.0f), 0, S(4.0f));
+						}
+						dl->AddRect(a, b, cur ? Theme::Gold() : (hov ? (Theme::Gold() & 0x00FFFFFF) | (150u << 24) : IM_COL32(255, 255, 255, 20)), S(8.0f), 0, cur ? S(1.6f) : S(1.0f));
+						if (cur) {  // "current" badge
+							const char*  tag = "CURRENT";
+							ImFont*      f2 = Theme::Body();
+							const float  fs = f2->FontSize * 0.62f;
+							const ImVec2 ts = f2->CalcTextSizeA(fs, FLT_MAX, 0.0f, tag);
+							const ImVec2 ba(a.x + S(8.0f), a.y + S(8.0f)), bb = ba + ts + ImVec2(S(12.0f), S(6.0f));
+							dl->AddRectFilled(ba, bb, Theme::Gold(), S(4.0f));
+							dl->AddText(f2, fs, ba + ImVec2(S(6.0f), S(3.0f)), IM_COL32(26, 21, 14, 255), tag);
+						}
+						std::string nm = m.styles[i];
+						ImFont*     font = Theme::Body();
+						const float fs = font->FontSize * 0.82f;
+						if (font->CalcTextSizeA(fs, FLT_MAX, 0.0f, nm.c_str()).x > tw) {
+							while (nm.size() > 1 && font->CalcTextSizeA(fs, FLT_MAX, 0.0f, (nm + "...").c_str()).x > tw) {
+								nm.pop_back();
+							}
+							nm += "...";
+						}
+						const ImVec2 ns = font->CalcTextSizeA(fs, FLT_MAX, 0.0f, nm.c_str());
+						dl->AddText(font, fs, ImVec2(a.x + (tw - ns.x) * 0.5f, b.y + S(8.0f)), cur ? Theme::Gold() : (hov ? Theme::Cream() : Theme::Muted()), nm.c_str());
+						if (hov && nm != m.styles[i]) {
+							ImGui::SetTooltip("%s", m.styles[i]);
+						}
+					}
+					ImGui::PopID();
+				}
+				ImGui::EndDisabled();
+				ImGui::EndChild();
+				ImGui::PopStyleVar();
+				ImGui::PopStyleColor();
+			}
+			if (strip) {
+				Theme::EndParchment();
+			}
+			if (!strip && Theme::BeginParchment("##change", ImVec2(0, 0), false, true)) {
 				Theme::SectionLabel(m.style);
 				const bool scroll = m.styleCount > 12;
 				if (scroll) {
@@ -527,7 +607,9 @@ namespace Ui
 					ImGui::PopStyleColor();
 				}
 			}
-			Theme::EndParchment();
+			if (!strip) {
+				Theme::EndParchment();
+			}
 			ImGui::Dummy(ImVec2(0, S(6.0f)));
 			if (Theme::Button("Done", ImVec2(ImGui::GetContentRegionAvail().x, S(52.0f)), true)) {
 				g_choosingFrame = false;
@@ -1032,6 +1114,68 @@ namespace Ui
 		dl->AddRect(a, b, Theme::GoldDim(), S(4.0f), 0, S(1.2f));
 		dl->AddText(body, s1, ImVec2(a.x + (w - t1.x) * 0.5f, a.y + padY), Theme::Cream(), a_values);
 		dl->AddText(ital, s2, ImVec2(a.x + (w - t2.x) * 0.5f, a.y + padY + t1.y + gap), Theme::Muted(), a_keys);
+	}
+
+	void DrawPlacementHud(const PlacementHud& a_hud)
+	{
+		if (!Theme::IsModern()) {
+			char values[256];
+			std::snprintf(values, sizeof values, "%s  %s  %s  %s  Size %d%%  %s  Distance %+.2f", a_hud.frame, kDot, a_hud.shape, kDot, a_hud.sizePct, kDot, a_hud.distance);
+			DrawPlacementInfo(values, "Click: hang   \xC2\xB7   Wheel: size   \xC2\xB7   Shift+Wheel: frame   \xC2\xB7   Up/Down: distance   \xC2\xB7   Right-click / Esc: cancel");
+			return;
+		}
+		// smoked-glass bar: frame + shape on the left, size and distance as valueSz numbers, key caps below
+		auto*       dl = ImGui::GetForegroundDrawList();
+		const auto& io = ImGui::GetIO();
+		ImFont*     body = Theme::Body();
+		static const char* keysAll[] = { "LMB", "Wheel/Left/Right", "Shift+Wheel", "Up/Down", "RMB/Esc" };
+		static const char* keysArrows[] = { "LMB", "Left/Right", "Shift+Left/Right", "Up/Down", "RMB/Esc" };
+		static const char* keysWheel[] = { "LMB", "Wheel", "Shift+Wheel", "Up/Down", "RMB/Esc" };
+		static const char* labels[] = { "Hang", "Size", "Frame", "Distance", "Cancel" };
+		const char* const* keys = a_hud.resizeWith == 1 ? keysArrows : a_hud.resizeWith == 2 ? keysWheel : keysAll;
+		const float        keysW = Theme::KeyHintsAt(dl, ImVec2(0, 0), keys, labels, 5, false);
+		const float        padX = S(26.0f), padY = S(18.0f);
+		const float        w = (std::max)(keysW, S(560.0f)) + padX * 2, h = S(128.0f);
+		const ImVec2       a(std::round((io.DisplaySize.x - w) * 0.5f), std::round(io.DisplaySize.y - h - S(60.0f)));
+		const ImVec2       b = a + ImVec2(w, h);
+		const float        r = S(12.0f);
+		for (int i = 6; i >= 1; --i) {  // soft shadow
+			dl->AddRectFilled(a + ImVec2(0, S(6)) - ImVec2(S(3.0f * i), S(3.0f * i)), b + ImVec2(0, S(6)) + ImVec2(S(3.0f * i), S(3.0f * i)), IM_COL32(0, 0, 0, 14), r + S(3.0f * i));
+		}
+		dl->AddRectFilled(a, b, IM_COL32(14, 14, 16, 225), r);
+		dl->AddRect(a, b, IM_COL32(255, 255, 255, 26), r, 0, S(1.0f));
+		const float  mid = (a.x + b.x) * 0.5f, half = w * 0.3f;
+		const ImU32  acc = Theme::Gold(), clear = Theme::Gold() & 0x00FFFFFF;
+		dl->AddRectFilledMultiColor(ImVec2(mid - half, a.y), ImVec2(mid, a.y + S(1.5f)), clear, acc, acc, clear);
+		dl->AddRectFilledMultiColor(ImVec2(mid, a.y), ImVec2(mid + half, a.y + S(1.5f)), acc, clear, clear, acc);
+		// left: what is being hung
+		const float  valueSz = body->FontSize * 1.25f, labelSz = body->FontSize * 0.78f;
+		const ImVec2 lp(a.x + padX, a.y + padY);
+		dl->AddText(body, labelSz, lp, Theme::Gold(), "HANGING");
+		dl->AddText(body, valueSz, lp + ImVec2(0, labelSz + S(4.0f)), Theme::Cream(), a_hud.frame);
+		const float fw = body->CalcTextSizeA(valueSz, FLT_MAX, 0.0f, a_hud.frame).x;
+		dl->AddText(body, body->FontSize * 0.9f, lp + ImVec2(fw + S(12.0f), labelSz + S(4.0f) + (valueSz - body->FontSize * 0.9f) * 0.75f), Theme::Muted(), a_hud.shape);
+		// right: size and distance
+		char sz[32], ds[32];
+		std::snprintf(sz, sizeof sz, "%d%%", a_hud.sizePct);
+		std::snprintf(ds, sizeof ds, "%+.2f", a_hud.distance);
+		float x = b.x - padX;
+		for (int k = 1; k >= 0; --k) {
+			const char*  v = k == 0 ? sz : ds;
+			const char*  l = k == 0 ? "SIZE" : "DISTANCE";
+			const float  vw = body->CalcTextSizeA(valueSz, FLT_MAX, 0.0f, v).x, lw = body->CalcTextSizeA(labelSz, FLT_MAX, 0.0f, l).x;
+			const float  cw = (std::max)(vw, lw);
+			dl->AddText(body, labelSz, ImVec2(x - lw, a.y + padY), Theme::Muted(), l);
+			dl->AddText(body, valueSz, ImVec2(x - vw, a.y + padY + labelSz + S(4.0f)), Theme::Cream(), v);
+			x -= cw + S(30.0f);
+			if (k == 1) {
+				dl->AddLine(ImVec2(x + S(15.0f), a.y + padY + S(2.0f)), ImVec2(x + S(15.0f), a.y + padY + labelSz + valueSz), IM_COL32(255, 255, 255, 26), S(1.0f));
+			}
+		}
+		// hairline + key caps
+		const float ly = a.y + padY + labelSz + valueSz + S(14.0f);
+		dl->AddLine(ImVec2(a.x + padX, ly), ImVec2(b.x - padX, ly), IM_COL32(255, 255, 255, 16), S(1.0f));
+		Theme::KeyHintsAt(dl, ImVec2(mid - keysW * 0.5f, ly + S(12.0f)), keys, labels, 5, true);
 	}
 
 	// ------------------------------------------------------------------ settings
