@@ -84,6 +84,22 @@ namespace Theme
 	// ---- parchment panel (child window); text inside is dark ink
 	// a_scroll: scrolls, with the wood-and-brass scroll bar; a_alwaysBar: the bar shows even when everything fits
 	bool BeginParchment(const char* a_id, const ImVec2& a_size, bool a_scroll = false, bool a_autoHeight = false, bool a_alwaysBar = false);
+	// The next BeginParchment is a dark gallery wall (light text) - used by looks whose picture cards bring their own mat.
+	void NextPanelDark();
+	// 0 = classic cards (the gallery draws them), 1 matted in wood with the name on the mat, 2 gold corners + name plaque,
+	// 3 gold-lined tile with the name underneath
+	int  CardStyle();
+	bool PlaqueTabs();  // tabs are plaques with icons (Tab) instead of folder tabs
+	// Plaque tab (CardStyle looks). a_icon: 0 grid, 1 landscape, 2 square, 3 portrait, 4 picture, 5 frame, 6 bell, -1 none
+	bool Tab(const char* a_label, bool a_selected, float a_h, int a_icon);
+	// On/off switch. Returns true when it was flipped.
+	bool Toggle(const char* a_id, bool* a_v);
+	bool ToggleSwitches();  // the look uses switches instead of On / Off chips
+	float ButtonLabelWidth(const char* a_label);  // width of a button/chip label as the look writes it
+	// Height of a picture card for a cell a_cell wide (CardStyle 1-3), and the card itself.
+	float PictureCardHeight(float a_cell);
+	void  PictureCard(ImDrawList* a_dl, const ImVec2& a_pos, float a_cell, ImTextureID a_tex, float a_w, float a_h,
+		 const char* a_name, const char* a_placeholder, bool a_hovered);
 	void EndParchment();
 	void SectionLabel(const char* a_text);  // small-caps label with a rule under it (inside parchment)
 
@@ -91,6 +107,7 @@ namespace Theme
 	bool Button(const char* a_label, const ImVec2& a_size = ImVec2(0, 0), bool a_primary = false);
 	bool Chip(const char* a_label, bool a_selected = false);  // outlined chip for parchment panels
 	bool SliderInt(const char* a_label, int* a_v, int a_min, int a_max, const char* a_format, float a_width);
+	bool SliderFloat(const char* a_label, float* a_v, float a_min, float a_max, const char* a_format, float a_width);
 
 	// Text helpers
 	void SmallCaps(ImDrawList* a_dl, ImFont* a_font, float a_size, const ImVec2& a_pos, ImU32 a_col, const char* a_text);

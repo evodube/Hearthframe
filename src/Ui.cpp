@@ -34,7 +34,7 @@ namespace Ui
 			void Next(const char* a_label)
 			{
 				const auto& st = ImGui::GetStyle();
-				const float w = ImGui::CalcTextSize(a_label).x + S(14.0f) * 2.0f;
+				const float w = Theme::ButtonLabelWidth(a_label) + S(14.0f) * 2.0f;
 				if (!first) {
 					ImGui::SameLine();
 					if (ImGui::GetCursorScreenPos().x + w > right) {
@@ -53,8 +53,11 @@ namespace Ui
 		}
 
 		// A file-folder tab: drawn folder icon + label. The selected one is parchment-coloured, joining the panel.
-		bool FolderTab(const char* a_label, bool a_selected, float a_h)
+		bool FolderTab(const char* a_label, bool a_selected, float a_h, int a_icon = -1)
 		{
+			if (Theme::PlaqueTabs()) {
+				return Theme::Tab(a_label, a_selected, a_h, a_icon);
+			}
 			const ImVec2 ts = ImGui::CalcTextSize(a_label);
 			const float  icon = S(22.0f), padX = S(16.0f);
 			const ImVec2 size(padX * 2 + icon + S(10.0f) + ts.x, a_h);
@@ -148,11 +151,18 @@ namespace Ui
 						ImGui::SameLine(0.0f, S(8.0f));
 					}
 					ImGui::PushID(500 + f);
-					if (FolderTab(label, *m.shapeFolder == f, tabH)) {
+					if (FolderTab(label, *m.shapeFolder == f, tabH, f)) {
 						*m.shapeFolder = f;
 					}
 					ImGui::PopID();
 				}
+			}
+			const int cardStyle = Theme::CardStyle();
+			if (cardStyle == 1 || cardStyle == 2) {
+				Theme::NextPanelDark();  // the cards bring their own mat: hang them on a dark wall
+			}
+			if (cardStyle) {
+				ImGui::Dummy(ImVec2(0, S(6.0f)));  // plaque tabs sit apart from the panel
 			}
 			if (Theme::BeginParchment("##grid", ImVec2(0, 0), true, false, true)) {
 				if (m.notice) {
@@ -172,8 +182,8 @@ namespace Ui
 					ImGui::TextWrapped("%s", msg.c_str());
 				}
 				const float cell = static_cast<float>(*m.thumbSize) * Theme::Scale();
-				const float labelH = ImGui::GetTextLineHeight() + Theme::Italic()->FontSize + S(10.0f);
-				const float gap = S(18.0f);
+				const float labelH = cardStyle ? Theme::PictureCardHeight(cell) - cell : ImGui::GetTextLineHeight() + Theme::Italic()->FontSize + S(10.0f);
+				const float gap = cardStyle ? S(26.0f) : S(18.0f);
 				const float availW = ImGui::GetContentRegionAvail().x;
 				const int   cols = (std::max)(1, static_cast<int>((availW + gap) / (cell + gap)));
 				auto*       dl = ImGui::GetWindowDrawList();
@@ -204,6 +214,26 @@ namespace Ui
 							g_renameIndex = i;
 						}
 						ImGui::EndPopup();
+					}
+					if (cardStyle) {
+						const float pw0 = static_cast<float>(pic.thumb ? pic.thumbW : pic.origW);
+						const float ph0 = static_cast<float>(pic.thumb ? pic.thumbH : pic.origH);
+						Theme::PictureCard(dl, p, cell, pic.thumb, pw0, ph0, pic.name, pic.failed ? "can't read" : "loading...", hovered);
+						if (hovered && !ImGui::IsPopupOpen("##card")) {
+							if (pic.failed && pic.error && *pic.error) {
+								ImGui::SetTooltip("%s\nCan't read: %s\nPress Refresh to try again.", pic.name, pic.error);
+							} else {
+								ImGui::SetTooltip("%s\n%d %s %d\nRight-click to rename", pic.name, pic.origW, kTimes, pic.origH);
+							}
+						}
+						if (clicked) {
+							r = { GalleryAction::Open, i };
+						}
+						ImGui::PopID();
+						if (cardStyle == 2 && i % cols == cols - 1) {
+							ImGui::Dummy(ImVec2(0, S(8.0f)));  // room for the plaques hanging below the row
+						}
+						continue;
 					}
 					// card shaped like the picture (fitted inside the square slot, on the bottom), so no empty bars
 					const float  in = Theme::CardInset();
@@ -889,6 +919,9 @@ namespace Ui
 
 		bool Toggle(const char* a_id, bool* a_v)
 		{
+			if (Theme::ToggleSwitches()) {
+				return Theme::Toggle(a_id, a_v);
+			}
 			ImGui::PushID(a_id);
 			bool changed = false;
 			if (Theme::Chip("On", *a_v) && !*a_v) {
@@ -943,7 +976,7 @@ namespace Ui
 				ImGui::SameLine(0.0f, S(8.0f));
 			}
 			ImGui::PushID(700 + t);
-			if (FolderTab(tabs[t], g_settingsTab == t, S(46.0f))) {
+			if (FolderTab(tabs[t], g_settingsTab == t, S(46.0f), 4 + t)) {
 				g_settingsTab = t;
 			}
 			ImGui::PopID();
@@ -982,10 +1015,7 @@ namespace Ui
 					}
 				}
 				Row("Mouse speed");
-				ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(S(12.0f), S(10.0f)));
-				ImGui::SetNextItemWidth(ctl);
-				ImGui::SliderFloat("##mouse", &m.mouseSpeed, 0.2f, 5.0f, "%.1f x");
-				ImGui::PopStyleVar();
+				Theme::SliderFloat("##mouse", &m.mouseSpeed, 0.2f, 5.0f, "%.1f x", ctl);
 				Gap();
 				Theme::SectionLabel("Look");
 				Row("Thumbnail size");
