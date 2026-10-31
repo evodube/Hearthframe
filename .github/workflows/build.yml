@@ -94,6 +94,8 @@ jobs:
           Copy-Item build/Release/Hearthframe.dll "$out/Data/SKSE/Plugins/"
           Copy-Item Hearthframe.ini "$out/Data/SKSE/Plugins/"
           Copy-Item Hearthframe.esp "$out/Data/"
+          Copy-Item LICENSE.txt "$out/Data/SKSE/Plugins/Hearthframe/"   # GPL-3.0: the full license ships with the mod
+          Copy-Item assets/README.txt "$out/Data/SKSE/Plugins/Hearthframe/"
           Get-ChildItem -Recurse $out | Format-Table FullName, Length
 
       - name: Publish package to dist branch

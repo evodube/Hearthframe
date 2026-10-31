@@ -93,7 +93,12 @@ Data/
 ├── Textures/ax/paintings/*.dds         frame textures
 └── SKSE/Plugins/
     ├── Hearthframe.dll
-    └── Hearthframe.ini
+    ├── Hearthframe.ini
+    └── Hearthframe/
+        ├── Fonts/                      Cinzel and Inter (+ OFL licenses)
+        ├── FramePreviews/              frame pictures for the frame pickers
+        ├── LICENSE.txt                 GNU GPL v3
+        └── README.txt                  copyright, license and source link
 ```
 
 Created at run time:
@@ -165,3 +170,22 @@ The frame meshes and textures are **not** in this repository. They ship in the r
 - [Dear ImGui](https://github.com/ocornut/imgui) (MIT) for the interface
 - [stb](https://github.com/nothings/stb) for image loading and DXT compression
 - [CommonLibSSE-NG](https://github.com/alandtse/CommonLibVR/tree/ng) and the [SKSE](https://skse.silverlock.org/) team
+- [Cinzel](https://github.com/NDISCOVER/Cinzel) and [Inter](https://github.com/rsms/inter) fonts (SIL Open Font License 1.1)
+
+---
+
+## License
+
+Copyright (C) 2026 evodube
+
+Hearthframe is free software: you can redistribute it and/or modify it under the terms of the
+[GNU General Public License](LICENSE.txt) as published by the Free Software Foundation, either version 3 of the License,
+or (at your option) any later version. It is distributed in the hope that it will be useful, but **without any warranty**;
+without even the implied warranty of merchantability or fitness for a particular purpose. See [LICENSE.txt](LICENSE.txt).
+
+Hearthframe statically links [CommonLibSSE-NG](https://github.com/alandtse/CommonLibVR/tree/ng), which is licensed
+GPL-3.0-or-later (with its Modding and Linking Exceptions), so the plugin is GPL-3.0-or-later as well.
+Dear ImGui and stb are MIT; the fonts are OFL 1.1. The frame meshes and textures (Artisanix) are art assets shipped
+alongside the plugin and are not covered by the GPL.
+
+The release archive contains `LICENSE.txt` and `README.txt` in `Data/SKSE/Plugins/Hearthframe/`.
