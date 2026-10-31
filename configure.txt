@@ -1,0 +1,178 @@
+-- Running vcpkg install
+A suitable version of cmake was not found (required v3.31.10).
+Downloading https://github.com/Kitware/CMake/releases/download/v3.31.10/cmake-3.31.10-windows-x86_64.zip -> cmake-3.31.10-windows-x86_64.zip
+Successfully downloaded cmake-3.31.10-windows-x86_64.zip
+Extracting cmake...
+Detecting compiler hash for triplet x64-windows...
+Compiler found: C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe
+Detecting compiler hash for triplet x64-windows-static-md...
+Compiler found: C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe
+The following packages will be built and installed:
+    directxmath:x64-windows-static-md@2025-04-03
+    directxtk:x64-windows-static-md@2025-10-27
+    fmt:x64-windows-static-md@12.1.0
+    imgui[core,dx11-binding]:x64-windows-static-md@1.90#4
+    nlohmann-json:x64-windows-static-md@3.12.0#1
+    rapidcsv:x64-windows-static-md@8.90
+    simpleini:x64-windows-static-md@4.25
+    spdlog:x64-windows-static-md@1.16.0
+    stb:x64-windows-static-md@2024-07-29#1
+    toml11:x64-windows-static-md@4.4.0
+  * vcpkg-cmake:x64-windows@2024-04-23
+  * vcpkg-cmake-config:x64-windows@2024-05-23
+    xbyak:x64-windows-static-md@7.28
+Additional packages (*) will be modified to complete this operation.
+Restored 13 package(s) from D:\a\Hearthframe\Hearthframe\vcpkg-bincache in 439 ms. Use --debug to see more details.
+Installing 1/13 vcpkg-cmake-config:x64-windows@2024-05-23...
+Elapsed time to handle vcpkg-cmake-config:x64-windows: 1.49 ms
+vcpkg-cmake-config:x64-windows package ABI: 1c97625683fba866df10fbbe8f3b14a9d8944d5fc909827978f3b695c7618e9d
+Installing 2/13 vcpkg-cmake:x64-windows@2024-04-23...
+Elapsed time to handle vcpkg-cmake:x64-windows: 1.67 ms
+vcpkg-cmake:x64-windows package ABI: e5e41ff4fe05762319ce467cce496c26b275e6ef953f86166390c869196f7a56
+Installing 3/13 directxmath:x64-windows-static-md@2025-04-03...
+Elapsed time to handle directxmath:x64-windows-static-md: 2.93 ms
+directxmath:x64-windows-static-md package ABI: 1532d1e9fe347a004430b3ef39e0e651e694cd82c5621cf0178a35f328f02b86
+Installing 4/13 directxtk:x64-windows-static-md@2025-10-27...
+Elapsed time to handle directxtk:x64-windows-static-md: 4.18 ms
+directxtk:x64-windows-static-md package ABI: 2bfd28825adb604e0e0ae8652f8ac12f44a383d90bb4d8f46908214771ab06cb
+Installing 5/13 fmt:x64-windows-static-md@12.1.0...
+Elapsed time to handle fmt:x64-windows-static-md: 3.42 ms
+fmt:x64-windows-static-md package ABI: 9e08fc10217437ad8dcbe05602386aa0e18c2cf4f3d939a4224d3a3d6077ea01
+Installing 6/13 imgui[core,dx11-binding]:x64-windows-static-md@1.90#4...
+Elapsed time to handle imgui:x64-windows-static-md: 2.77 ms
+imgui:x64-windows-static-md package ABI: 300e08ea57699294395124c13f43a05ab370df61e1e6d47f1decd533b8a59316
+Installing 7/13 nlohmann-json:x64-windows-static-md@3.12.0#1...
+Elapsed time to handle nlohmann-json:x64-windows-static-md: 6.08 ms
+nlohmann-json:x64-windows-static-md package ABI: 0682d78f31ececf99c60a15c9a40483465fbd63907f2650a57ed9313365aa9eb
+Installing 8/13 rapidcsv:x64-windows-static-md@8.90...
+Elapsed time to handle rapidcsv:x64-windows-static-md: 1.46 ms
+rapidcsv:x64-windows-static-md package ABI: 0450d4018752e4197b18cb636d672a92e51faa5eb46b292803e352fe2854eb26
+Installing 9/13 simpleini:x64-windows-static-md@4.25...
+Elapsed time to handle simpleini:x64-windows-static-md: 1.79 ms
+simpleini:x64-windows-static-md package ABI: bd56c049eed84096c1c355588553e5cd9e545387c52a88d9003aa5f6c122743c
+Installing 10/13 spdlog:x64-windows-static-md@1.16.0...
+Elapsed time to handle spdlog:x64-windows-static-md: 9 ms
+spdlog:x64-windows-static-md package ABI: 559b6902fc41df6535305d73b582b030df3283a79b4c8b4b41c7c2dd5c1870c6
+Installing 11/13 stb:x64-windows-static-md@2024-07-29#1...
+Elapsed time to handle stb:x64-windows-static-md: 3.52 ms
+stb:x64-windows-static-md package ABI: 70eb98d6f6c231347cbde1ea35ed1f3c164aaa8b358e1b7af470ec6d532fc6b8
+Installing 12/13 toml11:x64-windows-static-md@4.4.0...
+Elapsed time to handle toml11:x64-windows-static-md: 6.98 ms
+toml11:x64-windows-static-md package ABI: eea3740a61a5dd99645394b84cdba8c44c98ee609df7b69fd140a5c2776ed5b4
+Installing 13/13 xbyak:x64-windows-static-md@7.28...
+Elapsed time to handle xbyak:x64-windows-static-md: 2.68 ms
+xbyak:x64-windows-static-md package ABI: 6e84d92947b9cf6408f22bfb5cbcffcc2a5f128a25cdcbad58a188fcfe88042b
+Installed contents are licensed to you by owners. Microsoft is not responsible for, nor does it grant any licenses to, third-party packages.
+Packages installed in this vcpkg installation declare the following licenses:
+(MIT OR CC-PDDC)
+BSD-3-Clause
+MIT
+The DirectXMath package provides CMake targets:
+
+    find_package(directxmath CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE Microsoft::DirectXMath)
+
+The DirectX Tool Kit for DX11 package provides CMake targets:
+
+    find_package(directxtk CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE Microsoft::DirectXTK)
+
+The package fmt provides CMake targets:
+
+    find_package(fmt CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE fmt::fmt)
+
+    # Or use the header-only version
+    find_package(fmt CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE fmt::fmt-header-only)
+
+imgui provides CMake targets:
+
+  # this is heuristically generated, and may not be correct
+  find_package(imgui CONFIG REQUIRED)
+  target_link_libraries(main PRIVATE imgui::imgui)
+
+The package nlohmann-json provides CMake targets:
+
+    find_package(nlohmann_json CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE nlohmann_json::nlohmann_json)
+
+The package nlohmann-json can be configured to not provide implicit conversions via a custom triplet file:
+
+    set(nlohmann-json_IMPLICIT_CONVERSIONS OFF)
+
+For more information, see the docs here:
+    
+    https://json.nlohmann.me/api/macros/json_use_implicit_conversions/
+
+rapidcsv is header-only and can be used from CMake via:
+
+  find_path(RAPIDCSV_INCLUDE_DIRS "rapidcsv.h")
+  target_include_directories(main PRIVATE ${RAPIDCSV_INCLUDE_DIRS})
+
+simpleini is header-only and can be used from CMake via:
+
+  find_path(SIMPLEINI_INCLUDE_DIRS "ConvertUTF.c")
+  target_include_directories(main PRIVATE ${SIMPLEINI_INCLUDE_DIRS})
+
+The package spdlog provides CMake targets:
+
+    find_package(spdlog CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE spdlog::spdlog)
+
+    # Or use the header-only version
+    find_package(spdlog CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE spdlog::spdlog_header_only)
+
+The package stb provides CMake targets:
+
+    find_package(Stb REQUIRED)
+    target_include_directories(main PRIVATE ${Stb_INCLUDE_DIR})
+toml11 provides CMake targets:
+
+  # this is heuristically generated, and may not be correct
+  find_package(toml11 CONFIG REQUIRED)
+  target_link_libraries(main PRIVATE toml11::toml11)
+
+xbyak provides CMake targets:
+
+  # this is heuristically generated, and may not be correct
+  find_package(xbyak CONFIG REQUIRED)
+  target_link_libraries(main PRIVATE xbyak::xbyak)
+
+All requested installations completed successfully in: 50.3 ms
+-- Running vcpkg install - done
+-- Selecting Windows SDK version 10.0.26100.0 to target Windows 10.0.20348.
+-- The CXX compiler identification is MSVC 19.44.35229.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+Options:
+	Enable Xbyak: OFF
+	Enable Patch Safety Checks: ON
+	Enable Skyrim SE: ON
+	Enable Skyrim AE: ON
+	Enable Skyrim VR: OFF
+	Build Tests: OFF
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Failed
+-- Looking for pthread_create in pthreads
+-- Looking for pthread_create in pthreads - not found
+-- Looking for pthread_create in pthread
+-- Looking for pthread_create in pthread - not found
+-- Found Threads: TRUE
+-- The C compiler identification is MSVC 19.44.35229.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+Parsing commonlibsse_plugin_version 0.15.6
+Setting minor version to 15
+Setting patch version to 6
+Parsing ADD_COMMONLIBSSE_PLUGIN_MINIMUM_SKSE_VERSION 0
+-- Configuring done (28.6s)
+-- Generating done (0.5s)
+-- Build files have been written to: D:/a/Hearthframe/Hearthframe/build
