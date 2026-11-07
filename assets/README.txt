@@ -19,6 +19,7 @@ Third-party parts
   GPL-3.0-or-later with the Modding Exception and GPL-3.0 Linking Exception.
 - Dear ImGui (https://github.com/ocornut/imgui): MIT License.
 - stb (https://github.com/nothings/stb): MIT License / public domain.
+- RisaMenuIntegrationAPI.h (Risa's All In One Menu integration header): by Risa, included with permission.
 - Fonts in Fonts\: Cinzel and Inter, SIL Open Font License 1.1 (OFL-Cinzel.txt, OFL-Inter.txt).
 - Frame meshes and textures: Artisanix. These art assets are not covered by the GPL; they are
   shipped alongside the plugin under their author's own permissions.

@@ -63,6 +63,11 @@ No other mods are needed: no SkyUI, MCM or other masters beyond `Skyrim.esm`. Th
 - Finds and removes **stray frames** with no record (left over from crashes or older versions)
 - Optional cleanup of picture textures that no save uses any more
 
+### Risa's All In One Menu
+- When [Risa's All In One Menu](https://risas-all-in-one-menu.pages.dev/) is installed, Hearthframe adds a
+  **Hearthframe** button to its launcher. Risa can then manage the gallery key (or give it a new one);
+  excluding Hearthframe in Risa gives the key back. Without Risa nothing changes, and Risa is not a requirement.
+
 ### Settings
 - In-game **Settings** window with Save / Cancel; changes apply immediately and are written to `Hearthframe.ini`
 - Gallery key picker (ignores Tab / Alt / Ctrl / Shift / Win / Enter, cancels on Alt+Tab, warns about keys the game already uses)
@@ -156,6 +161,7 @@ The frame meshes and textures are **not** in this repository. They ship in the r
 | `src/Ui.cpp`, `src/Theme.cpp` | ImGui screens and the parchment / wood look |
 | `src/Wall.cpp` | Hanging frames: placement, frame menu, co-save, cleanup |
 | `src/Dds.cpp` | Picture → DDS (BC1 + mipmaps) conversion |
+| `src/Risa.cpp` | Optional Risa's All In One Menu launcher integration (`extern/risa/RisaMenuIntegrationAPI.h`, by Risa, included with permission) |
 | `src/Frames.h` | Frame list (generated) |
 | `tools/catalog.py` | Frame catalog: source mesh → shape and style name |
 | `tools/make_esp.py` | Generates `Hearthframe.esp` and `src/Frames.h` from the catalog (`python tools/make_esp.py tools/frames.json`) |
@@ -170,6 +176,7 @@ The frame meshes and textures are **not** in this repository. They ship in the r
 - [Dear ImGui](https://github.com/ocornut/imgui) (MIT) for the interface
 - [stb](https://github.com/nothings/stb) for image loading and DXT compression
 - [CommonLibSSE-NG](https://github.com/alandtse/CommonLibVR/tree/ng) and the [SKSE](https://skse.silverlock.org/) team
+- Risa for the All In One Menu integration header
 - [Cinzel](https://github.com/NDISCOVER/Cinzel) and [Inter](https://github.com/rsms/inter) fonts (SIL Open Font License 1.1)
 
 ---
