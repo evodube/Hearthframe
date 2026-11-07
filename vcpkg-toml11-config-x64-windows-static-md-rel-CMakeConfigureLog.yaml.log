@@ -1,0 +1,771 @@
+
+---
+events:
+  -
+    kind: "message-v1"
+    backtrace:
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/CMakeDetermineSystem.cmake:205 (message)"
+      - "CMakeLists.txt:15 (project)"
+    message: |
+      The system is: Windows - 10.0.20348 - AMD64
+  -
+    kind: "message-v1"
+    backtrace:
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/CMakeDetermineCXXCompiler.cmake:126 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:15 (project)"
+    message: |
+      Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" succeeded.
+      Compiler: C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe 
+      Build flags: /nologo;/DWIN32;/D_WINDOWS;/utf-8;/GR;/EHsc;/MP
+      Id flags:  
+      
+      The output was:
+      0
+      CMakeCXXCompilerId.cpp
+      
+      
+      Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CMakeCXXCompilerId.exe"
+      
+      Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CMakeCXXCompilerId.obj"
+      
+      The CXX compiler identification is MSVC, found in:
+        D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/3.31.10/CompilerIdCXX/CMakeCXXCompilerId.exe
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:1289 (message)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:250 (CMAKE_DETERMINE_MSVC_SHOWINCLUDES_PREFIX)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/CMakeDetermineCXXCompiler.cmake:126 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:15 (project)"
+    message: |
+      Detecting CXX compiler /showIncludes prefix:
+        main.c
+        Note: including file: D:\\a\\Hearthframe\\Hearthframe\\vcpkg\\buildtrees\\toml11\\x64-windows-static-md-rel\\CMakeFiles\\ShowIncludes\\foo.h
+        
+      Found prefix "Note: including file: "
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/CMakeDetermineCompilerABI.cmake:74 (try_compile)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:15 (project)"
+    checks:
+      - "Detecting CXX compiler ABI info"
+    directories:
+      source: "D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-21jj90"
+      binary: "D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-21jj90"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: " /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP "
+      CMAKE_CXX_FLAGS_DEBUG: "/MDd /Z7 /Ob0 /Od /RTC1 "
+      CMAKE_CXX_SCAN_FOR_MODULES: "OFF"
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: ""
+      CMAKE_MSVC_RUNTIME_LIBRARY: "MultiThreaded$<$<CONFIG:Debug>:Debug>$<$<STREQUAL:dynamic,dynamic>:DLL>"
+      VCPKG_CHAINLOAD_TOOLCHAIN_FILE: "D:/a/Hearthframe/Hearthframe/vcpkg/scripts/toolchains/windows.cmake"
+      VCPKG_CRT_LINKAGE: "dynamic"
+      VCPKG_CXX_FLAGS: ""
+      VCPKG_CXX_FLAGS_DEBUG: ""
+      VCPKG_CXX_FLAGS_RELEASE: ""
+      VCPKG_C_FLAGS: ""
+      VCPKG_C_FLAGS_DEBUG: ""
+      VCPKG_C_FLAGS_RELEASE: ""
+      VCPKG_INSTALLED_DIR: "D:/a/Hearthframe/Hearthframe/build/vcpkg_installed"
+      VCPKG_LINKER_FLAGS: ""
+      VCPKG_LINKER_FLAGS_DEBUG: ""
+      VCPKG_LINKER_FLAGS_RELEASE: ""
+      VCPKG_PLATFORM_TOOLSET: "v143"
+      VCPKG_PREFER_SYSTEM_LIBS: "OFF"
+      VCPKG_SET_CHARSET_FLAG: "ON"
+      VCPKG_TARGET_ARCHITECTURE: "x64"
+      VCPKG_TARGET_TRIPLET: "x64-windows-static-md"
+      Z_VCPKG_ROOT_DIR: "D:/a/Hearthframe/Hearthframe/vcpkg"
+    buildResult:
+      variable: "CMAKE_CXX_ABI_COMPILED"
+      cached: true
+      stdout: |
+        Change Dir: 'D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-21jj90'
+        
+        Run Build Command(s): D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/ninja/1.13.1-windows/ninja.exe -v cmTC_03d22
+        [1/2] C:\\PROGRA~1\\MICROS~2\\2022\\ENTERP~1\\VC\\Tools\\MSVC\\1444~1.352\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP   /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP   /MDd /Z7 /Ob0 /Od /RTC1  -MDd /showIncludes /FoCMakeFiles\\cmTC_03d22.dir\\CMakeCXXCompilerABI.cpp.obj /FdCMakeFiles\\cmTC_03d22.dir\\ /FS -c D:\\a\\Hearthframe\\Hearthframe\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\share\\cmake-3.31\\Modules\\CMakeCXXCompilerABI.cpp
+        [2/2] C:\\Windows\\system32\\cmd.exe /C "cd . && D:\\a\\Hearthframe\\Hearthframe\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\bin\\cmake.exe -E vs_link_exe --msvc-ver=1944 --intdir=CMakeFiles\\cmTC_03d22.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\mt.exe --manifests  -- C:\\PROGRA~1\\MICROS~2\\2022\\ENTERP~1\\VC\\Tools\\MSVC\\1444~1.352\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_03d22.dir\\CMakeCXXCompilerABI.cpp.obj  /out:cmTC_03d22.exe /implib:cmTC_03d22.lib /pdb:cmTC_03d22.pdb /version:0.0 /machine:x64  /nologo    /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
+        
+      exitCode: 0
+  -
+    kind: "message-v1"
+    backtrace:
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/CMakeDetermineCompilerABI.cmake:218 (message)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:15 (project)"
+    message: |
+      Parsed CXX implicit link information:
+        link line regex: [^( *|.*[/\\])(ld[0-9]*(\\.[a-z]+)?|link\\.exe|lld-link(\\.exe)?|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
+        linker tool regex: [^[ 	]*(->|")?[ 	]*(([^"]*[/\\])?(ld[0-9]*(\\.[a-z]+)?|link\\.exe|lld-link(\\.exe)?))("|,| |$)]
+        linker tool for 'CXX': C:/PROGRA~1/MICROS~2/2022/ENTERP~1/VC/Tools/MSVC/1444~1.352/bin/Hostx64/x64/link.exe
+        implicit libs: []
+        implicit objs: []
+        implicit dirs: []
+        implicit fwks: []
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/Internal/CMakeDetermineLinkerId.cmake:40 (message)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/CMakeDetermineCompilerABI.cmake:255 (cmake_determine_linker_id)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:15 (project)"
+    message: |
+      Running the CXX compiler's linker: "C:/PROGRA~1/MICROS~2/2022/ENTERP~1/VC/Tools/MSVC/1444~1.352/bin/Hostx64/x64/link.exe" "-v"
+      Microsoft (R) Incremental Linker Version 14.44.35229.0
+      Copyright (C) Microsoft Corporation.  All rights reserved.
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/Internal/CheckSourceCompiles.cmake:108 (try_compile)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/CheckCXXCompilerFlag.cmake:55 (cmake_check_compiler_flag)"
+      - "CMakeLists.txt:47 (check_cxx_compiler_flag)"
+    checks:
+      - "Performing Test TOML11_COMPILER_SUPPORTS_WALL"
+    directories:
+      source: "D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-rajk03"
+      binary: "D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-rajk03"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: " /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP "
+      CMAKE_CXX_FLAGS_DEBUG: "/MDd /Z7 /Ob0 /Od /RTC1 "
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: ""
+      CMAKE_MSVC_RUNTIME_LIBRARY: "MultiThreaded$<$<CONFIG:Debug>:Debug>$<$<STREQUAL:dynamic,dynamic>:DLL>"
+      VCPKG_CHAINLOAD_TOOLCHAIN_FILE: "D:/a/Hearthframe/Hearthframe/vcpkg/scripts/toolchains/windows.cmake"
+      VCPKG_CRT_LINKAGE: "dynamic"
+      VCPKG_CXX_FLAGS: ""
+      VCPKG_CXX_FLAGS_DEBUG: ""
+      VCPKG_CXX_FLAGS_RELEASE: ""
+      VCPKG_C_FLAGS: ""
+      VCPKG_C_FLAGS_DEBUG: ""
+      VCPKG_C_FLAGS_RELEASE: ""
+      VCPKG_INSTALLED_DIR: "D:/a/Hearthframe/Hearthframe/build/vcpkg_installed"
+      VCPKG_LINKER_FLAGS: ""
+      VCPKG_LINKER_FLAGS_DEBUG: ""
+      VCPKG_LINKER_FLAGS_RELEASE: ""
+      VCPKG_PLATFORM_TOOLSET: "v143"
+      VCPKG_PREFER_SYSTEM_LIBS: "OFF"
+      VCPKG_SET_CHARSET_FLAG: "ON"
+      VCPKG_TARGET_ARCHITECTURE: "x64"
+      VCPKG_TARGET_TRIPLET: "x64-windows-static-md"
+      Z_VCPKG_ROOT_DIR: "D:/a/Hearthframe/Hearthframe/vcpkg"
+    buildResult:
+      variable: "TOML11_COMPILER_SUPPORTS_WALL"
+      cached: true
+      stdout: |
+        Change Dir: 'D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-rajk03'
+        
+        Run Build Command(s): D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/ninja/1.13.1-windows/ninja.exe -v cmTC_c2551
+        [1/2] C:\\PROGRA~1\\MICROS~2\\2022\\ENTERP~1\\VC\\Tools\\MSVC\\1444~1.352\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -DTOML11_COMPILER_SUPPORTS_WALL  /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP   /MDd /Z7 /Ob0 /Od /RTC1  -MDd   -Wall /showIncludes /FoCMakeFiles\\cmTC_c2551.dir\\src.cxx.obj /FdCMakeFiles\\cmTC_c2551.dir\\ /FS -c D:\\a\\Hearthframe\\Hearthframe\\vcpkg\\buildtrees\\toml11\\x64-windows-static-md-rel\\CMakeFiles\\CMakeScratch\\TryCompile-rajk03\\src.cxx
+        [2/2] C:\\Windows\\system32\\cmd.exe /C "cd . && D:\\a\\Hearthframe\\Hearthframe\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\bin\\cmake.exe -E vs_link_exe --msvc-ver=1944 --intdir=CMakeFiles\\cmTC_c2551.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\mt.exe --manifests  -- C:\\PROGRA~1\\MICROS~2\\2022\\ENTERP~1\\VC\\Tools\\MSVC\\1444~1.352\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_c2551.dir\\src.cxx.obj  /out:cmTC_c2551.exe /implib:cmTC_c2551.lib /pdb:cmTC_c2551.pdb /version:0.0 /machine:x64  /nologo    /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/Internal/CheckSourceCompiles.cmake:108 (try_compile)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/CheckCXXCompilerFlag.cmake:55 (cmake_check_compiler_flag)"
+      - "CMakeLists.txt:48 (check_cxx_compiler_flag)"
+    checks:
+      - "Performing Test TOML11_COMPILER_SUPPORTS_WEXTRA"
+    directories:
+      source: "D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-bxqxea"
+      binary: "D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-bxqxea"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: " /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP "
+      CMAKE_CXX_FLAGS_DEBUG: "/MDd /Z7 /Ob0 /Od /RTC1 "
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: ""
+      CMAKE_MSVC_RUNTIME_LIBRARY: "MultiThreaded$<$<CONFIG:Debug>:Debug>$<$<STREQUAL:dynamic,dynamic>:DLL>"
+      VCPKG_CHAINLOAD_TOOLCHAIN_FILE: "D:/a/Hearthframe/Hearthframe/vcpkg/scripts/toolchains/windows.cmake"
+      VCPKG_CRT_LINKAGE: "dynamic"
+      VCPKG_CXX_FLAGS: ""
+      VCPKG_CXX_FLAGS_DEBUG: ""
+      VCPKG_CXX_FLAGS_RELEASE: ""
+      VCPKG_C_FLAGS: ""
+      VCPKG_C_FLAGS_DEBUG: ""
+      VCPKG_C_FLAGS_RELEASE: ""
+      VCPKG_INSTALLED_DIR: "D:/a/Hearthframe/Hearthframe/build/vcpkg_installed"
+      VCPKG_LINKER_FLAGS: ""
+      VCPKG_LINKER_FLAGS_DEBUG: ""
+      VCPKG_LINKER_FLAGS_RELEASE: ""
+      VCPKG_PLATFORM_TOOLSET: "v143"
+      VCPKG_PREFER_SYSTEM_LIBS: "OFF"
+      VCPKG_SET_CHARSET_FLAG: "ON"
+      VCPKG_TARGET_ARCHITECTURE: "x64"
+      VCPKG_TARGET_TRIPLET: "x64-windows-static-md"
+      Z_VCPKG_ROOT_DIR: "D:/a/Hearthframe/Hearthframe/vcpkg"
+    buildResult:
+      variable: "TOML11_COMPILER_SUPPORTS_WEXTRA"
+      cached: true
+      stdout: |
+        Change Dir: 'D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-bxqxea'
+        
+        Run Build Command(s): D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/ninja/1.13.1-windows/ninja.exe -v cmTC_c614d
+        [1/2] C:\\PROGRA~1\\MICROS~2\\2022\\ENTERP~1\\VC\\Tools\\MSVC\\1444~1.352\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -DTOML11_COMPILER_SUPPORTS_WEXTRA  /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP   /MDd /Z7 /Ob0 /Od /RTC1  -MDd   -Wextra /showIncludes /FoCMakeFiles\\cmTC_c614d.dir\\src.cxx.obj /FdCMakeFiles\\cmTC_c614d.dir\\ /FS -c D:\\a\\Hearthframe\\Hearthframe\\vcpkg\\buildtrees\\toml11\\x64-windows-static-md-rel\\CMakeFiles\\CMakeScratch\\TryCompile-bxqxea\\src.cxx
+        FAILED: [code=2] CMakeFiles/cmTC_c614d.dir/src.cxx.obj 
+        C:\\PROGRA~1\\MICROS~2\\2022\\ENTERP~1\\VC\\Tools\\MSVC\\1444~1.352\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -DTOML11_COMPILER_SUPPORTS_WEXTRA  /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP   /MDd /Z7 /Ob0 /Od /RTC1  -MDd   -Wextra /showIncludes /FoCMakeFiles\\cmTC_c614d.dir\\src.cxx.obj /FdCMakeFiles\\cmTC_c614d.dir\\ /FS -c D:\\a\\Hearthframe\\Hearthframe\\vcpkg\\buildtrees\\toml11\\x64-windows-static-md-rel\\CMakeFiles\\CMakeScratch\\TryCompile-bxqxea\\src.cxx
+        cl : Command line error D8021 : invalid numeric argument '/Wextra'
+        ninja: build stopped: subcommand failed.
+        
+      exitCode: 2
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/Internal/CheckSourceCompiles.cmake:108 (try_compile)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/CheckCXXCompilerFlag.cmake:55 (cmake_check_compiler_flag)"
+      - "CMakeLists.txt:49 (check_cxx_compiler_flag)"
+    checks:
+      - "Performing Test TOML11_COMPILER_SUPPORTS_WPEDANTIC"
+    directories:
+      source: "D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-z8xrn4"
+      binary: "D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-z8xrn4"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: " /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP "
+      CMAKE_CXX_FLAGS_DEBUG: "/MDd /Z7 /Ob0 /Od /RTC1 "
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: ""
+      CMAKE_MSVC_RUNTIME_LIBRARY: "MultiThreaded$<$<CONFIG:Debug>:Debug>$<$<STREQUAL:dynamic,dynamic>:DLL>"
+      VCPKG_CHAINLOAD_TOOLCHAIN_FILE: "D:/a/Hearthframe/Hearthframe/vcpkg/scripts/toolchains/windows.cmake"
+      VCPKG_CRT_LINKAGE: "dynamic"
+      VCPKG_CXX_FLAGS: ""
+      VCPKG_CXX_FLAGS_DEBUG: ""
+      VCPKG_CXX_FLAGS_RELEASE: ""
+      VCPKG_C_FLAGS: ""
+      VCPKG_C_FLAGS_DEBUG: ""
+      VCPKG_C_FLAGS_RELEASE: ""
+      VCPKG_INSTALLED_DIR: "D:/a/Hearthframe/Hearthframe/build/vcpkg_installed"
+      VCPKG_LINKER_FLAGS: ""
+      VCPKG_LINKER_FLAGS_DEBUG: ""
+      VCPKG_LINKER_FLAGS_RELEASE: ""
+      VCPKG_PLATFORM_TOOLSET: "v143"
+      VCPKG_PREFER_SYSTEM_LIBS: "OFF"
+      VCPKG_SET_CHARSET_FLAG: "ON"
+      VCPKG_TARGET_ARCHITECTURE: "x64"
+      VCPKG_TARGET_TRIPLET: "x64-windows-static-md"
+      Z_VCPKG_ROOT_DIR: "D:/a/Hearthframe/Hearthframe/vcpkg"
+    buildResult:
+      variable: "TOML11_COMPILER_SUPPORTS_WPEDANTIC"
+      cached: true
+      stdout: |
+        Change Dir: 'D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-z8xrn4'
+        
+        Run Build Command(s): D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/ninja/1.13.1-windows/ninja.exe -v cmTC_fdd5a
+        [1/2] C:\\PROGRA~1\\MICROS~2\\2022\\ENTERP~1\\VC\\Tools\\MSVC\\1444~1.352\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -DTOML11_COMPILER_SUPPORTS_WPEDANTIC  /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP   /MDd /Z7 /Ob0 /Od /RTC1  -MDd   -Wpedantic /showIncludes /FoCMakeFiles\\cmTC_fdd5a.dir\\src.cxx.obj /FdCMakeFiles\\cmTC_fdd5a.dir\\ /FS -c D:\\a\\Hearthframe\\Hearthframe\\vcpkg\\buildtrees\\toml11\\x64-windows-static-md-rel\\CMakeFiles\\CMakeScratch\\TryCompile-z8xrn4\\src.cxx
+        FAILED: [code=2] CMakeFiles/cmTC_fdd5a.dir/src.cxx.obj 
+        C:\\PROGRA~1\\MICROS~2\\2022\\ENTERP~1\\VC\\Tools\\MSVC\\1444~1.352\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -DTOML11_COMPILER_SUPPORTS_WPEDANTIC  /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP   /MDd /Z7 /Ob0 /Od /RTC1  -MDd   -Wpedantic /showIncludes /FoCMakeFiles\\cmTC_fdd5a.dir\\src.cxx.obj /FdCMakeFiles\\cmTC_fdd5a.dir\\ /FS -c D:\\a\\Hearthframe\\Hearthframe\\vcpkg\\buildtrees\\toml11\\x64-windows-static-md-rel\\CMakeFiles\\CMakeScratch\\TryCompile-z8xrn4\\src.cxx
+        cl : Command line error D8021 : invalid numeric argument '/Wpedantic'
+        ninja: build stopped: subcommand failed.
+        
+      exitCode: 2
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/Internal/CheckSourceCompiles.cmake:108 (try_compile)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/CheckCXXCompilerFlag.cmake:55 (cmake_check_compiler_flag)"
+      - "CMakeLists.txt:50 (check_cxx_compiler_flag)"
+    checks:
+      - "Performing Test TOML11_COMPILER_SUPPORTS_WERROR"
+    directories:
+      source: "D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-acasia"
+      binary: "D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-acasia"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: " /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP "
+      CMAKE_CXX_FLAGS_DEBUG: "/MDd /Z7 /Ob0 /Od /RTC1 "
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: ""
+      CMAKE_MSVC_RUNTIME_LIBRARY: "MultiThreaded$<$<CONFIG:Debug>:Debug>$<$<STREQUAL:dynamic,dynamic>:DLL>"
+      VCPKG_CHAINLOAD_TOOLCHAIN_FILE: "D:/a/Hearthframe/Hearthframe/vcpkg/scripts/toolchains/windows.cmake"
+      VCPKG_CRT_LINKAGE: "dynamic"
+      VCPKG_CXX_FLAGS: ""
+      VCPKG_CXX_FLAGS_DEBUG: ""
+      VCPKG_CXX_FLAGS_RELEASE: ""
+      VCPKG_C_FLAGS: ""
+      VCPKG_C_FLAGS_DEBUG: ""
+      VCPKG_C_FLAGS_RELEASE: ""
+      VCPKG_INSTALLED_DIR: "D:/a/Hearthframe/Hearthframe/build/vcpkg_installed"
+      VCPKG_LINKER_FLAGS: ""
+      VCPKG_LINKER_FLAGS_DEBUG: ""
+      VCPKG_LINKER_FLAGS_RELEASE: ""
+      VCPKG_PLATFORM_TOOLSET: "v143"
+      VCPKG_PREFER_SYSTEM_LIBS: "OFF"
+      VCPKG_SET_CHARSET_FLAG: "ON"
+      VCPKG_TARGET_ARCHITECTURE: "x64"
+      VCPKG_TARGET_TRIPLET: "x64-windows-static-md"
+      Z_VCPKG_ROOT_DIR: "D:/a/Hearthframe/Hearthframe/vcpkg"
+    buildResult:
+      variable: "TOML11_COMPILER_SUPPORTS_WERROR"
+      cached: true
+      stdout: |
+        Change Dir: 'D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-acasia'
+        
+        Run Build Command(s): D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/ninja/1.13.1-windows/ninja.exe -v cmTC_eae03
+        [1/2] C:\\PROGRA~1\\MICROS~2\\2022\\ENTERP~1\\VC\\Tools\\MSVC\\1444~1.352\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -DTOML11_COMPILER_SUPPORTS_WERROR  /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP   /MDd /Z7 /Ob0 /Od /RTC1  -MDd   -Werror /showIncludes /FoCMakeFiles\\cmTC_eae03.dir\\src.cxx.obj /FdCMakeFiles\\cmTC_eae03.dir\\ /FS -c D:\\a\\Hearthframe\\Hearthframe\\vcpkg\\buildtrees\\toml11\\x64-windows-static-md-rel\\CMakeFiles\\CMakeScratch\\TryCompile-acasia\\src.cxx
+        FAILED: [code=2] CMakeFiles/cmTC_eae03.dir/src.cxx.obj 
+        C:\\PROGRA~1\\MICROS~2\\2022\\ENTERP~1\\VC\\Tools\\MSVC\\1444~1.352\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -DTOML11_COMPILER_SUPPORTS_WERROR  /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP   /MDd /Z7 /Ob0 /Od /RTC1  -MDd   -Werror /showIncludes /FoCMakeFiles\\cmTC_eae03.dir\\src.cxx.obj /FdCMakeFiles\\cmTC_eae03.dir\\ /FS -c D:\\a\\Hearthframe\\Hearthframe\\vcpkg\\buildtrees\\toml11\\x64-windows-static-md-rel\\CMakeFiles\\CMakeScratch\\TryCompile-acasia\\src.cxx
+        cl : Command line error D8021 : invalid numeric argument '/Werror'
+        ninja: build stopped: subcommand failed.
+        
+      exitCode: 2
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/Internal/CheckSourceCompiles.cmake:108 (try_compile)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/CheckCXXCompilerFlag.cmake:55 (cmake_check_compiler_flag)"
+      - "CMakeLists.txt:51 (check_cxx_compiler_flag)"
+    checks:
+      - "Performing Test TOML11_COMPILER_SUPPORTS_WSIGN_CONVERSION"
+    directories:
+      source: "D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-zv8unr"
+      binary: "D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-zv8unr"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: " /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP "
+      CMAKE_CXX_FLAGS_DEBUG: "/MDd /Z7 /Ob0 /Od /RTC1 "
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: ""
+      CMAKE_MSVC_RUNTIME_LIBRARY: "MultiThreaded$<$<CONFIG:Debug>:Debug>$<$<STREQUAL:dynamic,dynamic>:DLL>"
+      VCPKG_CHAINLOAD_TOOLCHAIN_FILE: "D:/a/Hearthframe/Hearthframe/vcpkg/scripts/toolchains/windows.cmake"
+      VCPKG_CRT_LINKAGE: "dynamic"
+      VCPKG_CXX_FLAGS: ""
+      VCPKG_CXX_FLAGS_DEBUG: ""
+      VCPKG_CXX_FLAGS_RELEASE: ""
+      VCPKG_C_FLAGS: ""
+      VCPKG_C_FLAGS_DEBUG: ""
+      VCPKG_C_FLAGS_RELEASE: ""
+      VCPKG_INSTALLED_DIR: "D:/a/Hearthframe/Hearthframe/build/vcpkg_installed"
+      VCPKG_LINKER_FLAGS: ""
+      VCPKG_LINKER_FLAGS_DEBUG: ""
+      VCPKG_LINKER_FLAGS_RELEASE: ""
+      VCPKG_PLATFORM_TOOLSET: "v143"
+      VCPKG_PREFER_SYSTEM_LIBS: "OFF"
+      VCPKG_SET_CHARSET_FLAG: "ON"
+      VCPKG_TARGET_ARCHITECTURE: "x64"
+      VCPKG_TARGET_TRIPLET: "x64-windows-static-md"
+      Z_VCPKG_ROOT_DIR: "D:/a/Hearthframe/Hearthframe/vcpkg"
+    buildResult:
+      variable: "TOML11_COMPILER_SUPPORTS_WSIGN_CONVERSION"
+      cached: true
+      stdout: |
+        Change Dir: 'D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-zv8unr'
+        
+        Run Build Command(s): D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/ninja/1.13.1-windows/ninja.exe -v cmTC_0c278
+        [1/2] C:\\PROGRA~1\\MICROS~2\\2022\\ENTERP~1\\VC\\Tools\\MSVC\\1444~1.352\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -DTOML11_COMPILER_SUPPORTS_WSIGN_CONVERSION  /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP   /MDd /Z7 /Ob0 /Od /RTC1  -MDd   -Wsign-conversion /showIncludes /FoCMakeFiles\\cmTC_0c278.dir\\src.cxx.obj /FdCMakeFiles\\cmTC_0c278.dir\\ /FS -c D:\\a\\Hearthframe\\Hearthframe\\vcpkg\\buildtrees\\toml11\\x64-windows-static-md-rel\\CMakeFiles\\CMakeScratch\\TryCompile-zv8unr\\src.cxx
+        FAILED: [code=2] CMakeFiles/cmTC_0c278.dir/src.cxx.obj 
+        C:\\PROGRA~1\\MICROS~2\\2022\\ENTERP~1\\VC\\Tools\\MSVC\\1444~1.352\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -DTOML11_COMPILER_SUPPORTS_WSIGN_CONVERSION  /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP   /MDd /Z7 /Ob0 /Od /RTC1  -MDd   -Wsign-conversion /showIncludes /FoCMakeFiles\\cmTC_0c278.dir\\src.cxx.obj /FdCMakeFiles\\cmTC_0c278.dir\\ /FS -c D:\\a\\Hearthframe\\Hearthframe\\vcpkg\\buildtrees\\toml11\\x64-windows-static-md-rel\\CMakeFiles\\CMakeScratch\\TryCompile-zv8unr\\src.cxx
+        cl : Command line error D8021 : invalid numeric argument '/Wsign-conversion'
+        ninja: build stopped: subcommand failed.
+        
+      exitCode: 2
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/Internal/CheckSourceCompiles.cmake:108 (try_compile)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/CheckCXXCompilerFlag.cmake:55 (cmake_check_compiler_flag)"
+      - "CMakeLists.txt:52 (check_cxx_compiler_flag)"
+    checks:
+      - "Performing Test TOML11_COMPILER_SUPPORTS_WCONVERSION"
+    directories:
+      source: "D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-2mu4zm"
+      binary: "D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-2mu4zm"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: " /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP "
+      CMAKE_CXX_FLAGS_DEBUG: "/MDd /Z7 /Ob0 /Od /RTC1 "
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: ""
+      CMAKE_MSVC_RUNTIME_LIBRARY: "MultiThreaded$<$<CONFIG:Debug>:Debug>$<$<STREQUAL:dynamic,dynamic>:DLL>"
+      VCPKG_CHAINLOAD_TOOLCHAIN_FILE: "D:/a/Hearthframe/Hearthframe/vcpkg/scripts/toolchains/windows.cmake"
+      VCPKG_CRT_LINKAGE: "dynamic"
+      VCPKG_CXX_FLAGS: ""
+      VCPKG_CXX_FLAGS_DEBUG: ""
+      VCPKG_CXX_FLAGS_RELEASE: ""
+      VCPKG_C_FLAGS: ""
+      VCPKG_C_FLAGS_DEBUG: ""
+      VCPKG_C_FLAGS_RELEASE: ""
+      VCPKG_INSTALLED_DIR: "D:/a/Hearthframe/Hearthframe/build/vcpkg_installed"
+      VCPKG_LINKER_FLAGS: ""
+      VCPKG_LINKER_FLAGS_DEBUG: ""
+      VCPKG_LINKER_FLAGS_RELEASE: ""
+      VCPKG_PLATFORM_TOOLSET: "v143"
+      VCPKG_PREFER_SYSTEM_LIBS: "OFF"
+      VCPKG_SET_CHARSET_FLAG: "ON"
+      VCPKG_TARGET_ARCHITECTURE: "x64"
+      VCPKG_TARGET_TRIPLET: "x64-windows-static-md"
+      Z_VCPKG_ROOT_DIR: "D:/a/Hearthframe/Hearthframe/vcpkg"
+    buildResult:
+      variable: "TOML11_COMPILER_SUPPORTS_WCONVERSION"
+      cached: true
+      stdout: |
+        Change Dir: 'D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-2mu4zm'
+        
+        Run Build Command(s): D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/ninja/1.13.1-windows/ninja.exe -v cmTC_f9528
+        [1/2] C:\\PROGRA~1\\MICROS~2\\2022\\ENTERP~1\\VC\\Tools\\MSVC\\1444~1.352\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -DTOML11_COMPILER_SUPPORTS_WCONVERSION  /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP   /MDd /Z7 /Ob0 /Od /RTC1  -MDd   -Wconversion /showIncludes /FoCMakeFiles\\cmTC_f9528.dir\\src.cxx.obj /FdCMakeFiles\\cmTC_f9528.dir\\ /FS -c D:\\a\\Hearthframe\\Hearthframe\\vcpkg\\buildtrees\\toml11\\x64-windows-static-md-rel\\CMakeFiles\\CMakeScratch\\TryCompile-2mu4zm\\src.cxx
+        FAILED: [code=2] CMakeFiles/cmTC_f9528.dir/src.cxx.obj 
+        C:\\PROGRA~1\\MICROS~2\\2022\\ENTERP~1\\VC\\Tools\\MSVC\\1444~1.352\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -DTOML11_COMPILER_SUPPORTS_WCONVERSION  /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP   /MDd /Z7 /Ob0 /Od /RTC1  -MDd   -Wconversion /showIncludes /FoCMakeFiles\\cmTC_f9528.dir\\src.cxx.obj /FdCMakeFiles\\cmTC_f9528.dir\\ /FS -c D:\\a\\Hearthframe\\Hearthframe\\vcpkg\\buildtrees\\toml11\\x64-windows-static-md-rel\\CMakeFiles\\CMakeScratch\\TryCompile-2mu4zm\\src.cxx
+        cl : Command line error D8021 : invalid numeric argument '/Wconversion'
+        ninja: build stopped: subcommand failed.
+        
+      exitCode: 2
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/Internal/CheckSourceCompiles.cmake:108 (try_compile)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/CheckCXXCompilerFlag.cmake:55 (cmake_check_compiler_flag)"
+      - "CMakeLists.txt:53 (check_cxx_compiler_flag)"
+    checks:
+      - "Performing Test TOML11_COMPILER_SUPPORTS_WDUPLICATED_COND"
+    directories:
+      source: "D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-i5ow39"
+      binary: "D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-i5ow39"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: " /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP "
+      CMAKE_CXX_FLAGS_DEBUG: "/MDd /Z7 /Ob0 /Od /RTC1 "
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: ""
+      CMAKE_MSVC_RUNTIME_LIBRARY: "MultiThreaded$<$<CONFIG:Debug>:Debug>$<$<STREQUAL:dynamic,dynamic>:DLL>"
+      VCPKG_CHAINLOAD_TOOLCHAIN_FILE: "D:/a/Hearthframe/Hearthframe/vcpkg/scripts/toolchains/windows.cmake"
+      VCPKG_CRT_LINKAGE: "dynamic"
+      VCPKG_CXX_FLAGS: ""
+      VCPKG_CXX_FLAGS_DEBUG: ""
+      VCPKG_CXX_FLAGS_RELEASE: ""
+      VCPKG_C_FLAGS: ""
+      VCPKG_C_FLAGS_DEBUG: ""
+      VCPKG_C_FLAGS_RELEASE: ""
+      VCPKG_INSTALLED_DIR: "D:/a/Hearthframe/Hearthframe/build/vcpkg_installed"
+      VCPKG_LINKER_FLAGS: ""
+      VCPKG_LINKER_FLAGS_DEBUG: ""
+      VCPKG_LINKER_FLAGS_RELEASE: ""
+      VCPKG_PLATFORM_TOOLSET: "v143"
+      VCPKG_PREFER_SYSTEM_LIBS: "OFF"
+      VCPKG_SET_CHARSET_FLAG: "ON"
+      VCPKG_TARGET_ARCHITECTURE: "x64"
+      VCPKG_TARGET_TRIPLET: "x64-windows-static-md"
+      Z_VCPKG_ROOT_DIR: "D:/a/Hearthframe/Hearthframe/vcpkg"
+    buildResult:
+      variable: "TOML11_COMPILER_SUPPORTS_WDUPLICATED_COND"
+      cached: true
+      stdout: |
+        Change Dir: 'D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-i5ow39'
+        
+        Run Build Command(s): D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/ninja/1.13.1-windows/ninja.exe -v cmTC_ed0db
+        [1/2] C:\\PROGRA~1\\MICROS~2\\2022\\ENTERP~1\\VC\\Tools\\MSVC\\1444~1.352\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -DTOML11_COMPILER_SUPPORTS_WDUPLICATED_COND  /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP   /MDd /Z7 /Ob0 /Od /RTC1  -MDd   -Wduplicated-cond /showIncludes /FoCMakeFiles\\cmTC_ed0db.dir\\src.cxx.obj /FdCMakeFiles\\cmTC_ed0db.dir\\ /FS -c D:\\a\\Hearthframe\\Hearthframe\\vcpkg\\buildtrees\\toml11\\x64-windows-static-md-rel\\CMakeFiles\\CMakeScratch\\TryCompile-i5ow39\\src.cxx
+        FAILED: [code=2] CMakeFiles/cmTC_ed0db.dir/src.cxx.obj 
+        C:\\PROGRA~1\\MICROS~2\\2022\\ENTERP~1\\VC\\Tools\\MSVC\\1444~1.352\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -DTOML11_COMPILER_SUPPORTS_WDUPLICATED_COND  /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP   /MDd /Z7 /Ob0 /Od /RTC1  -MDd   -Wduplicated-cond /showIncludes /FoCMakeFiles\\cmTC_ed0db.dir\\src.cxx.obj /FdCMakeFiles\\cmTC_ed0db.dir\\ /FS -c D:\\a\\Hearthframe\\Hearthframe\\vcpkg\\buildtrees\\toml11\\x64-windows-static-md-rel\\CMakeFiles\\CMakeScratch\\TryCompile-i5ow39\\src.cxx
+        cl : Command line error D8021 : invalid numeric argument '/Wduplicated-cond'
+        ninja: build stopped: subcommand failed.
+        
+      exitCode: 2
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/Internal/CheckSourceCompiles.cmake:108 (try_compile)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/CheckCXXCompilerFlag.cmake:55 (cmake_check_compiler_flag)"
+      - "CMakeLists.txt:54 (check_cxx_compiler_flag)"
+    checks:
+      - "Performing Test TOML11_COMPILER_SUPPORTS_WDUPLICATED_BRANCHES"
+    directories:
+      source: "D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-qe02uz"
+      binary: "D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-qe02uz"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: " /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP "
+      CMAKE_CXX_FLAGS_DEBUG: "/MDd /Z7 /Ob0 /Od /RTC1 "
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: ""
+      CMAKE_MSVC_RUNTIME_LIBRARY: "MultiThreaded$<$<CONFIG:Debug>:Debug>$<$<STREQUAL:dynamic,dynamic>:DLL>"
+      VCPKG_CHAINLOAD_TOOLCHAIN_FILE: "D:/a/Hearthframe/Hearthframe/vcpkg/scripts/toolchains/windows.cmake"
+      VCPKG_CRT_LINKAGE: "dynamic"
+      VCPKG_CXX_FLAGS: ""
+      VCPKG_CXX_FLAGS_DEBUG: ""
+      VCPKG_CXX_FLAGS_RELEASE: ""
+      VCPKG_C_FLAGS: ""
+      VCPKG_C_FLAGS_DEBUG: ""
+      VCPKG_C_FLAGS_RELEASE: ""
+      VCPKG_INSTALLED_DIR: "D:/a/Hearthframe/Hearthframe/build/vcpkg_installed"
+      VCPKG_LINKER_FLAGS: ""
+      VCPKG_LINKER_FLAGS_DEBUG: ""
+      VCPKG_LINKER_FLAGS_RELEASE: ""
+      VCPKG_PLATFORM_TOOLSET: "v143"
+      VCPKG_PREFER_SYSTEM_LIBS: "OFF"
+      VCPKG_SET_CHARSET_FLAG: "ON"
+      VCPKG_TARGET_ARCHITECTURE: "x64"
+      VCPKG_TARGET_TRIPLET: "x64-windows-static-md"
+      Z_VCPKG_ROOT_DIR: "D:/a/Hearthframe/Hearthframe/vcpkg"
+    buildResult:
+      variable: "TOML11_COMPILER_SUPPORTS_WDUPLICATED_BRANCHES"
+      cached: true
+      stdout: |
+        Change Dir: 'D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-qe02uz'
+        
+        Run Build Command(s): D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/ninja/1.13.1-windows/ninja.exe -v cmTC_fca99
+        [1/2] C:\\PROGRA~1\\MICROS~2\\2022\\ENTERP~1\\VC\\Tools\\MSVC\\1444~1.352\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -DTOML11_COMPILER_SUPPORTS_WDUPLICATED_BRANCHES  /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP   /MDd /Z7 /Ob0 /Od /RTC1  -MDd   -Wduplicated-branches /showIncludes /FoCMakeFiles\\cmTC_fca99.dir\\src.cxx.obj /FdCMakeFiles\\cmTC_fca99.dir\\ /FS -c D:\\a\\Hearthframe\\Hearthframe\\vcpkg\\buildtrees\\toml11\\x64-windows-static-md-rel\\CMakeFiles\\CMakeScratch\\TryCompile-qe02uz\\src.cxx
+        FAILED: [code=2] CMakeFiles/cmTC_fca99.dir/src.cxx.obj 
+        C:\\PROGRA~1\\MICROS~2\\2022\\ENTERP~1\\VC\\Tools\\MSVC\\1444~1.352\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -DTOML11_COMPILER_SUPPORTS_WDUPLICATED_BRANCHES  /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP   /MDd /Z7 /Ob0 /Od /RTC1  -MDd   -Wduplicated-branches /showIncludes /FoCMakeFiles\\cmTC_fca99.dir\\src.cxx.obj /FdCMakeFiles\\cmTC_fca99.dir\\ /FS -c D:\\a\\Hearthframe\\Hearthframe\\vcpkg\\buildtrees\\toml11\\x64-windows-static-md-rel\\CMakeFiles\\CMakeScratch\\TryCompile-qe02uz\\src.cxx
+        cl : Command line error D8021 : invalid numeric argument '/Wduplicated-branches'
+        ninja: build stopped: subcommand failed.
+        
+      exitCode: 2
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/Internal/CheckSourceCompiles.cmake:108 (try_compile)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/CheckCXXCompilerFlag.cmake:55 (cmake_check_compiler_flag)"
+      - "CMakeLists.txt:55 (check_cxx_compiler_flag)"
+    checks:
+      - "Performing Test TOML11_COMPILER_SUPPORTS_WLOGICAL_OP"
+    directories:
+      source: "D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-epv6dz"
+      binary: "D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-epv6dz"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: " /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP "
+      CMAKE_CXX_FLAGS_DEBUG: "/MDd /Z7 /Ob0 /Od /RTC1 "
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: ""
+      CMAKE_MSVC_RUNTIME_LIBRARY: "MultiThreaded$<$<CONFIG:Debug>:Debug>$<$<STREQUAL:dynamic,dynamic>:DLL>"
+      VCPKG_CHAINLOAD_TOOLCHAIN_FILE: "D:/a/Hearthframe/Hearthframe/vcpkg/scripts/toolchains/windows.cmake"
+      VCPKG_CRT_LINKAGE: "dynamic"
+      VCPKG_CXX_FLAGS: ""
+      VCPKG_CXX_FLAGS_DEBUG: ""
+      VCPKG_CXX_FLAGS_RELEASE: ""
+      VCPKG_C_FLAGS: ""
+      VCPKG_C_FLAGS_DEBUG: ""
+      VCPKG_C_FLAGS_RELEASE: ""
+      VCPKG_INSTALLED_DIR: "D:/a/Hearthframe/Hearthframe/build/vcpkg_installed"
+      VCPKG_LINKER_FLAGS: ""
+      VCPKG_LINKER_FLAGS_DEBUG: ""
+      VCPKG_LINKER_FLAGS_RELEASE: ""
+      VCPKG_PLATFORM_TOOLSET: "v143"
+      VCPKG_PREFER_SYSTEM_LIBS: "OFF"
+      VCPKG_SET_CHARSET_FLAG: "ON"
+      VCPKG_TARGET_ARCHITECTURE: "x64"
+      VCPKG_TARGET_TRIPLET: "x64-windows-static-md"
+      Z_VCPKG_ROOT_DIR: "D:/a/Hearthframe/Hearthframe/vcpkg"
+    buildResult:
+      variable: "TOML11_COMPILER_SUPPORTS_WLOGICAL_OP"
+      cached: true
+      stdout: |
+        Change Dir: 'D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-epv6dz'
+        
+        Run Build Command(s): D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/ninja/1.13.1-windows/ninja.exe -v cmTC_65a9d
+        [1/2] C:\\PROGRA~1\\MICROS~2\\2022\\ENTERP~1\\VC\\Tools\\MSVC\\1444~1.352\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -DTOML11_COMPILER_SUPPORTS_WLOGICAL_OP  /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP   /MDd /Z7 /Ob0 /Od /RTC1  -MDd   -Wlogical-op /showIncludes /FoCMakeFiles\\cmTC_65a9d.dir\\src.cxx.obj /FdCMakeFiles\\cmTC_65a9d.dir\\ /FS -c D:\\a\\Hearthframe\\Hearthframe\\vcpkg\\buildtrees\\toml11\\x64-windows-static-md-rel\\CMakeFiles\\CMakeScratch\\TryCompile-epv6dz\\src.cxx
+        FAILED: [code=2] CMakeFiles/cmTC_65a9d.dir/src.cxx.obj 
+        C:\\PROGRA~1\\MICROS~2\\2022\\ENTERP~1\\VC\\Tools\\MSVC\\1444~1.352\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -DTOML11_COMPILER_SUPPORTS_WLOGICAL_OP  /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP   /MDd /Z7 /Ob0 /Od /RTC1  -MDd   -Wlogical-op /showIncludes /FoCMakeFiles\\cmTC_65a9d.dir\\src.cxx.obj /FdCMakeFiles\\cmTC_65a9d.dir\\ /FS -c D:\\a\\Hearthframe\\Hearthframe\\vcpkg\\buildtrees\\toml11\\x64-windows-static-md-rel\\CMakeFiles\\CMakeScratch\\TryCompile-epv6dz\\src.cxx
+        cl : Command line error D8021 : invalid numeric argument '/Wlogical-op'
+        ninja: build stopped: subcommand failed.
+        
+      exitCode: 2
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/Internal/CheckSourceCompiles.cmake:108 (try_compile)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/CheckCXXCompilerFlag.cmake:55 (cmake_check_compiler_flag)"
+      - "CMakeLists.txt:56 (check_cxx_compiler_flag)"
+    checks:
+      - "Performing Test TOML11_COMPILER_SUPPORTS_WDOUBLE_PROMOTION"
+    directories:
+      source: "D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-lnfvju"
+      binary: "D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-lnfvju"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: " /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP "
+      CMAKE_CXX_FLAGS_DEBUG: "/MDd /Z7 /Ob0 /Od /RTC1 "
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: ""
+      CMAKE_MSVC_RUNTIME_LIBRARY: "MultiThreaded$<$<CONFIG:Debug>:Debug>$<$<STREQUAL:dynamic,dynamic>:DLL>"
+      VCPKG_CHAINLOAD_TOOLCHAIN_FILE: "D:/a/Hearthframe/Hearthframe/vcpkg/scripts/toolchains/windows.cmake"
+      VCPKG_CRT_LINKAGE: "dynamic"
+      VCPKG_CXX_FLAGS: ""
+      VCPKG_CXX_FLAGS_DEBUG: ""
+      VCPKG_CXX_FLAGS_RELEASE: ""
+      VCPKG_C_FLAGS: ""
+      VCPKG_C_FLAGS_DEBUG: ""
+      VCPKG_C_FLAGS_RELEASE: ""
+      VCPKG_INSTALLED_DIR: "D:/a/Hearthframe/Hearthframe/build/vcpkg_installed"
+      VCPKG_LINKER_FLAGS: ""
+      VCPKG_LINKER_FLAGS_DEBUG: ""
+      VCPKG_LINKER_FLAGS_RELEASE: ""
+      VCPKG_PLATFORM_TOOLSET: "v143"
+      VCPKG_PREFER_SYSTEM_LIBS: "OFF"
+      VCPKG_SET_CHARSET_FLAG: "ON"
+      VCPKG_TARGET_ARCHITECTURE: "x64"
+      VCPKG_TARGET_TRIPLET: "x64-windows-static-md"
+      Z_VCPKG_ROOT_DIR: "D:/a/Hearthframe/Hearthframe/vcpkg"
+    buildResult:
+      variable: "TOML11_COMPILER_SUPPORTS_WDOUBLE_PROMOTION"
+      cached: true
+      stdout: |
+        Change Dir: 'D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-lnfvju'
+        
+        Run Build Command(s): D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/ninja/1.13.1-windows/ninja.exe -v cmTC_6f53b
+        [1/2] C:\\PROGRA~1\\MICROS~2\\2022\\ENTERP~1\\VC\\Tools\\MSVC\\1444~1.352\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -DTOML11_COMPILER_SUPPORTS_WDOUBLE_PROMOTION  /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP   /MDd /Z7 /Ob0 /Od /RTC1  -MDd   -Wdouble-promotion /showIncludes /FoCMakeFiles\\cmTC_6f53b.dir\\src.cxx.obj /FdCMakeFiles\\cmTC_6f53b.dir\\ /FS -c D:\\a\\Hearthframe\\Hearthframe\\vcpkg\\buildtrees\\toml11\\x64-windows-static-md-rel\\CMakeFiles\\CMakeScratch\\TryCompile-lnfvju\\src.cxx
+        FAILED: [code=2] CMakeFiles/cmTC_6f53b.dir/src.cxx.obj 
+        C:\\PROGRA~1\\MICROS~2\\2022\\ENTERP~1\\VC\\Tools\\MSVC\\1444~1.352\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -DTOML11_COMPILER_SUPPORTS_WDOUBLE_PROMOTION  /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP   /MDd /Z7 /Ob0 /Od /RTC1  -MDd   -Wdouble-promotion /showIncludes /FoCMakeFiles\\cmTC_6f53b.dir\\src.cxx.obj /FdCMakeFiles\\cmTC_6f53b.dir\\ /FS -c D:\\a\\Hearthframe\\Hearthframe\\vcpkg\\buildtrees\\toml11\\x64-windows-static-md-rel\\CMakeFiles\\CMakeScratch\\TryCompile-lnfvju\\src.cxx
+        cl : Command line error D8021 : invalid numeric argument '/Wdouble-promotion'
+        ninja: build stopped: subcommand failed.
+        
+      exitCode: 2
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/Internal/CheckSourceCompiles.cmake:108 (try_compile)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/CheckCXXCompilerFlag.cmake:55 (cmake_check_compiler_flag)"
+      - "CMakeLists.txt:57 (check_cxx_compiler_flag)"
+    checks:
+      - "Performing Test TOML11_COMPILER_SUPPORTS_WRANGE_LOOP_ANALYSIS"
+    directories:
+      source: "D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-l9g9tq"
+      binary: "D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-l9g9tq"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: " /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP "
+      CMAKE_CXX_FLAGS_DEBUG: "/MDd /Z7 /Ob0 /Od /RTC1 "
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: ""
+      CMAKE_MSVC_RUNTIME_LIBRARY: "MultiThreaded$<$<CONFIG:Debug>:Debug>$<$<STREQUAL:dynamic,dynamic>:DLL>"
+      VCPKG_CHAINLOAD_TOOLCHAIN_FILE: "D:/a/Hearthframe/Hearthframe/vcpkg/scripts/toolchains/windows.cmake"
+      VCPKG_CRT_LINKAGE: "dynamic"
+      VCPKG_CXX_FLAGS: ""
+      VCPKG_CXX_FLAGS_DEBUG: ""
+      VCPKG_CXX_FLAGS_RELEASE: ""
+      VCPKG_C_FLAGS: ""
+      VCPKG_C_FLAGS_DEBUG: ""
+      VCPKG_C_FLAGS_RELEASE: ""
+      VCPKG_INSTALLED_DIR: "D:/a/Hearthframe/Hearthframe/build/vcpkg_installed"
+      VCPKG_LINKER_FLAGS: ""
+      VCPKG_LINKER_FLAGS_DEBUG: ""
+      VCPKG_LINKER_FLAGS_RELEASE: ""
+      VCPKG_PLATFORM_TOOLSET: "v143"
+      VCPKG_PREFER_SYSTEM_LIBS: "OFF"
+      VCPKG_SET_CHARSET_FLAG: "ON"
+      VCPKG_TARGET_ARCHITECTURE: "x64"
+      VCPKG_TARGET_TRIPLET: "x64-windows-static-md"
+      Z_VCPKG_ROOT_DIR: "D:/a/Hearthframe/Hearthframe/vcpkg"
+    buildResult:
+      variable: "TOML11_COMPILER_SUPPORTS_WRANGE_LOOP_ANALYSIS"
+      cached: true
+      stdout: |
+        Change Dir: 'D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-l9g9tq'
+        
+        Run Build Command(s): D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/ninja/1.13.1-windows/ninja.exe -v cmTC_ea844
+        [1/2] C:\\PROGRA~1\\MICROS~2\\2022\\ENTERP~1\\VC\\Tools\\MSVC\\1444~1.352\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -DTOML11_COMPILER_SUPPORTS_WRANGE_LOOP_ANALYSIS  /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP   /MDd /Z7 /Ob0 /Od /RTC1  -MDd   -Wrange-loop-analysis /showIncludes /FoCMakeFiles\\cmTC_ea844.dir\\src.cxx.obj /FdCMakeFiles\\cmTC_ea844.dir\\ /FS -c D:\\a\\Hearthframe\\Hearthframe\\vcpkg\\buildtrees\\toml11\\x64-windows-static-md-rel\\CMakeFiles\\CMakeScratch\\TryCompile-l9g9tq\\src.cxx
+        FAILED: [code=2] CMakeFiles/cmTC_ea844.dir/src.cxx.obj 
+        C:\\PROGRA~1\\MICROS~2\\2022\\ENTERP~1\\VC\\Tools\\MSVC\\1444~1.352\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -DTOML11_COMPILER_SUPPORTS_WRANGE_LOOP_ANALYSIS  /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP   /MDd /Z7 /Ob0 /Od /RTC1  -MDd   -Wrange-loop-analysis /showIncludes /FoCMakeFiles\\cmTC_ea844.dir\\src.cxx.obj /FdCMakeFiles\\cmTC_ea844.dir\\ /FS -c D:\\a\\Hearthframe\\Hearthframe\\vcpkg\\buildtrees\\toml11\\x64-windows-static-md-rel\\CMakeFiles\\CMakeScratch\\TryCompile-l9g9tq\\src.cxx
+        cl : Command line error D8021 : invalid numeric argument '/Wrange-loop-analysis'
+        ninja: build stopped: subcommand failed.
+        
+      exitCode: 2
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/Internal/CheckSourceCompiles.cmake:108 (try_compile)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/CheckCXXCompilerFlag.cmake:55 (cmake_check_compiler_flag)"
+      - "CMakeLists.txt:58 (check_cxx_compiler_flag)"
+    checks:
+      - "Performing Test TOML11_COMPILER_SUPPORTS_WUNDEF"
+    directories:
+      source: "D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-mdq7s6"
+      binary: "D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-mdq7s6"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: " /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP "
+      CMAKE_CXX_FLAGS_DEBUG: "/MDd /Z7 /Ob0 /Od /RTC1 "
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: ""
+      CMAKE_MSVC_RUNTIME_LIBRARY: "MultiThreaded$<$<CONFIG:Debug>:Debug>$<$<STREQUAL:dynamic,dynamic>:DLL>"
+      VCPKG_CHAINLOAD_TOOLCHAIN_FILE: "D:/a/Hearthframe/Hearthframe/vcpkg/scripts/toolchains/windows.cmake"
+      VCPKG_CRT_LINKAGE: "dynamic"
+      VCPKG_CXX_FLAGS: ""
+      VCPKG_CXX_FLAGS_DEBUG: ""
+      VCPKG_CXX_FLAGS_RELEASE: ""
+      VCPKG_C_FLAGS: ""
+      VCPKG_C_FLAGS_DEBUG: ""
+      VCPKG_C_FLAGS_RELEASE: ""
+      VCPKG_INSTALLED_DIR: "D:/a/Hearthframe/Hearthframe/build/vcpkg_installed"
+      VCPKG_LINKER_FLAGS: ""
+      VCPKG_LINKER_FLAGS_DEBUG: ""
+      VCPKG_LINKER_FLAGS_RELEASE: ""
+      VCPKG_PLATFORM_TOOLSET: "v143"
+      VCPKG_PREFER_SYSTEM_LIBS: "OFF"
+      VCPKG_SET_CHARSET_FLAG: "ON"
+      VCPKG_TARGET_ARCHITECTURE: "x64"
+      VCPKG_TARGET_TRIPLET: "x64-windows-static-md"
+      Z_VCPKG_ROOT_DIR: "D:/a/Hearthframe/Hearthframe/vcpkg"
+    buildResult:
+      variable: "TOML11_COMPILER_SUPPORTS_WUNDEF"
+      cached: true
+      stdout: |
+        Change Dir: 'D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-mdq7s6'
+        
+        Run Build Command(s): D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/ninja/1.13.1-windows/ninja.exe -v cmTC_82a0d
+        [1/2] C:\\PROGRA~1\\MICROS~2\\2022\\ENTERP~1\\VC\\Tools\\MSVC\\1444~1.352\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -DTOML11_COMPILER_SUPPORTS_WUNDEF  /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP   /MDd /Z7 /Ob0 /Od /RTC1  -MDd   -Wundef /showIncludes /FoCMakeFiles\\cmTC_82a0d.dir\\src.cxx.obj /FdCMakeFiles\\cmTC_82a0d.dir\\ /FS -c D:\\a\\Hearthframe\\Hearthframe\\vcpkg\\buildtrees\\toml11\\x64-windows-static-md-rel\\CMakeFiles\\CMakeScratch\\TryCompile-mdq7s6\\src.cxx
+        FAILED: [code=2] CMakeFiles/cmTC_82a0d.dir/src.cxx.obj 
+        C:\\PROGRA~1\\MICROS~2\\2022\\ENTERP~1\\VC\\Tools\\MSVC\\1444~1.352\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -DTOML11_COMPILER_SUPPORTS_WUNDEF  /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP   /MDd /Z7 /Ob0 /Od /RTC1  -MDd   -Wundef /showIncludes /FoCMakeFiles\\cmTC_82a0d.dir\\src.cxx.obj /FdCMakeFiles\\cmTC_82a0d.dir\\ /FS -c D:\\a\\Hearthframe\\Hearthframe\\vcpkg\\buildtrees\\toml11\\x64-windows-static-md-rel\\CMakeFiles\\CMakeScratch\\TryCompile-mdq7s6\\src.cxx
+        cl : Command line error D8021 : invalid numeric argument '/Wundef'
+        ninja: build stopped: subcommand failed.
+        
+      exitCode: 2
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/Internal/CheckSourceCompiles.cmake:108 (try_compile)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/CheckCXXCompilerFlag.cmake:55 (cmake_check_compiler_flag)"
+      - "CMakeLists.txt:59 (check_cxx_compiler_flag)"
+    checks:
+      - "Performing Test TOML11_COMPILER_SUPPORTS_WSHADOW"
+    directories:
+      source: "D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-k1ymgh"
+      binary: "D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-k1ymgh"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: " /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP "
+      CMAKE_CXX_FLAGS_DEBUG: "/MDd /Z7 /Ob0 /Od /RTC1 "
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: ""
+      CMAKE_MSVC_RUNTIME_LIBRARY: "MultiThreaded$<$<CONFIG:Debug>:Debug>$<$<STREQUAL:dynamic,dynamic>:DLL>"
+      VCPKG_CHAINLOAD_TOOLCHAIN_FILE: "D:/a/Hearthframe/Hearthframe/vcpkg/scripts/toolchains/windows.cmake"
+      VCPKG_CRT_LINKAGE: "dynamic"
+      VCPKG_CXX_FLAGS: ""
+      VCPKG_CXX_FLAGS_DEBUG: ""
+      VCPKG_CXX_FLAGS_RELEASE: ""
+      VCPKG_C_FLAGS: ""
+      VCPKG_C_FLAGS_DEBUG: ""
+      VCPKG_C_FLAGS_RELEASE: ""
+      VCPKG_INSTALLED_DIR: "D:/a/Hearthframe/Hearthframe/build/vcpkg_installed"
+      VCPKG_LINKER_FLAGS: ""
+      VCPKG_LINKER_FLAGS_DEBUG: ""
+      VCPKG_LINKER_FLAGS_RELEASE: ""
+      VCPKG_PLATFORM_TOOLSET: "v143"
+      VCPKG_PREFER_SYSTEM_LIBS: "OFF"
+      VCPKG_SET_CHARSET_FLAG: "ON"
+      VCPKG_TARGET_ARCHITECTURE: "x64"
+      VCPKG_TARGET_TRIPLET: "x64-windows-static-md"
+      Z_VCPKG_ROOT_DIR: "D:/a/Hearthframe/Hearthframe/vcpkg"
+    buildResult:
+      variable: "TOML11_COMPILER_SUPPORTS_WSHADOW"
+      cached: true
+      stdout: |
+        Change Dir: 'D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/x64-windows-static-md-rel/CMakeFiles/CMakeScratch/TryCompile-k1ymgh'
+        
+        Run Build Command(s): D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/ninja/1.13.1-windows/ninja.exe -v cmTC_33883
+        [1/2] C:\\PROGRA~1\\MICROS~2\\2022\\ENTERP~1\\VC\\Tools\\MSVC\\1444~1.352\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -DTOML11_COMPILER_SUPPORTS_WSHADOW  /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP   /MDd /Z7 /Ob0 /Od /RTC1  -MDd   -Wshadow /showIncludes /FoCMakeFiles\\cmTC_33883.dir\\src.cxx.obj /FdCMakeFiles\\cmTC_33883.dir\\ /FS -c D:\\a\\Hearthframe\\Hearthframe\\vcpkg\\buildtrees\\toml11\\x64-windows-static-md-rel\\CMakeFiles\\CMakeScratch\\TryCompile-k1ymgh\\src.cxx
+        FAILED: [code=2] CMakeFiles/cmTC_33883.dir/src.cxx.obj 
+        C:\\PROGRA~1\\MICROS~2\\2022\\ENTERP~1\\VC\\Tools\\MSVC\\1444~1.352\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -DTOML11_COMPILER_SUPPORTS_WSHADOW  /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP   /MDd /Z7 /Ob0 /Od /RTC1  -MDd   -Wshadow /showIncludes /FoCMakeFiles\\cmTC_33883.dir\\src.cxx.obj /FdCMakeFiles\\cmTC_33883.dir\\ /FS -c D:\\a\\Hearthframe\\Hearthframe\\vcpkg\\buildtrees\\toml11\\x64-windows-static-md-rel\\CMakeFiles\\CMakeScratch\\TryCompile-k1ymgh\\src.cxx
+        cl : Command line error D8021 : invalid numeric argument '/Wshadow'
+        ninja: build stopped: subcommand failed.
+        
+      exitCode: 2
+...

@@ -1,0 +1,9 @@
+Downloading https://github.com/brofield/simpleini/archive/v4.25.tar.gz -> brofield-simpleini-v4.25.tar.gz
+Successfully downloaded brofield-simpleini-v4.25.tar.gz
+-- Extracting source D:/a/Hearthframe/Hearthframe/vcpkg/downloads/brofield-simpleini-v4.25.tar.gz
+-- Using source at D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/simpleini/src/v4.25-ce9cf217ce.clean
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/simpleini_x64-windows-static-md/include/SimpleIni.h
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/simpleini_x64-windows-static-md/include/ConvertUTF.h
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/simpleini_x64-windows-static-md/include/ConvertUTF.c
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/simpleini_x64-windows-static-md/share/simpleini/copyright
+-- Performing post-build validation

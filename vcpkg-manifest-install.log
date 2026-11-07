@@ -1,0 +1,328 @@
+A suitable version of cmake was not found (required v3.31.10).
+Downloading https://github.com/Kitware/CMake/releases/download/v3.31.10/cmake-3.31.10-windows-x86_64.zip -> cmake-3.31.10-windows-x86_64.zip
+Successfully downloaded cmake-3.31.10-windows-x86_64.zip
+Extracting cmake...
+Detecting compiler hash for triplet x64-windows...
+Compiler found: C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe
+Detecting compiler hash for triplet x64-windows-static-md...
+Compiler found: C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe
+The following packages will be built and installed:
+    directxmath:x64-windows-static-md@2025-04-03
+    directxtk:x64-windows-static-md@2025-10-27
+    fmt:x64-windows-static-md@12.1.0
+    imgui[core,dx11-binding]:x64-windows-static-md@1.90#4
+    nlohmann-json:x64-windows-static-md@3.12.0#1
+    rapidcsv:x64-windows-static-md@8.90
+    simpleini:x64-windows-static-md@4.25
+    spdlog:x64-windows-static-md@1.16.0
+    stb:x64-windows-static-md@2024-07-29#1
+    toml11:x64-windows-static-md@4.4.0
+  * vcpkg-cmake:x64-windows@2024-04-23
+  * vcpkg-cmake-config:x64-windows@2024-05-23
+    xbyak:x64-windows-static-md@7.28
+Additional packages (*) will be modified to complete this operation.
+Restored 0 package(s) from D:\a\Hearthframe\Hearthframe\vcpkg-bincache in 122 us. Use --debug to see more details.
+Installing 1/13 vcpkg-cmake-config:x64-windows@2024-05-23...
+Building vcpkg-cmake-config:x64-windows@2024-05-23...
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/vcpkg-cmake-config_x64-windows/share/vcpkg-cmake-config/vcpkg_cmake_config_fixup.cmake
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/vcpkg-cmake-config_x64-windows/share/vcpkg-cmake-config/vcpkg-port-config.cmake
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/vcpkg-cmake-config_x64-windows/share/vcpkg-cmake-config/copyright
+-- Skipping post-build validation due to VCPKG_POLICY_EMPTY_PACKAGE
+Starting submission of vcpkg-cmake-config:x64-windows@2024-05-23 to 1 binary cache(s) in the background
+Elapsed time to handle vcpkg-cmake-config:x64-windows: 27.2 ms
+vcpkg-cmake-config:x64-windows package ABI: 1c97625683fba866df10fbbe8f3b14a9d8944d5fc909827978f3b695c7618e9d
+Installing 2/13 vcpkg-cmake:x64-windows@2024-04-23...
+Building vcpkg-cmake:x64-windows@2024-04-23...
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/vcpkg-cmake_x64-windows/share/vcpkg-cmake/vcpkg_cmake_configure.cmake
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/vcpkg-cmake_x64-windows/share/vcpkg-cmake/vcpkg_cmake_build.cmake
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/vcpkg-cmake_x64-windows/share/vcpkg-cmake/vcpkg_cmake_install.cmake
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/vcpkg-cmake_x64-windows/share/vcpkg-cmake/vcpkg-port-config.cmake
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/vcpkg-cmake_x64-windows/share/vcpkg-cmake/copyright
+-- Performing post-build validation
+Starting submission of vcpkg-cmake:x64-windows@2024-04-23 to 1 binary cache(s) in the background
+Elapsed time to handle vcpkg-cmake:x64-windows: 34.4 ms
+vcpkg-cmake:x64-windows package ABI: e5e41ff4fe05762319ce467cce496c26b275e6ef953f86166390c869196f7a56
+Installing 3/13 directxmath:x64-windows-static-md@2025-04-03...
+Building directxmath:x64-windows-static-md@2025-04-03...
+Downloading https://github.com/Microsoft/DirectXMath/archive/apr2025.tar.gz -> Microsoft-DirectXMath-apr2025.tar.gz
+Successfully downloaded Microsoft-DirectXMath-apr2025.tar.gz
+-- Extracting source D:/a/Hearthframe/Hearthframe/vcpkg/downloads/Microsoft-DirectXMath-apr2025.tar.gz
+-- Applying patch MinGW-fix.patch
+-- Applying patch Linux-SHMath-SAL.patch
+-- Using source at D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/directxmath/src/apr2025-1285488dd7.clean
+-- Configuring x64-windows-static-md
+-- Building x64-windows-static-md-dbg
+-- Building x64-windows-static-md-rel
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/directxmath_x64-windows-static-md/share/pkgconfig/DirectXMath.pc
+-- Fixing pkgconfig file: D:/a/Hearthframe/Hearthframe/vcpkg/packages/directxmath_x64-windows-static-md/lib/pkgconfig/DirectXMath.pc
+-- Fixing pkgconfig file: D:/a/Hearthframe/Hearthframe/vcpkg/packages/directxmath_x64-windows-static-md/share/pkgconfig/DirectXMath.pc
+Downloading msys2-mingw-w64-x86_64-pkgconf-1~2.4.3-1-any.pkg.tar.zst, trying https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-pkgconf-1~2.4.3-1-any.pkg.tar.zst
+Successfully downloaded msys2-mingw-w64-x86_64-pkgconf-1~2.4.3-1-any.pkg.tar.zst
+Downloading msys2-msys2-runtime-3.6.2-2-x86_64.pkg.tar.zst, trying https://mirror.msys2.org/msys/x86_64/msys2-runtime-3.6.2-2-x86_64.pkg.tar.zst
+Successfully downloaded msys2-msys2-runtime-3.6.2-2-x86_64.pkg.tar.zst
+-- Using msys root at D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/msys2/9272adbcaf19caef
+-- Fixing pkgconfig file: D:/a/Hearthframe/Hearthframe/vcpkg/packages/directxmath_x64-windows-static-md/debug/lib/pkgconfig/DirectXMath.pc
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/directxmath_x64-windows-static-md/share/directxmath/usage
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/directxmath_x64-windows-static-md/share/directxmath/copyright
+-- Performing post-build validation
+Starting submission of directxmath:x64-windows-static-md@2025-04-03 to 1 binary cache(s) in the background
+Elapsed time to handle directxmath:x64-windows-static-md: 3.7 s
+directxmath:x64-windows-static-md package ABI: 1532d1e9fe347a004430b3ef39e0e651e694cd82c5621cf0178a35f328f02b86
+Completed submission of vcpkg-cmake-config:x64-windows@2024-05-23 to 1 binary cache(s) in 47.8 ms
+Completed submission of vcpkg-cmake:x64-windows@2024-04-23 to 1 binary cache(s) in 32.6 ms
+Installing 4/13 directxtk:x64-windows-static-md@2025-10-27...
+Building directxtk:x64-windows-static-md@2025-10-27...
+Downloading https://github.com/Microsoft/DirectXTK/archive/oct2025.tar.gz -> Microsoft-DirectXTK-oct2025.tar.gz
+Successfully downloaded Microsoft-DirectXTK-oct2025.tar.gz
+-- Extracting source D:/a/Hearthframe/Hearthframe/vcpkg/downloads/Microsoft-DirectXTK-oct2025.tar.gz
+-- Applying patch CMake-build-options-improvements.patch
+-- Using source at D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/directxtk/src/oct2025-d895e80ef0.clean
+-- Configuring x64-windows-static-md
+-- Building x64-windows-static-md-dbg
+-- Building x64-windows-static-md-rel
+-- Fixing pkgconfig file: D:/a/Hearthframe/Hearthframe/vcpkg/packages/directxtk_x64-windows-static-md/lib/pkgconfig/DirectXTK.pc
+-- Using cached msys2-mingw-w64-x86_64-pkgconf-1~2.4.3-1-any.pkg.tar.zst
+-- Using cached msys2-msys2-runtime-3.6.2-2-x86_64.pkg.tar.zst
+-- Using msys root at D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/msys2/9272adbcaf19caef
+-- Fixing pkgconfig file: D:/a/Hearthframe/Hearthframe/vcpkg/packages/directxtk_x64-windows-static-md/debug/lib/pkgconfig/DirectXTK.pc
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/directxtk_x64-windows-static-md/share/directxtk/usage
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/directxtk_x64-windows-static-md/share/directxtk/copyright
+-- Performing post-build validation
+Starting submission of directxtk:x64-windows-static-md@2025-10-27 to 1 binary cache(s) in the background
+Elapsed time to handle directxtk:x64-windows-static-md: 26 s
+directxtk:x64-windows-static-md package ABI: 2bfd28825adb604e0e0ae8652f8ac12f44a383d90bb4d8f46908214771ab06cb
+Completed submission of directxmath:x64-windows-static-md@2025-04-03 to 1 binary cache(s) in 81.3 ms
+Installing 5/13 fmt:x64-windows-static-md@12.1.0...
+Building fmt:x64-windows-static-md@12.1.0...
+Downloading https://github.com/fmtlib/fmt/archive/12.1.0.tar.gz -> fmtlib-fmt-12.1.0.tar.gz
+Successfully downloaded fmtlib-fmt-12.1.0.tar.gz
+-- Extracting source D:/a/Hearthframe/Hearthframe/vcpkg/downloads/fmtlib-fmt-12.1.0.tar.gz
+-- Using source at D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/fmt/src/12.1.0-54f1f91231.clean
+-- Configuring x64-windows-static-md
+-- Building x64-windows-static-md-dbg
+-- Building x64-windows-static-md-rel
+-- Fixing pkgconfig file: D:/a/Hearthframe/Hearthframe/vcpkg/packages/fmt_x64-windows-static-md/lib/pkgconfig/fmt.pc
+-- Using cached msys2-mingw-w64-x86_64-pkgconf-1~2.4.3-1-any.pkg.tar.zst
+-- Using cached msys2-msys2-runtime-3.6.2-2-x86_64.pkg.tar.zst
+-- Using msys root at D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/msys2/9272adbcaf19caef
+-- Fixing pkgconfig file: D:/a/Hearthframe/Hearthframe/vcpkg/packages/fmt_x64-windows-static-md/debug/lib/pkgconfig/fmt.pc
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/fmt_x64-windows-static-md/share/fmt/usage
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/fmt_x64-windows-static-md/share/fmt/copyright
+-- Performing post-build validation
+Starting submission of fmt:x64-windows-static-md@12.1.0 to 1 binary cache(s) in the background
+Elapsed time to handle fmt:x64-windows-static-md: 3.5 s
+fmt:x64-windows-static-md package ABI: 9e08fc10217437ad8dcbe05602386aa0e18c2cf4f3d939a4224d3a3d6077ea01
+Completed submission of directxtk:x64-windows-static-md@2025-10-27 to 1 binary cache(s) in 2.3 s
+Installing 6/13 imgui[core,dx11-binding]:x64-windows-static-md@1.90#4...
+Building imgui[core,dx11-binding]:x64-windows-static-md@1.90#4...
+Downloading https://github.com/ocornut/imgui/archive/v1.90.tar.gz -> ocornut-imgui-v1.90.tar.gz
+Successfully downloaded ocornut-imgui-v1.90.tar.gz
+-- Extracting source D:/a/Hearthframe/Hearthframe/vcpkg/downloads/ocornut-imgui-v1.90.tar.gz
+-- Using source at D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/imgui/src/v1.90-50a33a9677.clean
+-- Configuring x64-windows-static-md
+-- Building x64-windows-static-md-dbg
+-- Building x64-windows-static-md-rel
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/imgui_x64-windows-static-md/share/imgui/copyright
+-- Performing post-build validation
+Starting submission of imgui[core,dx11-binding]:x64-windows-static-md@1.90#4 to 1 binary cache(s) in the background
+Elapsed time to handle imgui:x64-windows-static-md: 7.8 s
+imgui:x64-windows-static-md package ABI: 300e08ea57699294395124c13f43a05ab370df61e1e6d47f1decd533b8a59316
+Completed submission of fmt:x64-windows-static-md@12.1.0 to 1 binary cache(s) in 276 ms
+Installing 7/13 nlohmann-json:x64-windows-static-md@3.12.0#1...
+Building nlohmann-json:x64-windows-static-md@3.12.0#1...
+Downloading https://github.com/nlohmann/json/archive/v3.12.0.tar.gz -> nlohmann-json-v3.12.0.tar.gz
+Successfully downloaded nlohmann-json-v3.12.0.tar.gz
+-- Extracting source D:/a/Hearthframe/Hearthframe/vcpkg/downloads/nlohmann-json-v3.12.0.tar.gz
+-- Applying patch fix-4742_std_optional.patch
+-- Using source at D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/nlohmann-json/src/v3.12.0-087f34fe5c.clean
+-- Configuring x64-windows-static-md
+-- Building x64-windows-static-md-dbg
+-- Building x64-windows-static-md-rel
+-- Fixing pkgconfig file: D:/a/Hearthframe/Hearthframe/vcpkg/packages/nlohmann-json_x64-windows-static-md/share/pkgconfig/nlohmann_json.pc
+-- Using cached msys2-mingw-w64-x86_64-pkgconf-1~2.4.3-1-any.pkg.tar.zst
+-- Using cached msys2-msys2-runtime-3.6.2-2-x86_64.pkg.tar.zst
+-- Using msys root at D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/msys2/9272adbcaf19caef
+-- Fixing pkgconfig file: D:/a/Hearthframe/Hearthframe/vcpkg/packages/nlohmann-json_x64-windows-static-md/debug/share/pkgconfig/nlohmann_json.pc
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/nlohmann-json_x64-windows-static-md/share/nlohmann-json/copyright
+-- Performing post-build validation
+Starting submission of nlohmann-json:x64-windows-static-md@3.12.0#1 to 1 binary cache(s) in the background
+Elapsed time to handle nlohmann-json:x64-windows-static-md: 1.5 s
+nlohmann-json:x64-windows-static-md package ABI: 0682d78f31ececf99c60a15c9a40483465fbd63907f2650a57ed9313365aa9eb
+Completed submission of imgui[core,dx11-binding]:x64-windows-static-md@1.90#4 to 1 binary cache(s) in 660 ms
+Installing 8/13 rapidcsv:x64-windows-static-md@8.90...
+Building rapidcsv:x64-windows-static-md@8.90...
+Downloading https://github.com/d99kris/rapidcsv/archive/v8.90.tar.gz -> d99kris-rapidcsv-v8.90.tar.gz
+Successfully downloaded d99kris-rapidcsv-v8.90.tar.gz
+-- Extracting source D:/a/Hearthframe/Hearthframe/vcpkg/downloads/d99kris-rapidcsv-v8.90.tar.gz
+-- Using source at D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/rapidcsv/src/v8.90-936565c436.clean
+-- Configuring x64-windows-static-md
+-- Building x64-windows-static-md-dbg
+-- Building x64-windows-static-md-rel
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/rapidcsv_x64-windows-static-md/share/rapidcsv/copyright
+-- Performing post-build validation
+Starting submission of rapidcsv:x64-windows-static-md@8.90 to 1 binary cache(s) in the background
+Elapsed time to handle rapidcsv:x64-windows-static-md: 1.2 s
+rapidcsv:x64-windows-static-md package ABI: 0450d4018752e4197b18cb636d672a92e51faa5eb46b292803e352fe2854eb26
+Completed submission of nlohmann-json:x64-windows-static-md@3.12.0#1 to 1 binary cache(s) in 59.6 ms
+Installing 9/13 simpleini:x64-windows-static-md@4.25...
+Building simpleini:x64-windows-static-md@4.25...
+Downloading https://github.com/brofield/simpleini/archive/v4.25.tar.gz -> brofield-simpleini-v4.25.tar.gz
+Successfully downloaded brofield-simpleini-v4.25.tar.gz
+-- Extracting source D:/a/Hearthframe/Hearthframe/vcpkg/downloads/brofield-simpleini-v4.25.tar.gz
+-- Using source at D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/simpleini/src/v4.25-ce9cf217ce.clean
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/simpleini_x64-windows-static-md/include/SimpleIni.h
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/simpleini_x64-windows-static-md/include/ConvertUTF.h
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/simpleini_x64-windows-static-md/include/ConvertUTF.c
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/simpleini_x64-windows-static-md/share/simpleini/copyright
+-- Performing post-build validation
+Starting submission of simpleini:x64-windows-static-md@4.25 to 1 binary cache(s) in the background
+Elapsed time to handle simpleini:x64-windows-static-md: 496 ms
+simpleini:x64-windows-static-md package ABI: bd56c049eed84096c1c355588553e5cd9e545387c52a88d9003aa5f6c122743c
+Completed submission of rapidcsv:x64-windows-static-md@8.90 to 1 binary cache(s) in 38.3 ms
+Installing 10/13 spdlog:x64-windows-static-md@1.16.0...
+Building spdlog:x64-windows-static-md@1.16.0...
+Downloading https://github.com/gabime/spdlog/archive/v1.16.0.tar.gz -> gabime-spdlog-v1.16.0.tar.gz
+Successfully downloaded gabime-spdlog-v1.16.0.tar.gz
+-- Extracting source D:/a/Hearthframe/Hearthframe/vcpkg/downloads/gabime-spdlog-v1.16.0.tar.gz
+-- Using source at D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/spdlog/src/v1.16.0-e349c3b9b7.clean
+-- Configuring x64-windows-static-md
+-- Building x64-windows-static-md-dbg
+-- Building x64-windows-static-md-rel
+-- Fixing pkgconfig file: D:/a/Hearthframe/Hearthframe/vcpkg/packages/spdlog_x64-windows-static-md/lib/pkgconfig/spdlog.pc
+-- Using cached msys2-mingw-w64-x86_64-pkgconf-1~2.4.3-1-any.pkg.tar.zst
+-- Using cached msys2-msys2-runtime-3.6.2-2-x86_64.pkg.tar.zst
+-- Using msys root at D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/msys2/9272adbcaf19caef
+-- Fixing pkgconfig file: D:/a/Hearthframe/Hearthframe/vcpkg/packages/spdlog_x64-windows-static-md/debug/lib/pkgconfig/spdlog.pc
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/spdlog_x64-windows-static-md/share/spdlog/usage
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/spdlog_x64-windows-static-md/share/spdlog/copyright
+-- Performing post-build validation
+Starting submission of spdlog:x64-windows-static-md@1.16.0 to 1 binary cache(s) in the background
+Elapsed time to handle spdlog:x64-windows-static-md: 6.9 s
+spdlog:x64-windows-static-md package ABI: 559b6902fc41df6535305d73b582b030df3283a79b4c8b4b41c7c2dd5c1870c6
+Completed submission of simpleini:x64-windows-static-md@4.25 to 1 binary cache(s) in 43.3 ms
+Installing 11/13 stb:x64-windows-static-md@2024-07-29#1...
+Building stb:x64-windows-static-md@2024-07-29#1...
+Downloading https://github.com/nothings/stb/archive/f75e8d1cad7d90d72ef7a4661f1b994ef78b4e31.tar.gz -> nothings-stb-f75e8d1cad7d90d72ef7a4661f1b994ef78b4e31.tar.gz
+Successfully downloaded nothings-stb-f75e8d1cad7d90d72ef7a4661f1b994ef78b4e31.tar.gz
+-- Extracting source D:/a/Hearthframe/Hearthframe/vcpkg/downloads/nothings-stb-f75e8d1cad7d90d72ef7a4661f1b994ef78b4e31.tar.gz
+-- Using source at D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/stb/src/4ef78b4e31-bf024d35de.clean
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/stb_x64-windows-static-md/share/stb/FindStb.cmake
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/stb_x64-windows-static-md/share/stb/vcpkg-cmake-wrapper.cmake
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/stb_x64-windows-static-md/share/stb/usage
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/stb_x64-windows-static-md/share/stb/copyright
+-- Performing post-build validation
+Starting submission of stb:x64-windows-static-md@2024-07-29#1 to 1 binary cache(s) in the background
+Elapsed time to handle stb:x64-windows-static-md: 700 ms
+stb:x64-windows-static-md package ABI: 70eb98d6f6c231347cbde1ea35ed1f3c164aaa8b358e1b7af470ec6d532fc6b8
+Installing 12/13 toml11:x64-windows-static-md@4.4.0...
+Building toml11:x64-windows-static-md@4.4.0...
+Downloading https://github.com/ToruNiina/toml11/archive/v4.4.0.tar.gz -> ToruNiina-toml11-v4.4.0.tar.gz
+Successfully downloaded ToruNiina-toml11-v4.4.0.tar.gz
+-- Extracting source D:/a/Hearthframe/Hearthframe/vcpkg/downloads/ToruNiina-toml11-v4.4.0.tar.gz
+-- Using source at D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/toml11/src/v4.4.0-e6c50d7814.clean
+-- Configuring x64-windows-static-md
+-- Building x64-windows-static-md-dbg
+-- Building x64-windows-static-md-rel
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/toml11_x64-windows-static-md/share/toml11/copyright
+-- Performing post-build validation
+Starting submission of toml11:x64-windows-static-md@4.4.0 to 1 binary cache(s) in the background
+Elapsed time to handle toml11:x64-windows-static-md: 2.2 s
+toml11:x64-windows-static-md package ABI: eea3740a61a5dd99645394b84cdba8c44c98ee609df7b69fd140a5c2776ed5b4
+Completed submission of spdlog:x64-windows-static-md@1.16.0 to 1 binary cache(s) in 1.1 s
+Completed submission of stb:x64-windows-static-md@2024-07-29#1 to 1 binary cache(s) in 81 ms
+Installing 13/13 xbyak:x64-windows-static-md@7.28...
+Building xbyak:x64-windows-static-md@7.28...
+Downloading https://github.com/herumi/xbyak/archive/v7.28.tar.gz -> herumi-xbyak-v7.28.tar.gz
+Successfully downloaded herumi-xbyak-v7.28.tar.gz
+-- Extracting source D:/a/Hearthframe/Hearthframe/vcpkg/downloads/herumi-xbyak-v7.28.tar.gz
+-- Using source at D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/xbyak/src/v7.28-a06d7369c4.clean
+-- Configuring x64-windows-static-md
+-- Building x64-windows-static-md-dbg
+-- Building x64-windows-static-md-rel
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/xbyak_x64-windows-static-md/share/xbyak/copyright
+-- Performing post-build validation
+Starting submission of xbyak:x64-windows-static-md@7.28 to 1 binary cache(s) in the background
+Elapsed time to handle xbyak:x64-windows-static-md: 1.1 s
+xbyak:x64-windows-static-md package ABI: 6e84d92947b9cf6408f22bfb5cbcffcc2a5f128a25cdcbad58a188fcfe88042b
+Installed contents are licensed to you by owners. Microsoft is not responsible for, nor does it grant any licenses to, third-party packages.
+Packages installed in this vcpkg installation declare the following licenses:
+(MIT OR CC-PDDC)
+BSD-3-Clause
+MIT
+The DirectXMath package provides CMake targets:
+
+    find_package(directxmath CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE Microsoft::DirectXMath)
+
+The DirectX Tool Kit for DX11 package provides CMake targets:
+
+    find_package(directxtk CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE Microsoft::DirectXTK)
+
+The package fmt provides CMake targets:
+
+    find_package(fmt CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE fmt::fmt)
+
+    # Or use the header-only version
+    find_package(fmt CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE fmt::fmt-header-only)
+
+imgui provides CMake targets:
+
+  # this is heuristically generated, and may not be correct
+  find_package(imgui CONFIG REQUIRED)
+  target_link_libraries(main PRIVATE imgui::imgui)
+
+The package nlohmann-json provides CMake targets:
+
+    find_package(nlohmann_json CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE nlohmann_json::nlohmann_json)
+
+The package nlohmann-json can be configured to not provide implicit conversions via a custom triplet file:
+
+    set(nlohmann-json_IMPLICIT_CONVERSIONS OFF)
+
+For more information, see the docs here:
+    
+    https://json.nlohmann.me/api/macros/json_use_implicit_conversions/
+
+rapidcsv is header-only and can be used from CMake via:
+
+  find_path(RAPIDCSV_INCLUDE_DIRS "rapidcsv.h")
+  target_include_directories(main PRIVATE ${RAPIDCSV_INCLUDE_DIRS})
+
+simpleini is header-only and can be used from CMake via:
+
+  find_path(SIMPLEINI_INCLUDE_DIRS "ConvertUTF.c")
+  target_include_directories(main PRIVATE ${SIMPLEINI_INCLUDE_DIRS})
+
+The package spdlog provides CMake targets:
+
+    find_package(spdlog CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE spdlog::spdlog)
+
+    # Or use the header-only version
+    find_package(spdlog CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE spdlog::spdlog_header_only)
+
+The package stb provides CMake targets:
+
+    find_package(Stb REQUIRED)
+    target_include_directories(main PRIVATE ${Stb_INCLUDE_DIR})
+toml11 provides CMake targets:
+
+  # this is heuristically generated, and may not be correct
+  find_package(toml11 CONFIG REQUIRED)
+  target_link_libraries(main PRIVATE toml11::toml11)
+
+xbyak provides CMake targets:
+
+  # this is heuristically generated, and may not be correct
+  find_package(xbyak CONFIG REQUIRED)
+  target_link_libraries(main PRIVATE xbyak::xbyak)
+
+Completed submission of toml11:x64-windows-static-md@4.4.0 to 1 binary cache(s) in 52.4 ms
+Waiting for 1 remaining binary cache submissions...
+Completed submission of xbyak:x64-windows-static-md@7.28 to 1 binary cache(s) in 51.6 ms (1/1)
+All requested installations completed successfully in: 55 s

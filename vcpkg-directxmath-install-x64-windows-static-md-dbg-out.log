@@ -1,0 +1,20 @@
+Change Dir: 'D:/a/Hearthframe/Hearthframe/vcpkg/buildtrees/directxmath/x64-windows-static-md-dbg'
+
+Run Build Command(s): D:/a/Hearthframe/Hearthframe/vcpkg/downloads/tools/ninja/1.13.1-windows/ninja.exe -v -v -j5 install
+[0/1] C:\Windows\system32\cmd.exe /C "cd /D D:\a\Hearthframe\Hearthframe\vcpkg\buildtrees\directxmath\x64-windows-static-md-dbg && D:\a\Hearthframe\Hearthframe\vcpkg\downloads\tools\cmake-3.31.10-windows\cmake-3.31.10-windows-x86_64\bin\cmake.exe -P cmake_install.cmake"
+-- Install configuration: "Debug"
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/directxmath_x64-windows-static-md/debug/share/directxmath/DirectXMath-targets.cmake
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/directxmath_x64-windows-static-md/debug/include/DirectXCollision.h
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/directxmath_x64-windows-static-md/debug/include/DirectXCollision.inl
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/directxmath_x64-windows-static-md/debug/include/DirectXColors.h
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/directxmath_x64-windows-static-md/debug/include/DirectXMath.h
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/directxmath_x64-windows-static-md/debug/include/DirectXMathConvert.inl
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/directxmath_x64-windows-static-md/debug/include/DirectXMathMatrix.inl
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/directxmath_x64-windows-static-md/debug/include/DirectXMathMisc.inl
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/directxmath_x64-windows-static-md/debug/include/DirectXMathVector.inl
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/directxmath_x64-windows-static-md/debug/include/DirectXPackedVector.h
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/directxmath_x64-windows-static-md/debug/include/DirectXPackedVector.inl
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/directxmath_x64-windows-static-md/debug/share/directxmath/directxmath-config.cmake
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/directxmath_x64-windows-static-md/debug/share/directxmath/directxmath-config-version.cmake
+-- Installing: D:/a/Hearthframe/Hearthframe/vcpkg/packages/directxmath_x64-windows-static-md/debug/lib/pkgconfig/DirectXMath.pc
+
