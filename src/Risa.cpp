@@ -66,6 +66,8 @@ namespace Risa
 		g_keyLabel = Gallery::ToggleKeyName();
 		API::MenuRegistrationV1 menu{};
 		menu.menuId = kMenuId;
+		// The gallery draws its own cursor; Skyrim's OS cursor stays hidden on purpose while it's open.
+		menu.flags = API::MenuFlag_IgnoreOSCursor;
 		menu.displayName = "Hearthframe";
 		menu.iconCodepoint = kIconPicture;
 		menu.nativeHotkeyLabel = g_keyLabel.c_str();
