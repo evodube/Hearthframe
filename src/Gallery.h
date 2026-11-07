@@ -37,6 +37,13 @@ namespace Gallery
 	void PrepareInputBlocker();  // plugin load
 	void InstallInputBlocker();  // first kPostLoadGame / kNewGame
 
+	// For launchers such as Risa's All In One Menu (see Risa.cpp). Thread-safe.
+	bool        LauncherOpen();                    // open the gallery; false when it can't open right now
+	void        LauncherClose();                   // close whatever Hearthframe window is open
+	bool        IsOpen();                          // a Hearthframe window is open (or about to open)
+	void        SetNativeKeyEnabled(bool a_on);    // false: the gallery key is ignored (the launcher handles it)
+	std::string ToggleKeyName();                   // the gallery key's name, e.g. "F8"
+
 	// Called from inside the game's IDXGISwapChain::Present, on the render thread.
 	void OnPresent(IDXGISwapChain* a_swapChain);
 

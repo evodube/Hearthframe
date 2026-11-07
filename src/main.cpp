@@ -13,6 +13,7 @@
 // (LICENSE.txt). If not, see <https://www.gnu.org/licenses/>.
 
 #include "Gallery.h"
+#include "Risa.h"
 #include "Wall.h"
 
 namespace
@@ -142,6 +143,10 @@ namespace
 	void OnMessage(SKSE::MessagingInterface::Message* a_msg)
 	{
 		spdlog::info("SKSE message {}", a_msg->type);
+		if (a_msg->type == SKSE::MessagingInterface::kPostLoad) {
+			Risa::Register();  // all plugins are loaded now; adds the gallery to Risa's launcher if it's installed
+			return;
+		}
 		if (a_msg->type == SKSE::MessagingInterface::kPostLoadGame || a_msg->type == SKSE::MessagingInterface::kNewGame) {
 			// First save loaded / new game: later than every plugin that hooks input at the main menu
 			// (Hearthsworn, OAR's menu...), so Hearthframe's blocker is first in line. Only the first time.

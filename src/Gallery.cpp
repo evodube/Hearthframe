@@ -230,6 +230,7 @@ namespace Gallery
 
 		std::atomic<bool> g_open{ false };
 		std::atomic<bool> g_wantOpen{ false };  // toggled by the input sink, applied in Present
+		std::atomic<bool> g_nativeKeyEnabled{ true };  // false while a launcher (Risa's menu) manages the gallery key
 		bool              g_needScan = false;
 		bool              g_imguiReady = false;
 		bool              g_imguiFailed = false;
@@ -1360,7 +1361,7 @@ namespace Gallery
 								g_shiftDown.load(), g_ctrlDown.load(), g_altDown.load(),
 								!down ? std::string("-") : (c == 0 ? std::string("none") : ((g_ctrlDown && !altGr) ? fmt::format("U+{:04X} (not typed: Ctrl held)", static_cast<int>(c)) : fmt::format("U+{:04X}", static_cast<int>(c)))));
 						}
-						if (down && code == cfg.toggleScan) {
+						if (down && code == cfg.toggleScan && g_nativeKeyEnabled) {
 							if (g_wantOpen) {
 								g_wantOpen = false;
 							} else {
@@ -2490,6 +2491,36 @@ namespace Gallery
 		mgr->AddEventSink<RE::InputEvent*>(&sink);
 		return true;
 	}
+
+	// ---------------------------------------------------------------- launcher (Risa's All In One Menu)
+	bool LauncherOpen()
+	{
+		if (g_open || g_wantOpen) {
+			return true;
+		}
+		auto* ui = RE::UI::GetSingleton();
+		// The launcher closes its own menu first, so the "another menu is open" check isn't used here.
+		if (Wall::IsPlacing() || (ui && (ui->IsMenuOpen(RE::DialogueMenu::MENU_NAME) || ui->GameIsPaused()))) {
+			spdlog::info("Launcher: gallery not opened (hanging a picture, in a conversation or the game is paused)");
+			return false;
+		}
+		g_uiMode = UiMode::Gallery;
+		g_wantOpen = true;
+		return true;
+	}
+
+	void LauncherClose() { g_wantOpen = false; }
+
+	bool IsOpen() { return g_open || g_wantOpen; }
+
+	void SetNativeKeyEnabled(bool a_on)
+	{
+		if (g_nativeKeyEnabled.exchange(a_on) != a_on) {
+			spdlog::info("Gallery key {} {}", KeyName(cfg.toggleScan), a_on ? "listening again" : "handed to the launcher");
+		}
+	}
+
+	std::string ToggleKeyName() { return KeyName(cfg.toggleScan); }
 
 	void OnPresent(IDXGISwapChain* sc)
 	{

@@ -21,9 +21,9 @@ find_path(STB_INCLUDE_DIRS "stb_image.h" REQUIRED)
 add_commonlibsse_plugin(${PROJECT_NAME}
     AUTHOR "evodube"
     USE_ADDRESS_LIBRARY
-    SOURCES src/main.cpp src/Gallery.cpp src/Wall.cpp src/Dds.cpp src/Theme.cpp src/Ui.cpp)
+    SOURCES src/main.cpp src/Gallery.cpp src/Wall.cpp src/Dds.cpp src/Theme.cpp src/Ui.cpp src/Risa.cpp)
 
-target_include_directories(${PROJECT_NAME} PRIVATE src ${STB_INCLUDE_DIRS})
+target_include_directories(${PROJECT_NAME} PRIVATE src extern/risa ${STB_INCLUDE_DIRS})  # extern/risa: RisaMenuIntegrationAPI.h
 target_precompile_headers(${PROJECT_NAME} PRIVATE src/PCH.h)
 target_compile_definitions(${PROJECT_NAME} PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
 target_link_libraries(${PROJECT_NAME} PRIVATE imgui::imgui d3d11 dxgi dinput8 dxguid windowscodecs ole32 shell32 uuid)
